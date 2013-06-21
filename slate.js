@@ -25,8 +25,15 @@ S.cfga({
     "windowHintsWidth":               windowHintDimension
 });
 
-var sLaptop = "1440x990";
-var sHP     = "1920x1080";
+
+var show = slate.operation("show", {
+    "app": "current"
+});
+
+slate.bind("1:ctrl", show);
+
+// var sLaptop = "1440x990";
+// var sHP     = "1920x1080";
 
 // Operations
 var fullscreen = S.op("move", {
@@ -50,6 +57,19 @@ var screenResizeTopHalf = S.op("push", {
 
 var screenResizeBottomHalf = screenResizeTopHalf.dup({"direction": "down"});
 
+
+var quarterWindowTopLeft = S.op("move", {
+  "x" : "screenOriginX",
+  "y" : "screenOriginY",
+  "width" :  "screenSizeX/2",
+  "height" : "screenSizeY/2",
+  "screen": "1"
+});
+
+var quarterWindowBottomLeft = quarterWindowTopLeft.dup({"y": "screenSizeY/2"});
+var quarterWindowTopRight = quarterWindowTopLeft.dup({"x": "screenSizeX/2"});
+var quarterWindowBottomRight = quarterWindowTopRight.dup({"y": "screenSizeY/2"});
+
 var theGrid = S.op("grid", {
     "grids": {
         "1440x900":  { "width": 12, "height": 8 },
@@ -58,26 +78,43 @@ var theGrid = S.op("grid", {
     "padding": 2
 });
 
+
+// Current Browser
 var focusApp = function (argument) { return S.op("focus", {"app": argument}); };
-var hyperKey = function(argument) { return argument+":ctrl;shift;alt;cmd"; };
+
+// var current_browser = shell;
+// l("current browser = " + current_browser + " " + typeof(current_browser));
+
+var focusCurrentBrowser = function() {
+    var s = S.sh("/Users/windu/.dotfiles/bin/default_browser", true);
+    S.log("current browser = " + s + " " + typeof(s));
+    return S.op("focus", {"app": s});
+};
+slate.bind("b:ctrl;shift;alt;cmd", focusCurrentBrowser());
+
+
+
 S.bnda({
     // App Focus
+    "a:ctrl;shift;alt;cmd": focusApp("Adium"),
     "i:ctrl;shift;alt;cmd": focusApp("iTerm"),
-    "b:ctrl;shift;alt;cmd": focusApp("Google Chrome"),
     "x:ctrl;shift;alt;cmd": focusApp("Xcode"),
     "e:ctrl;shift;alt;cmd": focusApp("Sublime Text 2"),
     "s:ctrl;shift;alt;cmd": focusApp("Skype"),
-    "a:ctrl;shift;alt;cmd": focusApp("Adium"),
     "n:ctrl;shift;alt;cmd": focusApp("Evernote"),
     "f:ctrl;shift;alt;cmd": focusApp("Finder"),
     "m:ctrl;shift;alt;cmd": focusApp("Mail"),
     "t:ctrl;shift;alt;cmd": focusApp("TweetDeck"),
 
     // Push Bindings
-    "right:ctrl;alt" : screenResizeRightHalf,
-    "left:ctrl;alt" : screenResizeLeftHalf,
-    "up:ctrl;alt" : screenResizeTopHalf,
-    "down:ctrl;alt" : screenResizeBottomHalf,
+    "right:ctrl;alt": screenResizeRightHalf,
+    "left:ctrl;alt":   screenResizeLeftHalf,
+    "up:ctrl;alt":   screenResizeTopHalf,
+    "down:ctrl;alt": screenResizeBottomHalf,
+    "h:ctrl;alt":   quarterWindowTopLeft,
+    "j:ctrl;alt":   quarterWindowBottomLeft,
+    "k:ctrl;alt": quarterWindowTopRight,
+    "l:ctrl;alt": quarterWindowBottomRight,
 
     // Postions
     "up:ctrl;shift;alt;cmd": fullscreen,
