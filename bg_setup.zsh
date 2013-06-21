@@ -20,6 +20,3 @@ source $__BG_PLUGIN_PATH/bg_functions.sh
 
 # Pythonbrew
 [[ -s "$HOME/.pythonbrew/etc/bashrc" ]] && source "$HOME/.pythonbrew/etc/bashrc"
-
-# This loads RVM into a shell session.
-# [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"

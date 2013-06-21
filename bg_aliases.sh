@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # bg_aliases.sh
 
-
+alias dotfiles='subl -n ~/.dotfiles'
 alias o="open"
 alias oo="open ."
-alias s="subl -w -s -n"
+alias s="subl -s -n"
 alias ls='ls -Gp'
 alias lsd='ls -l -Gp | grep "^d"'   # List only directories
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
@@ -12,14 +12,13 @@ alias p="python"
 alias pb="pythonbrew"
 alias ~='cd ~'
 alias lsusb='system_profiler SPUSBDataType'
-alias mkv='mkvirtualenv $(basename $(pwd))'
-alias tn="/Applications/terminal-notifier.app/Contents/MacOS/terminal-notifier"
-alias epath='echo $PATH | tr ":" "\n"'
 alias tu='top -o cpu'
 alias tm='top -o rsize'
-
+alias k='pkill -9 -fi'
+alias ggo="git checkout -B"
 alias ttl='ping -s 1 www.google.com'     # my time to live
-
+alias octal="cat ~/Dropbox/_/Personal/Documents/octal-help.txt"
+alias rules="cat /Users/windu/Dropbox/_/Personal/Documents/rules-of-the-internet.txt"
 # http://www.jukie.net/~bart/blog/pimping-out-git-log
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%an %cr)%Creset' --abbrev-commit --date=relative"
 

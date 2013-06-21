@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # bg_env.sh
 
-
 # Pre-functions to help $PATH handling.
-
 # Source: What is the most elegant way to remove a path from the $PATH variable in Bash?
 # Link: http://stackoverflow.com/q/370047
 path_append ()  { path_remove $1; PATH="$PATH:$1"; }
@@ -22,11 +20,15 @@ ifValidAppendToPath "/usr/local/git/bin"
 ifValidAppendToPath "${HOME}/.local/bin"
 ifValidAppendToPath "/usr/local/include"
 ifValidAppendToPath "/Applications/Xcode.app/Contents/Developer/usr/bin"
-ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/MacOS"
-ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/Frameworks/Mono.framework/Commands/"
+# ifValidAppendToPath "/Library/Frameworks/Mono.framework/Versions/Current/bin/"
+# ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/MacOS"
+# ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/Frameworks/Mono.framework/Commands/"
 ifValidAppendToPath "$__BG_PLUGIN_PATH/bin"
 ifValidAppendToPath "${HOMEBREW_HOME}/bin"
 ifValidAppendToPath "${HOMEBREW_HOME}/sbin"
+ifValidPrependToPath "/usr/local/bin"
+ifValidPrependToPath "/usr/local/share/npm/bin"
+
 
 # export PATH
 export PATH
@@ -35,6 +37,10 @@ export PATH
 [ -f "${HOME}/.pythonrc" ] && export PYTHONSTARTUP="${HOME}/.pythonrc"
 
 # MISC
+# Build monodevelop stuff
+# export ACLOCAL_FLAGS="-I /Library/Frameworks/Mono.framework/Versions/Current/share/aclocal"
+# export DYLD_FALLBACK_LIBRARY_PATH="/Library/Frameworks/Mono.framework/Versions/Current/lib:/lib:/usr/lib"
+
 export ARCHFLAGS="-arch i386 -arch x86_64"
 export HISTIGNORE="${HISTIGNORE}:&:ls:[bf]g:exit:ls *:cd:cd -:pwd;exit:date:* --help"
 export HISTCONTROL="${HISTCONTROL}:erasedups:ignoreboth"  # Erase duplicates
