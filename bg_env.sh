@@ -34,7 +34,7 @@ ifValidPrependToPath "/usr/local/share/npm/bin"
 export PATH
 
 # Python
-[ -f "${HOME}/.pythonrc" ] && export PYTHONSTARTUP="${HOME}/.pythonrc"
+export PYTHONSTARTUP="${HOME}/.dotfiles/.pythonrc"
 
 # MISC
 # Build monodevelop stuff
@@ -46,7 +46,19 @@ export HISTIGNORE="${HISTIGNORE}:&:ls:[bf]g:exit:ls *:cd:cd -:pwd;exit:date:* --
 export HISTCONTROL="${HISTCONTROL}:erasedups:ignoreboth"  # Erase duplicates
 export HISTTIMEFORMAT="%h/%D - %H:%M:%S "
 export HISTSIZE=15000 # resize history size
-export EDITOR="subl -w -n"
+
+if hash mvim 2>/dev/null; then
+    export EDITOR="mvim"
+elif hash gvim 2>/dev/null; then
+    export EDITOR="gvim"
+elif hash vim 2>/dev/null; then
+    export EDITOR="vim"
+elif hash vi 2>/dev/null; then
+    export EDITOR='vi'
+else
+    export EDITOR='nano'
+fi;
+
 export GIT_EDITOR=$EDITOR
 
 [ -d "/opt/local/share/man" ] && export MANPATH="/opt/local/share/man":$MANPATH

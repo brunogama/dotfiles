@@ -87,7 +87,7 @@
 	email = bgamap@gmail.com
 	name = Bruno Gama
 [credential]
-	helper = osxkeychain
+	helper = cache --timeout=3600
 [difftool]
 	prompt = false
 

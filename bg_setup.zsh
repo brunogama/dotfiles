@@ -1,94 +1,59 @@
 #!/usr/bin/env zsh
-# setopt interactivecomments  # enable "#" in the shell
-# unsetopt correctall # i don't misstype because I use the tab so it is useless.
+setopt interactivecomments  # enable "#" in the shell
+unsetopt correctall # i don't misstype because I use the tab so it is useless.
+
 
 export __BG_PLUGIN_PATH=$(dirname $0)
+export __BG_LOGS=0
+function dlog(){
+    if [[ $__BG_LOGS -eq 1 ]];then
+        NOW=$(date +"%F")
+        bg_log_file=$__BG_PLUGIN_PATH/logs/"log-$NOW.log"
+        [[ -f $bg_log_file ]] || { touch $bg_log_file }
+        echo "[$(date +"%T")] $@" >> $bg_log_file
+     fi
+}
 
- . $__BG_PLUGIN_PATH/bg_checks.zsh
+dlog 'loading bg_env.sh'
+source $__BG_PLUGIN_PATH/bg_env.sh
+dlog 'loading bg_pip_completion'
+source $__BG_PLUGIN_PATH/pip_completion.zsh
+dlog 'loding bg_aliases.sh'
+source $__BG_PLUGIN_PATH/bg_aliases.sh
+dlog 'loading bg_functions.sh'
+source $__BG_PLUGIN_PATH/bg_functions.sh
+dlog 'loading get-short-path.zsh'
+source $__BG_PLUGIN_PATH/get-short-path.zsh # Only needed fot the prompt theme Agnoster
+dlog 'loading git.zsh'
+source $__BG_PLUGIN_PATH/git.zsh  # Only needed fot the prompt theme Agnoster
 
-. $__BG_PLUGIN_PATH/bg_env.sh
-# source $__BG_PLUGIN_PATH/pip_completion.zsh
-. $__BG_PLUGIN_PATH/bg_aliases.sh
-. $__BG_PLUGIN_PATH/bg_functions.sh
-. $__BG_PLUGIN_PATH/get-short-path.zsh
-## OTHER FILES TO SOURCE
+DEFAULT_MODULES=('terminal' 'editor' 'history' 'directory' \
+    'spectrum' 'utility' 'completion' 'prompt');
+BG_MODULES_SETUP=('git' 'prompt' 'archive' 'completion' \
+    'history-substring-search' 'history' 'python' 'ruby' 'node' \
+    'rsync' 'ssh' 'mkcd');
 
-# Autojump
-if [[ $IS_MAC -eq 1 ]];then
-    export HOMEBREW_HOME=$(brew --prefix)
-    [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
-fi
+BG_MAC_MODULES=();
+BG_LINUX_MODULES=();
 
 if [[ $IS_LINUX -eq 1 ]];then
-    # [[ -s /usr/bin/autojump ]] && . /usr/bin/autojump
+    BG_LINUX_MODULES=('dpkg' 'command-not-found');
+    [[ -s /usr/share/autojump/autojump.sh  ]] && source /usr/share/autojump/autojump.sh
 fi
-# Pythonbrew
-[[ -s "$HOME/.pythonbrew/etc/bashrc" ]] && source "$HOME/.pythonbrew/etc/bashrc"
+
+if [[ $IS_MAC -eq 1 ]];then
+    export HOMEBREW_HOME=$(brew --prefix) 
+    [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
+    BG_MAC_MODULES=('osx' 'homebrew');
+fi
 
 
 # My Modules setup for prezto
+PREZTO_MODULES_SETUP=(${DEFAULT_MODULES[@]} \
+                      ${BG_MAC_MODULES[@]} \
+                      ${BG_LINUX_MODULES[@]});
+
 zstyle ':prezto:load' pmodule \
-  'environment' \
-    'git' \
-    'archive' \
-    'completion' \
-    '# setopt interactivecomments  # enable "#" in the shell
-# unsetopt correctall # i don't misstype because I use the tab so it is useless.
+  'environment' $PREZTO_MODULES_SETUP
 
-export __BG_PLUGIN_PATH=$(dirname $0)
-
- . $__BG_PLUGIN_PATH/bg_checks.zsh
-
-. $__BG_PLUGIN_PATH/bg_env.sh
-# source $__BG_PLUGIN_PATH/pip_completion.zsh
-. $__BG_PLUGIN_PATH/bg_aliases.sh
-. $__BG_PLUGIN_PATH/bg_functions.sh
-. $__BG_PLUGIN_PATH/get-short-path.zsh
-## OTHER FILES TO SOURCE
-
-# Autojump
-if [[ $IS_MAC -eq 1 ]];then
-    export HOMEBREW_HOME=$(brew --prefix)
-    [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
-fi
-
-if [[ $IS_LINUX -eq 1 ]];then
-    # [[ -s /usr/bin/autojump ]] && . /usr/bin/autojump
-fi
-# Pythonbrew
-[[ -s "$HOME/.pythonbrew/etc/bashrc" ]] && source "$HOME/.pythonbrew/etc/bashrc"
-
-
-# My Modules setup for prezto
-zstyle ':prezto:load' pmodule \
-  'environment' \
-    'git' \
-    'prompt' \
-    'archive' \
-    'completion' \
-    'history-substring-search' \
-    'history' \
-    'python' \
-    'ruby' \
-    'node' \
-    'rsync' \
-    'ssh' \
-    'mkcd'
-
-
-if [[ $IS_LINUX -eq 1 ]];then
-zstyle ':prezto:load' pmodule \
-  'environment' \
-    'dpkg' \
-    'command-not-found' 
-
-    
-fi
-
-if [[ $IS_MAC -eq 1 ]];then
-zstyle ':prezto:load' pmodule \
-  'environment' \
-    'osx' \
-    'homebrew'
-fi
 

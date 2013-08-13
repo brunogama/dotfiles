@@ -2,11 +2,24 @@
 # bg_aliases.sh
 
 alias dotfiles='subl -n ~/.dotfiles'
-alias o="open"
-alias oo="open ."
-alias s="subl -s -n"
-alias ls='ls -Gp'
-alias lsd='ls -l -Gp | grep "^d"'   # List only directories
+if [[ $IS_MAC -eq 1 ]]; then
+    alias o="open"
+elif [[ $IS_LINUX -eq 1 ]]; then
+    alias o="xdg-open"
+fi
+alias g="git"
+alias oo="o ."
+alias s=$EDITOR
+alias e=s
+if [[ $IS_LINUX -eq 1 ]]; then
+    alias ls='ls -p --color=always'
+    alias lsd='ls -l -p --color=always | grep "^d"'   # List only directories
+fi
+
+if [[ $IS_MAC -eq 1 ]]; then
+    alias ls='ls -Gp'
+    alias lsd='ls -l -Gp | grep "^d"'   # List only directories
+fi
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias p="python"
 alias pb="pythonbrew"
