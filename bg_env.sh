@@ -40,6 +40,7 @@ export PYTHONSTARTUP="${HOME}/.dotfiles/.pythonrc"
 # Build monodevelop stuff
 # export ACLOCAL_FLAGS="-I /Library/Frameworks/Mono.framework/Versions/Current/share/aclocal"
 # export DYLD_FALLBACK_LIBRARY_PATH="/Library/Frameworks/Mono.framework/Versions/Current/lib:/lib:/usr/lib"
+export WORDCHARS=''
 
 export ARCHFLAGS="-arch i386 -arch x86_64"
 export HISTIGNORE="${HISTIGNORE}:&:ls:[bf]g:exit:ls *:cd:cd -:pwd;exit:date:* --help"

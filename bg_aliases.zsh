@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # bg_aliases.sh
 
 alias dotfiles='subl -n ~/.dotfiles'
