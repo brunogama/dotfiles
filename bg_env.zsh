@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# bg_env.sh
+#!/usr/bin/env zsh
+# bg_env.zsh
 
 # Pre-functions to help $PATH handling.
 # Source: What is the most elegant way to remove a path from the $PATH variable in Bash?
@@ -48,7 +48,10 @@ export HISTCONTROL="${HISTCONTROL}:erasedups:ignoreboth"  # Erase duplicates
 export HISTTIMEFORMAT="%h/%D - %H:%M:%S "
 export HISTSIZE=15000 # resize history size
 
-if hash mvim 2>/dev/null; then
+
+if hash subl 2>/dev/null; then
+    export EDITOR="subl"
+elif hash mvim 2>/dev/null; then
     export EDITOR="mvim"
 elif hash gvim 2>/dev/null; then
     export EDITOR="gvim"

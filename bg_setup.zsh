@@ -15,8 +15,8 @@ function dlog(){
      fi
 }
 
-dlog 'loading bg_env.sh'
-source $__BG_PLUGIN_PATH/bg_env.sh
+dlog 'loading bg_env.zsh'
+source $__BG_PLUGIN_PATH/bg_env.zsh
 dlog 'loading bg_pip_completion'
 source $__BG_PLUGIN_PATH/pip_completion.zsh
 dlog 'loding bg_aliases.zsh'
@@ -34,7 +34,7 @@ source $__BG_PLUGIN_PATH/keybindings.zsh  # Only needed fot the prompt theme Agn
 
 DEFAULT_MODULES=('terminal' 'editor' 'history' 'directory' \
     'spectrum' 'utility' 'completion' 'prompt');
-BG_MODULES_SETUP=('git' 'prompt' 'archive' 'completion' \
+BG_MODULES_SETUP=('git' 'prompt' 'archive' 'completion' 'syntax-highlighting'\
     'history-substring-search' 'history' 'python' 'ruby' 'node' \
     'rsync' 'ssh' 'mkcd');
 
@@ -48,7 +48,7 @@ if [[ $IS_LINUX -eq 1 ]];then
 fi
 
 if [[ $IS_MAC -eq 1 ]];then
-    export HOMEBREW_HOME=$(brew --prefix) 
+    export HOMEBREW_HOME=$(brew --prefix)
     [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
     BG_MAC_MODULES=('osx' 'homebrew');
 fi
