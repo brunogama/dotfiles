@@ -24,15 +24,31 @@ zstyle ':prezto:load' zfunction 'zargs' 'zmv'
 # Set the Prezto modules to load (browse modules).
 # The order matters.
 zstyle ':prezto:load' pmodule \
-  'environment' \
-  'terminal' \
-  'editor' \
-  'history' \
-  'directory' \
-  'spectrum' \
-  'utility' \
-  'completion' \
-  'prompt'
+    'environment' \
+    'terminal' \
+    'editor' \
+    'history' \
+    'directory' \
+    'spectrum' \
+    'utility' \
+    'completion' \
+    'prompt' \
+    'git' \
+    'prompt' \
+    'archive' \
+    'completion' \
+    'syntax-highlighting' \
+    'history-substring-search' \
+    'history' \
+    'python' \
+    'ruby' \
+    'node' \
+    'rsync' \
+    'ssh' \
+    'dpkg' \
+    'command-not-found' \
+    'osx' \
+    'homebrew'
 
 #
 # Editor
@@ -85,7 +101,7 @@ zstyle ':prezto:module:history-substring-search' globbing-flags ''
 # Set the prompt theme to load.
 # Setting it to 'random' loads a random theme.
 # Auto set to 'off' on dumb terminals.
-zstyle ':prezto:module:prompt' theme 'nicoulaj'
+zstyle ':prezto:module:prompt' theme 'sorin'
 
 #
 # Screen

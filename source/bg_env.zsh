@@ -36,6 +36,10 @@ export PATH
 # Python
 export PYTHONSTARTUP="${HOME}/.dotfiles/.pythonrc"
 
+
+
+ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
+
 # MISC
 # Build monodevelop stuff
 # export ACLOCAL_FLAGS="-I /Library/Frameworks/Mono.framework/Versions/Current/share/aclocal"

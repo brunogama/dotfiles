@@ -1,11 +1,4 @@
-# checks (stolen from zshuery)
-# if [[ $(uname) = 'Linux' ]]; then
-#     IS_LINUX=1
-# fi
-
-# if [[ $(uname) = 'Darwin' ]]; then
-#     IS_MAC=1
-# fi
+#!/usr/bin/env zsh
 case "$OSTYPE" in
   darwin*)  IS_OSX=1 ;;
   solaris*) IS_SOLARIS=1 ;;
@@ -14,16 +7,17 @@ case "$OSTYPE" in
   *)        ;;
 esac
 
-if [[ -x `which brew` ]]; then
-    HAS_BREW=1
+
+if (( $IS_MAC )); then
+    [[ -x `which brew` ]] &&  HAS_BREW=1
 fi
 
-if [[ -x `which apt-get` ]]; then
-    HAS_APT=1
+if (( $IS_LINUX )); then
+    [[ -x `which apt-get` ]] && HAS_APT=1
+    [[ -x `which yum` ]] && HAS_YUM=1
 fi
 
-if [[ -x `which yum` ]]; then
-    HAS_YUM=1
-fi
+
+
 
 
