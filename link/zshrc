@@ -1,0 +1,7 @@
+if [[ -s "${ZDOTDIR:-$HOME}/.dotfiles/.zprezto/init.zsh" ]]; then
+  source "${ZDOTDIR:-$HOME}/.dotfiles/.zprezto/init.zsh"
+fi
+
+
+source "${ZDOTDIR:-$HOME}/.dotfiles/bg_setup.zsh"
+
