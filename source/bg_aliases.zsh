@@ -2,10 +2,12 @@
 # bg_aliases.zsh
 
 alias dotfiles='e ~/.dotfiles'
-if (( $IS_MAC )); then
+alias sudo='sudo'
+if (( $IS_OSX )); then
+    # echo 'is osx aliases'
     # Empty the Trash on all mounted volumes and the main HDD
     # Also, clear Apple’s System Logs to improve shell startup speed
-    alias emptytrash='sudo rm -rfv /Volumes/*/.Trashes; sudo rm -rfv ~/.Trash; sudo rm -rfv /private/var/log/asl/*.asl'
+    alias emptytrash='rm -rfv /Volumes/*/.Trashes; rm -rfv ~/.Trash; rm -rfv /private/var/log/asl/*.asl'
     # Get OS X Software Updates, update Homebrew itself, and upgrade installed Homebrew packages
     # /usr/libexec/XProtectUpdater forces update for the malware defintions list by apple
     alias update='sudo softwareupdate -i -a; /usr/libexec/XProtectUpdater; brew update; brew upgrade'
@@ -46,7 +48,7 @@ alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %
 alias syncdb='python manage.py syncdb'
 alias wipe_pyc='find . -type f \( -name \*\.pyc -or -name \*\.pyo \) -exec rm -v {} \;'
 
-alias sudo='sudo '
+# alias sudo='sudo '
 # IP addresses
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias localip="python -c \"import socket;s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM);s.connect(('8.8.8.8',80));print(s.getsockname()[0]);s.close()\""
