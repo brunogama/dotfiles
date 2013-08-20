@@ -16,6 +16,7 @@ if (( $IS_MAC )); then
     alias hidedesktop='defaults write com.apple.finder CreateDesktop -bool false && killall Finder'
     alias showdesktop='defaults write com.apple.finder CreateDesktop -bool true && killall Finder'
     alias o='open'
+    alias ox='o  $(basename $(pwd)).xcodeproj'
     alias k='pkill -9 -fi'
 fi
 
@@ -28,8 +29,6 @@ alias g="git"
 alias oo="o ."
 alias s=$EDITOR
 alias e=s
-# alias ls='ls -p'
-# alias lsd='ls -l -p | grep "^d"'   # List only directories
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias p="python"
 alias lsusb='system_profiler SPUSBDataType'

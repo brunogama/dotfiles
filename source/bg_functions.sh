@@ -14,39 +14,6 @@ ss() {
 	unset __project
 }
 
-
-ox() {
-	open  $(basename $(pwd)).xcodeproj
-}
-
-# Django function to runserver for a given interface OR if no parameters passed it
-runserver() {
-	# localip is a alias to a miniscript wrote in python to solve
-	# the localip which have access to the internet
-
-	internalIP=$(localip)
-	open "http://${internalIP}:8000"
-	python manage.py runserver ${internalIP}:8000
-}
-
-runserver_plus() {
-	# localip is a alias to a miniscript wrote in python to solve
-	# the localip which have access to the internet
-
-	internalIP=$(localip)
-	open "http://${internalIP}:8000"
-	python manage.py runserver_plus ${internalIP}:8000
-}
-
-# run simple server
-server() {
-	local port="${1:-8000}"
-	open "http://localhost:${port}/"
-	# Set the default Content-Type to `text/plain` instead of `application/octet-stream`
-	# And serve everything as UTF-8 (although not technically correct, this doesn’t break anything for binary files)
-	python -c $'import SimpleHTTPServer;\nmap = SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map;\nmap[""] = "text/plain";\nfor key, value in map.items():\n\tmap[key] = value + ";charset=UTF-8";\nSimpleHTTPServer.test();' "$port"
-}
-
 iso_to_utf8() {
 	file_input=$1
 	file_output="utf8_${file_input}"
@@ -61,14 +28,6 @@ git-version() {
 	echo "Version: $version ($short_hash)"
 }
 
-# Force Purge $1 times
-spurge() {
-	echo "Purging ..."
-	for i in  $(seq ${1}); do
-	    echo "Purge ${i}/${1}"
-	    purge
-	done
-}
 
 # search for tvshow in piratebay
 # parameter 1 is the season
@@ -80,15 +39,6 @@ tvshow() {
         open -a "Safari" "`printf "http://thepiratebay.se/search/$3 s%02de%02d" $1 $i`"
     done
 }
-
-# wipe_builds() {
-# 	if [ -d "../builds" ]; then
-# 		echo "Wiping builds"
-# 		pkill -9 -fi xcode
-# 		m -rf ../builds/*
-# 		wipe_xcode_deriveddata
-# 	fi
-# }
 
 _workon_project() { reply=($(ls -ld ~/Projects/* | while read i; do basename "$i" 2> /dev/null ; done | awk '$0 != "'Inactive'"')); }
 
@@ -135,6 +85,15 @@ function myip() {
   ifconfig en1 | grep 'inet6 ' | sed -e 's/ / /' | awk '{print "en1 (IPv6): " $2 " " $3 " " $4 " " $5 " " $6}'
 }
 
+if (( $IS_OSX )); then
+# Force Purge $1 times
+function spurge() {
+    echo "Purging ..."
+    for i in  $(seq ${1}); do
+        echo "Purge ${i}/${1}"
+        purge
+    done
+}
 
 
 function new_chrome_window() {
@@ -153,3 +112,5 @@ function close_chrome_active_window() {
 function addpod() {
     echo "$(echo $(pbpaste))" >> Podfile
 }
+fi
+
