@@ -18,6 +18,7 @@ if (( $IS_MAC )); then
     alias o='open'
     alias ox='o  $(basename $(pwd)).xcodeproj'
     alias k='pkill -9 -fi'
+    alias lsusb='system_profiler SPUSBDataType'
 fi
 
 if (( $IS_LINUX )); then
@@ -31,7 +32,6 @@ alias s=$EDITOR
 alias e=s
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias p="python"
-alias lsusb='system_profiler SPUSBDataType'
 alias tu='top -o cpu'
 alias tm='top -o rsize'
 
