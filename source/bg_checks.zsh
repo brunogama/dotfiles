@@ -17,7 +17,3 @@ if (( $IS_LINUX )); then
     [[ -x `which yum` ]] && HAS_YUM=1
 fi
 
-
-
-
-
