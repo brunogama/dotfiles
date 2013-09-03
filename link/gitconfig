@@ -34,7 +34,7 @@
     # git whatadded -- foo.file
     whatadded = log --diff-filter=A
     # log file
-    lf = log --pretty=format:'%C(yellow)%h%C(reset) \"%s\", %an <%C(blue)%ae%C(reset)>' --
+    lf = log --date-order --date=short --full-history --all --pretty=format:'* %C(red)%h% C(green)%ad %C(reset)- %s <%C(blue)%an%C(reset)>'  --
 
 
 [apply]
