@@ -33,6 +33,8 @@
     co = checkout
     # git whatadded -- foo.file
     whatadded = log --diff-filter=A
+    # log file
+    lf = log --pretty=format:'%C(yellow)%h%C(reset) \"%s\", %an <%C(blue)%ae%C(reset)>' --
 
 
 [apply]
@@ -102,6 +104,6 @@
     default = current
 [difftool "sourcetree"]
     cmd = /Applications/Kaleidoscope.app/Contents/MacOS/ksdiff -w \"$LOCAL\" \"$REMOTE\"
-    path = 
+    path =
 [diff]
     tool = Kaleidoscope

@@ -23,7 +23,7 @@ ifValidAppendToPath "/Applications/Xcode.app/Contents/Developer/usr/bin"
 # ifValidAppendToPath "/Library/Frameworks/Mono.framework/Versions/Current/bin/"
 # ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/MacOS"
 # ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/Frameworks/Mono.framework/Commands/"
-ifValidAppendToPath "$__BG_PLUGIN_PATH/bin"
+ifValidAppendToPath "$_BGDOTFILES/bin"
 ifValidAppendToPath "${HOMEBREW_HOME}/bin"
 ifValidAppendToPath "${HOMEBREW_HOME}/sbin"
 ifValidPrependToPath "/usr/local/bin"
@@ -34,11 +34,11 @@ ifValidPrependToPath "/usr/local/share/npm/bin"
 export PATH
 
 # Python
-export PYTHONSTARTUP="${HOME}/.dotfiles/.pythonrc"
+export PYTHONSTARTUP="${HOME}/.pythonrc.py"
 
 
 
-ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
+# ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
 
 # MISC
 # Build monodevelop stuff
@@ -76,5 +76,5 @@ export GIT_EDITOR=$EDITOR
 [ -d "/Library/Java/Home" ]                      && export JAVA_HOME="/Library/Java/Home"
 [ -f "/Users/windu/.local/apache-ant-1.8.2" ]    && export ANT_HOME="/Users/windu/.local/apache-ant-1.8.2"
 
-# Node JS
+# Node JSe
 export NODE_PATH="/usr/local/lib/node"
