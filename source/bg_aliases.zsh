@@ -26,12 +26,14 @@ fi
 if (( $IS_LINUX )); then
     alias o='xdg-open'
     alias k='kill'
+    alias purge='sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"'
 fi
 
 alias g="git"
 alias oo="o ."
 alias s=$EDITOR
 alias e=s
+alias ee='e .'
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias p="python"
 alias tu='top -o cpu'
