@@ -33,6 +33,11 @@
     co = checkout
     # git whatadded -- foo.file
     whatadded = log --diff-filter=A
+    # log file
+    lf = log --date-order --date=short --full-history --all --pretty=format:'* %C(red)%h% C(green)%ad %C(reset)- %s <%C(blue)%an%C(reset)>'
+    #list files from commit
+    cols = diff-tree --no-commit-id --name-only -r
+	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
 
 
 [apply]
@@ -41,8 +46,8 @@
 
 [core]
     # Use custom `.gitignore` and `.gitattributes`
-    excludesfile = /Users/windu/.global_ignore
-    attributesfile = ~/.gitattributes
+    excludesfile = ~/.global_ignore
+    attributesfile = ~/.global_gitattributes
     # Treat spaces before tabs, lines that are indented with 8 or more spaces, and all kinds of trailing whitespace as an error
     whitespace = space-before-tab,indent-with-non-tab,trailing-space
     pager = less -r
@@ -90,18 +95,3 @@
     name = Bruno Gama
 [credential]
     helper = cache --timeout=3600
-[difftool]
-    prompt = false
-
-[difftool "Kaleidoscope"]
-    cmd = ksdiff-wrapper git \"$LOCAL\" \"$REMOTE\"
-[mergetool "sourcetree"]
-    cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
-    trustExitCode = true
-[push]
-    default = current
-[difftool "sourcetree"]
-    cmd = /Applications/Kaleidoscope.app/Contents/MacOS/ksdiff -w \"$LOCAL\" \"$REMOTE\"
-    path = 
-[diff]
-    tool = Kaleidoscope
