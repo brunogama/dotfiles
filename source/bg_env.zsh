@@ -78,3 +78,9 @@ export GIT_EDITOR=$EDITOR
 
 # Node JS
 export NODE_PATH="/usr/local/lib/node"
+export SSH_ENV=$HOME/.ssh/environment
+
+
+
+# Pyenv
+PYENV_ROOT=/usr/local/opt/pyenv

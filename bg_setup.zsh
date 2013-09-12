@@ -19,4 +19,5 @@ fi
 if (( $IS_OSX )); then
     export HOMEBREW_HOME=$(brew --prefix)
     [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
+    eval "$(pyenv init -)"
 fi

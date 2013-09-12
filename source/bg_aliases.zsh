@@ -7,7 +7,7 @@ if (( $IS_OSX )); then
     # echo 'is osx aliases'
     # Empty the Trash on all mounted volumes and the main HDD
     # Also, clear Apple’s System Logs to improve shell startup speed
-    alias emptytrash='rm -rfv /Volumes/*/.Trashes; rm -rfv ~/.Trash; rm -rfv /private/var/log/asl/*.asl'
+    alias emptytrash='sudo rm -rfv /Volumes/*/.Trashes;sudo rm -rfv ~/.Trash;sudo rm -rfv /private/var/log/asl/*.asl'
     # Get OS X Software Updates, update Homebrew itself, and upgrade installed Homebrew packages
     # /usr/libexec/XProtectUpdater forces update for the malware defintions list by apple
     alias update='sudo softwareupdate -i -a; /usr/libexec/XProtectUpdater; brew update; brew upgrade'
