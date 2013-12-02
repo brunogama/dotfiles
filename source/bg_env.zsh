@@ -68,7 +68,6 @@ else
 fi;
 
 export GIT_EDITOR=$EDITOR
-
 [ -d "/opt/local/share/man" ] && export MANPATH="/opt/local/share/man":$MANPATH
 
 
