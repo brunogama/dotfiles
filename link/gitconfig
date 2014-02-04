@@ -94,3 +94,5 @@
     name = Bruno Gama
 [credential]
     helper = cache --timeout=3600
+[push]
+	default = simple

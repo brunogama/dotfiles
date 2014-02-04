@@ -36,10 +36,6 @@ export PATH
 # Python
 export PYTHONSTARTUP="${HOME}/.pythonrc.py"
 
-
-
-# ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
-
 # MISC
 # Build monodevelop stuff
 # export ACLOCAL_FLAGS="-I /Library/Frameworks/Mono.framework/Versions/Current/share/aclocal"
@@ -75,5 +71,11 @@ export GIT_EDITOR=$EDITOR
 [ -d "/Library/Java/Home" ]                      && export JAVA_HOME="/Library/Java/Home"
 [ -f "/Users/windu/.local/apache-ant-1.8.2" ]    && export ANT_HOME="/Users/windu/.local/apache-ant-1.8.2"
 
-# Node JSe
+# Node.js
 export NODE_PATH="/usr/local/lib/node"
+
+# Xcode Path
+# export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+# export CC=/usr/local/bin/gcc-4.9
+# export CPP=/usr/local/bin/cpp-4.9
+# export CXX=/usr/local/bin/g++-4.9

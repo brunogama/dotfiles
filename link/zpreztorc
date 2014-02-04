@@ -24,31 +24,27 @@ zstyle ':prezto:load' zfunction 'zargs' 'zmv'
 # Set the Prezto modules to load (browse modules).
 # The order matters.
 zstyle ':prezto:load' pmodule \
-    'environment' \
-    'terminal' \
-    'editor' \
-    'history' \
-    'directory' \
-    'spectrum' \
-    'utility' \
-    'completion' \
-    'prompt' \
-    'git' \
-    'prompt' \
     'archive' \
+    'command' \
     'completion' \
-    'syntax-highlighting' \
-    'history-substring-search' \
+    'directory' \
+    'editor' \
+    'environment' \
+    'git' \
     'history' \
+    'homebrew' \
+    'node-highlighting' \
+    'prompt' \
     'python' \
-    'ruby' \
-    'node' \
     'rsync' \
+    'spectrum' \
     'ssh' \
-    'dpkg' \
-    'command-not-found' \
-    'osx' \
-    'homebrew'
+    'terminal' \
+    'tmux' \
+    'utility'
+
+# 'dpkg' \
+#'osx-substring-search' \
 
 #
 # Editor
