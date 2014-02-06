@@ -17,14 +17,11 @@ if (( $IS_OSX )); then
     # Hide/show all desktop icons (useful when presenting)
     alias hidedesktop='defaults write com.apple.finder CreateDesktop -bool false && killall Finder'
     alias showdesktop='defaults write com.apple.finder CreateDesktop -bool true && killall Finder'
-    alias o='open'
-    alias ox='o  $(basename $(pwd)).xcodeproj'
     alias k='pkill -9 -fi'
     alias lsusb='system_profiler SPUSBDataType'
 fi
 
 if (( $IS_LINUX )); then
-    alias o='xdg-open'
     alias k='kill'
 fi
 
@@ -34,8 +31,6 @@ alias s=$EDITOR
 alias e=s
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias p="python"
-alias tu='top -o cpu'
-alias tm='top -o rsize'
 
 alias ggo="git checkout -B"
 alias ttl='ping -s 1 www.google.com'     # my time to live

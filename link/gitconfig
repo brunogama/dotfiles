@@ -96,3 +96,6 @@
     helper = cache --timeout=3600
 [push]
 	default = simple
+[filter "media"]
+	clean = git-media-clean %f
+	smudge = git-media-smudge %f

@@ -25,15 +25,16 @@ zstyle ':prezto:load' zfunction 'zargs' 'zmv'
 # The order matters.
 zstyle ':prezto:load' pmodule \
     'archive' \
-    'command' \
     'completion' \
+    'fasd' \
     'directory' \
     'editor' \
     'environment' \
     'git' \
     'history' \
-    'homebrew' \
-    'node-highlighting' \
+    'syntax-highlighting' \
+    'history-substring-search' \
+    'node' \
     'prompt' \
     'python' \
     'rsync' \
@@ -41,6 +42,7 @@ zstyle ':prezto:load' pmodule \
     'ssh' \
     'terminal' \
     'tmux' \
+    'ssh' \
     'utility'
 
 # 'dpkg' \
