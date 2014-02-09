@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wipe_iphone_simulator_data
+# clean_ios_simulator
 # Author: Bruno Gama
 
 pkill -9 -fi simulator  2>/dev/null

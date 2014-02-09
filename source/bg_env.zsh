@@ -11,24 +11,23 @@ path_remove ()  { PATH=`echo -n $PATH | awk -v RS=: -v ORS=: '$0 != "'$1'"' | se
 ifValidAppendToPath() { [ -d "$1" ] && path_append "$1" }
 ifValidPrependToPath() { [ -d "$1" ] && path_prepend "$1" }
 
-path_append "/usr/bin"
-path_append "/usr/local/sbin"
-path_append "/usr/local/share/python"
-path_append "/opt/local/bin"
-path_append "/opt/local/sbin"
-path_append "/usr/local/git/bin"
-path_append "${HOME}/.local/bin"
-path_append "${HOME}/.local/share"
-path_append "/usr/local/include"
-path_append "/Applications/Xcode.app/Contents/Developer/usr/bin"
-# path_append "/Library/Frameworks/Mono.framework/Versions/Current/bin/"
-# path_append "/Applications/Unity/MonoDevelop.app/Contents/MacOS"
-# path_append "/Applications/Unity/MonoDevelop.app/Contents/Frameworks/Mono.framework/Commands/"
-path_append "$_BGDOTFILES/bin"
-path_append "${HOMEBREW_HOME}/bin"
-path_append "${HOMEBREW_HOME}/sbin"
-path_prepend "/usr/local/bin"
-path_prepend "/usr/local/share/npm/bin"
+ifValidAppendToPath "/usr/bin"
+ifValidAppendToPath "/usr/local/sbin"
+ifValidAppendToPath "/usr/local/share/python"
+ifValidAppendToPath "/opt/local/bin"
+ifValidAppendToPath "/opt/local/sbin"
+ifValidAppendToPath "/usr/local/git/bin"
+ifValidAppendToPath "${HOME}/.local/bin"
+ifValidAppendToPath "/usr/local/include"
+ifValidAppendToPath "/Applications/Xcode.app/Contents/Developer/usr/bin"
+# ifValidAppendToPath "/Library/Frameworks/Mono.framework/Versions/Current/bin/"
+# ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/MacOS"
+# ifValidAppendToPath "/Applications/Unity/MonoDevelop.app/Contents/Frameworks/Mono.framework/Commands/"
+ifValidAppendToPath "$_BGDOTFILES/bin"
+ifValidAppendToPath "${HOMEBREW_HOME}/bin"
+ifValidAppendToPath "${HOMEBREW_HOME}/sbin"
+ifValidPrependToPath "/usr/local/bin"
+ifValidPrependToPath "/usr/local/share/npm/bin"
 
 
 # export PATH
@@ -36,10 +35,6 @@ export PATH
 
 # Python
 export PYTHONSTARTUP="${HOME}/.pythonrc.py"
-
-
-
-# ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
 
 # MISC
 # Build monodevelop stuff
@@ -69,7 +64,6 @@ else
 fi;
 
 export GIT_EDITOR=$EDITOR
-
 [ -d "/opt/local/share/man" ] && export MANPATH="/opt/local/share/man":$MANPATH
 
 
@@ -77,11 +71,11 @@ export GIT_EDITOR=$EDITOR
 [ -d "/Library/Java/Home" ]                      && export JAVA_HOME="/Library/Java/Home"
 [ -f "/Users/windu/.local/apache-ant-1.8.2" ]    && export ANT_HOME="/Users/windu/.local/apache-ant-1.8.2"
 
-# Node JSe
+# Node.js
 export NODE_PATH="/usr/local/lib/node"
-export SSH_ENV=$HOME/.ssh/environment
 
-
-
-# Pyenv
-PYENV_ROOT=/usr/local/opt/pyenv
+# Xcode Path
+# export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+# export CC=/usr/local/bin/gcc-4.9
+# export CPP=/usr/local/bin/cpp-4.9
+# export CXX=/usr/local/bin/g++-4.9

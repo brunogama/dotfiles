@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+xcode_checker=$(ps -ef | grep Xcode | wc -l)
+while [ $xcode_checker  1 ]
+do
+xcode_checker=$(ps -ef | grep Xcode | wc -l)
+sleep 5
+done
+
+echo "Xcode closed."
+echo $xcode_checker

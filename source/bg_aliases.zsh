@@ -7,7 +7,7 @@ if (( $IS_OSX )); then
     # echo 'is osx aliases'
     # Empty the Trash on all mounted volumes and the main HDD
     # Also, clear Apple’s System Logs to improve shell startup speed
-    alias emptytrash='sudo rm -rfv /Volumes/*/.Trashes;sudo rm -rfv ~/.Trash;sudo rm -rfv /private/var/log/asl/*.asl'
+    alias emptytrash='rm -rfv /Volumes/*/.Trashes; rm -rfv ~/.Trash; rm -rfv /private/var/log/asl/*.asl'
     # Get OS X Software Updates, update Homebrew itself, and upgrade installed Homebrew packages
     # /usr/libexec/XProtectUpdater forces update for the malware defintions list by apple
     alias update='sudo softwareupdate -i -a; /usr/libexec/XProtectUpdater; brew update; brew upgrade'
@@ -17,27 +17,20 @@ if (( $IS_OSX )); then
     # Hide/show all desktop icons (useful when presenting)
     alias hidedesktop='defaults write com.apple.finder CreateDesktop -bool false && killall Finder'
     alias showdesktop='defaults write com.apple.finder CreateDesktop -bool true && killall Finder'
-    alias o='open'
-    alias ox='o  $(basename $(pwd)).xcodeproj'
     alias k='pkill -9 -fi'
     alias lsusb='system_profiler SPUSBDataType'
 fi
 
 if (( $IS_LINUX )); then
-    alias o='xdg-open'
     alias k='kill'
-    alias purge='sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"'
 fi
 
 alias g="git"
 alias oo="o ."
 alias s=$EDITOR
 alias e=s
-alias ee='e .'
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias p="python"
-alias tu='top -o cpu'
-alias tm='top -o rsize'
 
 alias ggo="git checkout -B"
 alias ttl='ping -s 1 www.google.com'     # my time to live

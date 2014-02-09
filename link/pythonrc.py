@@ -1,7 +1,16 @@
-# coding: utf8
-# Author: Bruno Gama
-# This is my goddamn Python RC.
-#
+# -*- coding: utf-8 -*-
+# """
+# Best .pythonrc file in the world.
+
+# This file is executed when the Python interactive shell is started if
+# $PYTHONSTARTUP is in your environment and points to this file. It's just
+# regular Python commands, so do what you will. Your ~/.inputrc file can greatly
+# complement this file.
+
+# Originally from:  https://github.com/whiteinge/dotfiles
+# """
+
+# # Imports we need
 # import sys
 # import os
 # import readline, rlcompleter
@@ -9,6 +18,8 @@
 # import pprint
 # from tempfile import mkstemp
 # from code import InteractiveConsole
+
+# # Imports we want
 # import datetime
 # import pdb
 # import re
@@ -206,79 +217,3 @@
 
 # # Exit the Python shell on exiting the InteractiveConsole
 # sys.exit()
-
-
-# class PythonRC(object):
-#     """docstring for PythonRC"""
-
-#     class TabCompletion:
-#         '''
-#         The name explains it self
-#         '''
-#         pass
-
-#     class LetsMakeHistory:
-#         '''
-#         '''
-#         def __init__(self):
-#             history_path = os.path.expanduser("~/.pyhistory")
-#             if os.path.isfile(history_path):
-#                 readline.read_history_file(history_path)
-
-#             atexit.register(
-#                 lambda x=history_path: readline.write_history_file(x))
-
-#     class TermColors(dict):  # Because the world without colors is boring
-#         """Gives easy access to ANSI color codes. Attempts to fall back
-#         to no color for certain TERM values.
-#         Mostly stolen from IPython.
-#         """
-
-#         COLOR_TEMPLATES = (
-#             ("Black", "0;30"),
-#             ("Red", "0;31"),
-#             ("Green", "0;32"),
-#             ("Brown", "0;33"),
-#             ("Blue", "0;34"),
-#             ("Purple", "0;35"),
-#             ("Cyan", "0;36"),
-#             ("LightGray", "0;37"),
-#             ("DarkGray", "1;30"),
-#             ("LightRed", "1;31"),
-#             ("LightGreen", "1;32"),
-#             ("Yellow", "1;33"),
-#             ("LightBlue", "1;34"),
-#             ("LightPurple", "1;35"),
-#             ("LightCyan", "1;36"),
-#             ("White", "1;37"),
-#             ("Normal", "0"),
-#         )
-
-#         NoColor = ''
-#         _base = '\001\033[%sm\002'
-
-#         def __init__(self):
-#             if os.environ.get('TERM') in ('Eterm', 'linux', 'putty', 'rxvt',
-#                                           'screen', 'screen-256color',
-#                                           'screen-bce', 'vt100', 'xterm',
-#                                           'xterm-256color', 'xterm-color'):
-#                 self.update({k: self._base % v
-#                             for k, v in self.COLOR_TEMPLATES})
-#             else:
-#                 self.update({k: self.NoColor
-#                             for k, v in self.COLOR_TEMPLATES})
-
-#     def __init__(self, arg):
-#         super(PythonRC, self).__init__()
-#         self.arg = arg
-#         self._c = self.TermColors()
-#         print arg
-
-
-# def main():
-#     pythonrc = PythonRC('a')
-
-
-
-# if __name__ == '__main__':
-#     main()

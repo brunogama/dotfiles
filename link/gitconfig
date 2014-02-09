@@ -34,10 +34,9 @@
     # git whatadded -- foo.file
     whatadded = log --diff-filter=A
     # log file
-    lf = log --date-order --date=short --full-history --all --pretty=format:'* %C(red)%h% C(green)%ad %C(reset)- %s <%C(blue)%an%C(reset)>'
+    lf = log --date-order --date=short --full-history --all --pretty=format:'* %C(red)%h% C(green)%ad %C(reset)- %s <%C(blue)%an%C(reset)>'  --
     #list files from commit
     cols = diff-tree --no-commit-id --name-only -r
-	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
 
 
 [apply]
@@ -95,3 +94,8 @@
     name = Bruno Gama
 [credential]
     helper = cache --timeout=3600
+[push]
+	default = simple
+[filter "media"]
+	clean = git-media-clean %f
+	smudge = git-media-smudge %f

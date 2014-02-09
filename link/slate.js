@@ -85,36 +85,38 @@ var focusApp = function (argument) { return S.op("focus", {"app": argument}); };
 // var current_browser = shell;
 // l("current browser = " + current_browser + " " + typeof(current_browser));
 
-var focusCurrentBrowser = function() {
-    var s = S.sh("/Users/windu/.dotfiles/bin/default_browser", true);
-    S.log("current browser = " + s + " " + typeof(s));
-    return S.op("focus", {"app": s});
-};
-slate.bind("b:ctrl;shift;alt;cmd", focusCurrentBrowser());
+// var focusCurrentBrowser = function() {
+//     var s = S.sh("/Users/windu/.dotfiles/bin/default_browser", true);
+//     S.log("current browser = " + s + " " + typeof(s));
+//     return S.op("focus", {"app": s});
+// };
+// slate.bind("b:ctrl;shift;alt;cmd", focusCurrentBrowser());
 
 
 
 S.bnda({
     // App Focus
-    "a:ctrl;shift;alt;cmd": focusApp("Adium"),
+    "c:ctrl;shift;alt;cmd": focusApp("Messages"),
     "i:ctrl;shift;alt;cmd": focusApp("iTerm"),
     "x:ctrl;shift;alt;cmd": focusApp("Xcode"),
-    "e:ctrl;shift;alt;cmd": focusApp("Sublime Text 2"),
+    "e:ctrl;shift;alt;cmd": focusApp("Sublime Text"),
     "s:ctrl;shift;alt;cmd": focusApp("Skype"),
     "n:ctrl;shift;alt;cmd": focusApp("Evernote"),
     "f:ctrl;shift;alt;cmd": focusApp("Finder"),
     "m:ctrl;shift;alt;cmd": focusApp("Mail"),
     "t:ctrl;shift;alt;cmd": focusApp("TweetDeck"),
+    "b:ctrl;shift;alt;cmd": focusApp("Google Chrome"),
 
     // Push Bindings
-    "right:ctrl;alt": screenResizeRightHalf,
-    "left:ctrl;alt":   screenResizeLeftHalf,
-    "up:ctrl;alt":   screenResizeTopHalf,
-    "down:ctrl;alt": screenResizeBottomHalf,
-    "h:ctrl;alt":   quarterWindowTopLeft,
-    "j:ctrl;alt":   quarterWindowBottomLeft,
-    "k:ctrl;alt": quarterWindowTopRight,
-    "l:ctrl;alt": quarterWindowBottomRight,
+    "h:ctrl;shift;alt;cmd": screenResizeLeftHalf,
+    "l:ctrl;shift;alt;cmd": screenResizeRightHalf,
+    "j:ctrl;shift;alt;cmd": screenResizeTopHalf,
+    "k:ctrl;shift;alt;cmd": screenResizeBottomHalf,
+
+    "0:ctrl;shift;alt;cmd": quarterWindowTopRight,
+    "p:ctrl;shift;alt;cmd": quarterWindowBottomRight,
+    "9:ctrl;shift;alt;cmd": quarterWindowTopLeft,
+    "o:ctrl;shift;alt;cmd": quarterWindowBottomLeft,
 
     // Postions
     "up:ctrl;shift;alt;cmd": fullscreen,
