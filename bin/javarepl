@@ -1,3 +1,0 @@
-#!/bin/bash
-
-java -jar ${_BGDOTFILES}/source/extra-packages/javarepl.jar
