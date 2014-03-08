@@ -28,6 +28,7 @@ ifValidAppendToPath "${HOMEBREW_HOME}/bin"
 ifValidAppendToPath "${HOMEBREW_HOME}/sbin"
 ifValidPrependToPath "/usr/local/bin"
 ifValidPrependToPath "/usr/local/share/npm/bin"
+ifValidPrependToPath "/Applications/adt-bundle-mac-x86_64-20130522/sdk/platform-tools/"
 
 
 # export PATH
