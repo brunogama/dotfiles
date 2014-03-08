@@ -1,6 +1,0 @@
-#!/bin/bash
-export __d=$(dirname $0)
-for device in Newton Coruscant;do
-    $__d/itunes_sync $device
-done
-unset device __d
