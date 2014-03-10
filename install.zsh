@@ -2,6 +2,9 @@
 # install.zsh
 # Author: Bruno Gama
 # The basic setup script... may not work properly but it is the way to go :)
+
+
+zsh
 setopt EXTENDED_GLOB
 function setup_prezto {
     git clone --recursive https://github.com/sorin-ionescu/prezto.git "${ZDOTDIR:-$HOME}/.zprezto"
@@ -15,18 +18,21 @@ function setup_custom_bg_dotfiles {
       ln -f -s "$bg_dotfile" "${ZDOTDIR:-$HOME}/.${bg_dotfile:t}"
     done
 }
+function setup_zsh_theme {
+   ln -s "${ZDOTDIR:-$HOME}"/.dotfiles/source/extra-packages/prompt_agnoster_setup  "${ZDOTDIR:-$HOME}"/.zprezto/modules/prompt/functions/
+}
+
 function setup_vim {
     curl https://j.mp/spf13-vim3 -L > ~/spf13-vim.sh && sh ~/spf13-vim.sh
 }
+
+function setup_slate {
+  cd /Applications && curl http://www.ninjamonkeysoftware.com/slate/versions/slate-latest.tar.gz | tar -xz
+}
+
 setup_prezto
 setup_custom_bg_dotfiles
+setup_zsh_theme
 setup_vim
-# echo "Installing Homebrew"
-# ruby -e "$(curl -fsSL https://raw.github.com/mxcl/homebrew/go)"
-# echo "Running Homebrew default system packages"
-# sh brew.sh
-
-# echo "Installing gems"
-# gem cupertino liftoff
-
- 
+setup_slate
+cd ~
