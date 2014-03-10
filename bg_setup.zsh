@@ -7,8 +7,8 @@ source $_BGDOTFILES/source/bg_env.zsh
 source $_BGDOTFILES/source/extra-packages/pip_completion.zsh
 source $_BGDOTFILES/source/bg_aliases.zsh
 source $_BGDOTFILES/source/bg_functions.sh
-# source $_BGDOTFILES/source/extra-packages/get-short-path.zsh # Only needed fot the prompt theme Agnoster
-# source $_BGDOTFILES/source/extra-packages/git.zsh  # Only needed fot the prompt theme Agnoster
+source $_BGDOTFILES/source/extra-packages/get-short-path.zsh # Only needed fot the prompt theme Agnoster
+source $_BGDOTFILES/source/extra-packages/git.zsh  # Only needed fot the prompt theme Agnoster
 source $_BGDOTFILES/source/bg_keybindings.zsh  # Only needed fot the prompt theme Agnoster
 
 if (( $IS_OSX )); then

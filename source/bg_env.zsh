@@ -50,7 +50,9 @@ export HISTTIMEFORMAT="%h/%D - %H:%M:%S "
 export HISTSIZE=15000 # resize history size
 
 
-if hash subl 2>/dev/null; then
+if hash atom 2>/dev/null; then
+    export EDITOR="atom"
+elif hash subl 2>/dev/null; then
     export EDITOR="subl"
 elif hash mvim 2>/dev/null; then
     export EDITOR="mvim"
