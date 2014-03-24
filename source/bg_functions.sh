@@ -114,3 +114,17 @@ function addpod() {
 }
 fi
 
+
+# Do you really whant to git reset --hard????
+git() {
+    if [[ "$1" = "reset" ]] && [ "$2" = "--hard" ] && [ "$3" = "HEAD" ] ; then
+        echo "Do you really whant to do this? (Y/N)"
+        read i
+        if [ "$i" != "N" ]; then
+            echo "Reset not executed."
+            return 0
+        fi
+    fi
+
+    command git "$@"
+}
