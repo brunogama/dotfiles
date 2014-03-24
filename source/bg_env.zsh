@@ -28,7 +28,7 @@ ifValidAppendToPath "${HOMEBREW_HOME}/bin"
 ifValidAppendToPath "${HOMEBREW_HOME}/sbin"
 ifValidPrependToPath "/usr/local/bin"
 ifValidPrependToPath "/usr/local/share/npm/bin"
-ifValidPrependToPath "/Applications/adt-bundle-mac-x86_64-20130522/sdk/platform-tools/"
+ifValidPrependToPath "/Applications/ADT/sdk/platform-tools/"
 
 
 # export PATH
@@ -50,9 +50,7 @@ export HISTTIMEFORMAT="%h/%D - %H:%M:%S "
 export HISTSIZE=15000 # resize history size
 
 
-if hash atom 2>/dev/null; then
-    export EDITOR="atom"
-elif hash subl 2>/dev/null; then
+if hash subl 2>/dev/null; then
     export EDITOR="subl"
 elif hash mvim 2>/dev/null; then
     export EDITOR="mvim"

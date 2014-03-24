@@ -73,7 +73,7 @@ var quarterWindowBottomRight = quarterWindowTopRight.dup({"y": "screenSizeY/2"})
 var theGrid = S.op("grid", {
     "grids": {
         "1440x900":  { "width": 12, "height": 8 },
-        "1920x1080": {"width": 12, "height": 8 }
+        "1920x1080": {"width": 14, "height": 10 }
     },
     "padding": 2
 });
@@ -99,9 +99,8 @@ S.bnda({
     "c:ctrl;shift;alt;cmd": focusApp("Messages"),
     "i:ctrl;shift;alt;cmd": focusApp("iTerm"),
     "x:ctrl;shift;alt;cmd": focusApp("Xcode"),
+    "a:ctrl;shift;alt;cmd": focusApp("Android Studio"),
     "e:ctrl;shift;alt;cmd": focusApp("Sublime Text"),
-    "s:ctrl;shift;alt;cmd": focusApp("Skype"),
-    "n:ctrl;shift;alt;cmd": focusApp("Evernote"),
     "f:ctrl;shift;alt;cmd": focusApp("Finder"),
     "m:ctrl;shift;alt;cmd": focusApp("Mail"),
     "t:ctrl;shift;alt;cmd": focusApp("TweetDeck"),

@@ -134,7 +134,6 @@ build_prompt_old() {
 build_prompt() {
   RETVAL=$?
   prompt_status
-  prompt_hostname
   prompt_dir
   prompt_git
   prompt_end
@@ -171,7 +170,7 @@ function prompt_agnoster_setup {
   zstyle ':prezto:module:git' info \
     'prompt'  ' %F{blue}git%f$(coalesce "%b" "%p" "%c")%s' \
     'rprompt' '%A%B%S%a%d%m%r%U%u'
-    
+
 # Original theme's comments left intact:
 
 # vim:ft=zsh ts=2 sw=2 sts=2
