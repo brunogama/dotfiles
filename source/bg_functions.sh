@@ -36,7 +36,7 @@ git-version() {
 tvshow() {
     for i in $(seq $2)
     do
-        open -a "Safari" "`printf "http://thepiratebay.se/search/$3 s%02de%02d" $1 $i`"
+        open -a "Google Chrome" "`printf "http://thepiratebay.se/search/$3 s%02de%02d" $1 $i`"
     done
 }
 
@@ -116,7 +116,7 @@ fi
 
 
 # Do you really whant to git reset --hard????
-git() {
+tgit() {
     if [[ "$1" = "reset" ]] && [ "$2" = "--hard" ] && [ "$3" = "HEAD" ] ; then
         echo "Do you really whant to do this? (Y/N)"
         read i

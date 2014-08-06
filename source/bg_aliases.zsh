@@ -26,6 +26,7 @@ if (( $IS_LINUX )); then
 fi
 
 alias g="git"
+alias gps="git push --recurse-submodules=on-demand"
 alias oo="o ."
 alias s=$EDITOR
 alias e=s

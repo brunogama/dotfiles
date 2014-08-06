@@ -1,4 +1,7 @@
-# Install native apps
+#
+installcask Install
+installcask native
+installcask apps
 brew install phinze/cask/brew-cask
 brew tap caskroom/versions
 
@@ -24,3 +27,14 @@ installcask transmission
 installcask ukelele
 installcask virtualbox
 installcask vlc
+
+# QuickLook Plugins
+installcask qlcolorcode
+installcask qlstephen
+installcask qlmarkdown
+installcask quicklook-json
+installcask qlprettypatch
+installcask quicklook-csv
+installcask betterzipql
+installcask webp-quicklook
+installcask suspicious-package

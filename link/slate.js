@@ -100,7 +100,7 @@ S.bnda({
     "i:ctrl;shift;alt;cmd": focusApp("iTerm"),
     "x:ctrl;shift;alt;cmd": focusApp("Xcode"),
     "a:ctrl;shift;alt;cmd": focusApp("Android Studio"),
-    "e:ctrl;shift;alt;cmd": focusApp("Sublime Text"),
+    "s:ctrl;shift;alt;cmd": focusApp("Sublime Text"),
     "f:ctrl;shift;alt;cmd": focusApp("Finder"),
     "m:ctrl;shift;alt;cmd": focusApp("Mail"),
     "t:ctrl;shift;alt;cmd": focusApp("TweetDeck"),
@@ -119,7 +119,6 @@ S.bnda({
 
     // Postions
     "up:ctrl;shift;alt;cmd": fullscreen,
-    "esc:cmd": S.op("hint"),
     "g:ctrl;shift;alt;cmd": theGrid
 });
 l("Finished loading");

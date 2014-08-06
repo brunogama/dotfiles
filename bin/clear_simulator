@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# clean_simulator
+# author: Bruno Gama <bgamap at gmail dot com>
+
+pkill -9 -fi simulator 2>/dev/null
+find ${HOME}/Library/Application\ Support/iPhone\ Simulator -name "Applications" -type d -execdir rm -rfv {} \;

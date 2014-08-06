@@ -28,7 +28,7 @@ ifValidAppendToPath "${HOMEBREW_HOME}/bin"
 ifValidAppendToPath "${HOMEBREW_HOME}/sbin"
 ifValidPrependToPath "/usr/local/bin"
 ifValidPrependToPath "/usr/local/share/npm/bin"
-ifValidPrependToPath "/Applications/ADT/sdk/platform-tools/"
+ifValidPrependToPath "/Applications/ADT/sdk/platform-tools"
 
 
 # export PATH
@@ -48,7 +48,7 @@ export HISTIGNORE="${HISTIGNORE}:&:ls:[bf]g:exit:ls *:cd:cd -:pwd;exit:date:* --
 export HISTCONTROL="${HISTCONTROL}:erasedups:ignoreboth"  # Erase duplicates
 export HISTTIMEFORMAT="%h/%D - %H:%M:%S "
 export HISTSIZE=15000 # resize history size
-
+export GRADLE_OPTS="-Dorg.gradle.daemon=true"
 
 if hash subl 2>/dev/null; then
     export EDITOR="subl"
@@ -64,7 +64,7 @@ else
     export EDITOR='nano'
 fi;
 
-export GIT_EDITOR=$EDITOR
+export GIT_EDITOR="vim"
 [ -d "/opt/local/share/man" ] && export MANPATH="/opt/local/share/man":$MANPATH
 
 
