@@ -1,0 +1,7 @@
+#!/bin/sh
+git=/usr/bin/git
+version=`$git describe --abbrev=0 --tags`
+short_hash=`$git rev-list HEAD | wc -l | tr -d ' '`
+COMPLETE_VERSION="${version}.${short_hash}"
+
+echo $COMPLETE_VERSION
