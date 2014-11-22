@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# Author: Bruno Gama
-
-echo $(basename "$(mdfind "kMDItemCFBundleIdentifier == '$(/usr/bin/plutil -convert xml1 -o - ~/Library/Preferences/com.apple.LaunchServices.plist |  grep -B 3 "<string>http</string>" | tail -3 | head -n1 | sed -e 's/<[^>]*>//g' |  sed 's/[[:space:]]//g' | tr -d '\040\010\012\015')'cd")" | sed s'/.app$//')
