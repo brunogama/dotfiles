@@ -1,5 +1,4 @@
 #/usr/bin/env zsh
-# Author: Bruno Gama
 
 POLICY_JSON=$(cat <<- _EOF_
 {
