@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+function _clear_simulator() {
+    echo "Wiping iOS Simulator Apps ..."
+    pkill -9 -fi simulator 2>/dev/null
+    find ${HOME}/Library/Application\ Support/iPhone\ Simulator -name "Applications" -type d -execdir rm -rfv {} \; 2>/dev/null
+}
+
+function _clear_derived_data() {
+    echo "Wiping Xcode Derived Data ..."
+    sudo find ~/Library/Developer/Xcode/DerivedData -type d -execdir rm -rf {} \; 2>/dev/null
+    sudo find /var/folders -iname "com.apple.DeveloperTools" -type d -execdir rm -rf {} \; 2>/dev/null
+}
+
+function _usage() {
+    cat <<-__HEREDOC__
+
+    -a | -all clears all derived data and iOS Simulator Applications
+    -d | --derived-data clears all derived data
+    -h | --help this help
+
+    No parameters will just clear iOS Simulator Apps
+
+__HEREDOC__
+}
+
+if [ "$1" == "" ]; then
+    _usage
+    exit 0
+fi
+
+while [ "$1" != "" ]; do
+    case $1 in
+        -a | --all )
+                                _clear_simulator
+                                _clear_derived_data
+                                exit 1
+                                ;;
+        -d | --derived-data )
+                                _clear_derived_data
+                                exit 1
+                                ;;
+        -s | --simulator )
+                                _clear_simulator
+                                exit 1
+                                ;;
+        -h | --help )
+                                _usage
+                                ;;
+        * )                     _usage
+                                exit 1
+    esac
+    shift
+done
