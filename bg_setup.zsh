@@ -1,15 +1,12 @@
 #!/usr/bin/env zsh
+
 setopt interactivecomments  # enable "#" in the shell
 
 export _BGDOTFILES="${ZDOTDIR:-$HOME}/.dotfiles"
-source $_BGDOTFILES/source/bg_checks.zsh
-source $_BGDOTFILES/source/bg_env.zsh
-source $_BGDOTFILES/source/extra-packages/pip_completion.zsh
-source $_BGDOTFILES/source/bg_aliases.zsh
-source $_BGDOTFILES/source/bg_functions.sh
-source $_BGDOTFILES/source/extra-packages/get-short-path.zsh # Only needed fot the prompt theme Agnoster
-source $_BGDOTFILES/source/extra-packages/git.zsh  # Only needed fot the prompt theme Agnoster
-source $_BGDOTFILES/source/bg_keybindings.zsh  # Only needed fot the prompt theme Agnoster
+source $_BGDOTFILES/checks.zsh
+source $_BGDOTFILES/exports.zsh
+source $_BGDOTFILES/aliases.zsh
+source $_BGDOTFILES/functions.sh
 
 if (( $IS_OSX )); then
     export HOMEBREW_HOME=$(brew --prefix)
