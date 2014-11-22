@@ -23,6 +23,7 @@ install axel
 install mogenerator
 install the_silver_searcher
 install webkit2png
+install autojump
 
 # Install Brew Cask
 install caskroom/cask/brew-cask
@@ -52,6 +53,10 @@ cask install hosts
 cask install flux
 cask install sourcetree
 cask install github
+cask install subtitle-master
+cask install karabiner
+cask install seil
+cask install soundcleod
 
 # QuickLook Plugins
 cask install qlcolorcode
