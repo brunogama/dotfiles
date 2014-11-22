@@ -1,6 +1,4 @@
 #!/usr/bin/env zsh
-# install.zsh
-# Author: Bruno Gama
 # The basic setup script... may not work properly but it is the way to go :)
 
 
