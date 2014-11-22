@@ -46,7 +46,7 @@
 
 [core]
     # Use custom `.gitignore` and `.gitattributes`
-    excludesfile = ~/.global_ignore
+	excludesfile = ~/.global_ignore
     attributesfile = ~/.global_gitattributes
     # Treat spaces before tabs, lines that are indented with 8 or more spaces, and all kinds of trailing whitespace as an error
     whitespace = space-before-tab,indent-with-non-tab,trailing-space
@@ -92,8 +92,8 @@
     insteadOf = "gist:"
 
 [user]
-    name = Bruno Gama
-	email = bruno.gama@nkey.com.br
+	name = Bruno Gama
+	email = bgamap@gmail.com
 
 [credential]
     helper = cache --timeout=3600
@@ -102,3 +102,9 @@
 [filter "media"]
 	clean = git-media-clean %f
 	smudge = git-media-smudge %f
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path =
+[mergetool "sourcetree"]
+	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true
