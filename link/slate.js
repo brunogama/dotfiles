@@ -5,6 +5,7 @@ var l = function(msg) {
     logCount++;
     S.log(logCount.toString()+": "+ msg);
 };
+
 var windowHintDimension = 64;
 S.cfga({
     "defaultToCurrentScreen":         true,
@@ -82,29 +83,17 @@ var theGrid = S.op("grid", {
 // Current Browser
 var focusApp = function (argument) { return S.op("focus", {"app": argument}); };
 
-// var current_browser = shell;
-// l("current browser = " + current_browser + " " + typeof(current_browser));
-
-// var focusCurrentBrowser = function() {
-//     var s = S.sh("/Users/windu/.dotfiles/bin/default_browser", true);
-//     S.log("current browser = " + s + " " + typeof(s));
-//     return S.op("focus", {"app": s});
-// };
-// slate.bind("b:ctrl;shift;alt;cmd", focusCurrentBrowser());
-
-
-
 S.bnda({
     // App Focus
     "c:ctrl;shift;alt;cmd": focusApp("Messages"),
     "i:ctrl;shift;alt;cmd": focusApp("iTerm"),
     "x:ctrl;shift;alt;cmd": focusApp("Xcode"),
     "a:ctrl;shift;alt;cmd": focusApp("Android Studio"),
-    "s:ctrl;shift;alt;cmd": focusApp("Sublime Text"),
+    "e:ctrl;shift;alt;cmd": focusApp("Sublime Text"),
     "f:ctrl;shift;alt;cmd": focusApp("Finder"),
-    "m:ctrl;shift;alt;cmd": focusApp("Mail"),
-    "t:ctrl;shift;alt;cmd": focusApp("TweetDeck"),
     "b:ctrl;shift;alt;cmd": focusApp("Google Chrome"),
+    "s:ctrl;shift;alt;cmd": focusApp("Slack"),
+    "k:ctrl;shift;alt;cmd": focusApp("Skype"),
 
     // Push Bindings
     "h:ctrl;shift;alt;cmd": screenResizeLeftHalf,
