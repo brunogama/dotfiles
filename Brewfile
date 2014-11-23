@@ -3,7 +3,6 @@
 install coreutils
 # Install GNU `find`, `locate`, `updatedb`, and `xargs`, g-prefixed
 install findutils
-
 # It will be needed to the following:
 # echo `which zsh` >> /etc/shells
 # chsh -s `which zsh`
@@ -17,13 +16,12 @@ install man2html
 install mercurial
 install multimarkdown
 install node
-install siege
 install unrar
-install axel
 install mogenerator
 install the_silver_searcher
-install webkit2png
 install autojump
+install pyenv
+install pyenv-virtualenv
 
 # Install Brew Cask
 install caskroom/cask/brew-cask
@@ -57,6 +55,7 @@ cask install subtitle-master
 cask install karabiner
 cask install seil
 cask install soundcleod
+cask install cloud
 
 # QuickLook Plugins
 cask install qlcolorcode
