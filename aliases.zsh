@@ -3,7 +3,7 @@
 alias dotfiles='e ~/.dotfiles'
 alias sudo='sudo'
 if (( $IS_OSX )); then
-    alias emptytrash='sudo rm -rfv /Volumes/*/.Trashes;sudo rm -rfv ~/.Trash;sudo rm -rfv /private/var/log/asl/*.asl'
+    alias emptytrash='sudo -v; rm -rfv /Volumes/*/.Trashes 2> /dev/null;rm -rfv ~/.Trash 2> /dev/null;rm -rfv /private/var/log/asl/*.asl 2> /dev/null'
     alias update='sudo softwareupdate -i -a; /usr/libexec/XProtectUpdater; brew update; brew upgrade'
     # Show/hide hidden files in Finder
     alias show='defaults write com.apple.Finder AppleShowAllFiles -bool true && killall Finder'
