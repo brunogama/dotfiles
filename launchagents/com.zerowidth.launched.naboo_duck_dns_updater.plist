@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.zerowidth.launched.naboo_duck_dns_updater</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>sh</string>
+		<string>-c</string>
+		<string>~/Dropbox/Private/bin/duck-dns/naboo-duck.sh</string>
+	</array>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+</dict>
+</plist>
