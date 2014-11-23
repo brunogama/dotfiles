@@ -1,3 +1,6 @@
 [submodule "themes/dracula-theme"]
 	path = themes/dracula-theme
 	url = https://github.com/zenorocha/dracula-theme/
+[submodule "prezto"]
+	path = prezto
+	url = git@github.com:brunogama/prezto.git
