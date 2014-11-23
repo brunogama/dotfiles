@@ -13,7 +13,6 @@ if (( $IS_OSX )); then
     alias showdesktop='defaults write com.apple.finder CreateDesktop -bool true && killall Finder'
     alias k='pkill -9 -fi'
     alias flushdns='sudo discoveryutil mdnsflushcache;sudo discoveryutil udnsflushcaches;say flushed'
-    alias cask='brew cask'
 fi
 
 if (( $IS_LINUX )); then
