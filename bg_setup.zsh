@@ -11,4 +11,6 @@ source $_BGDOTFILES/functions.sh
 if (( $IS_OSX )); then
     export HOMEBREW_HOME=$(brew --prefix)
     [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
+    if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
+    if which pyenv-virtualenv-init > /dev/null; then eval "$(pyenv virtualenv-init -)"; fi
 fi
