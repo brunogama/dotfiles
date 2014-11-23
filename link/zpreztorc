@@ -34,6 +34,7 @@ zstyle ':prezto:load' pmodule \
     'rsync' \
     'ruby' \
     'spectrum' \
+    'utility' \
     'prompt' \
     'syntax-highlighting' \
     'history-substring-search'
