@@ -1,0 +1,16 @@
+#!/bin/bash
+
+HOST="www.google.com"
+RET=1
+
+while [[ $RET > 0 ]]; do
+    ping -c 1 -s 1 $HOST &>/dev/null
+    RET=$?
+    if [[ $RET == 0 ]]; then
+        echo "You are connected"
+    else
+        echo "You are not connected"
+    fi
+    sleep 1
+done
+say "You are connected"
