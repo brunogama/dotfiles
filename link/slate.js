@@ -93,21 +93,24 @@ S.bnda({
     "f:ctrl;shift;alt;cmd": focusApp("Finder"),
     "b:ctrl;shift;alt;cmd": focusApp("Google Chrome"),
     "s:ctrl;shift;alt;cmd": focusApp("Slack"),
-    "k:ctrl;shift;alt;cmd": focusApp("Skype"),
+    "y:ctrl;shift;alt;cmd": focusApp("Skype"),
+    "m:ctrl;shift;alt;cmd": focusApp("Messages"),
+    "d:ctrl;shift;alt;cmd": focusApp("Dash"),
+    "t:ctrl;shift;alt;cmd": focusApp("Spotify"),
 
     // Push Bindings
-    "h:ctrl;shift;alt;cmd": screenResizeLeftHalf,
-    "l:ctrl;shift;alt;cmd": screenResizeRightHalf,
-    "j:ctrl;shift;alt;cmd": screenResizeTopHalf,
-    "k:ctrl;shift;alt;cmd": screenResizeBottomHalf,
+    "left:ctrl;shift;alt;cmd": screenResizeLeftHalf,
+    "right:ctrl;shift;alt;cmd": screenResizeRightHalf,
+    // "\:ctrl;shift;alt;cmd": screenResizeTopHalf,
+    // ":ctrl;shift;alt;cmd": screenResizeBottomHalf,
 
-    "0:ctrl;shift;alt;cmd": quarterWindowTopRight,
-    "p:ctrl;shift;alt;cmd": quarterWindowBottomRight,
-    "9:ctrl;shift;alt;cmd": quarterWindowTopLeft,
-    "o:ctrl;shift;alt;cmd": quarterWindowBottomLeft,
+    "]:ctrl;shift;alt;cmd": quarterWindowTopRight,
+    "':ctrl;shift;alt;cmd": quarterWindowBottomRight,
+    "[:ctrl;shift;alt;cmd": quarterWindowTopLeft,
+    ";:ctrl;shift;alt;cmd": quarterWindowBottomLeft,
 
     // Postions
     "up:ctrl;shift;alt;cmd": fullscreen,
-    "g:ctrl;shift;alt;cmd": theGrid
+    "3:ctrl;shift;alt;cmd": theGrid
 });
 l("Finished loading");

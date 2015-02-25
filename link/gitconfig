@@ -38,19 +38,11 @@
     lf = log --date-order --date=short --full-history --all --pretty=format:'* %C(red)%h% C(green)%ad %C(reset)- %s <%C(blue)%an%C(reset)>'  --
     #list files from commit
     cols = diff-tree --no-commit-id --name-only -r
-
-
-[apply]
-    # Detect whitespace errors when applying a patch
-    whitespace = fix
+    restore-file = !git checkout $(git rev-list -n 1 HEAD -- "$1")^ -- "$1"
 
 [core]
     # Use custom `.gitignore` and `.gitattributes`
 	excludesfile = ~/.global_ignore
-    attributesfile = ~/.global_gitattributes
-    # Treat spaces before tabs, lines that are indented with 8 or more spaces, and all kinds of trailing whitespace as an error
-    whitespace = space-before-tab,indent-with-non-tab,trailing-space
-    pager = less -r
 
 [color]
     # Use colors in Git commands that are capable of colored output when outputting to the terminal
@@ -77,20 +69,6 @@
     remote = origin
     merge = refs/heads/master
 
-# URL shorthands
-[url "git@github.com:"]
-    insteadOf = "gh:"
-    pushInsteadOf = "github:"
-    pushInsteadOf = "git://github.com/"
-[url "git://github.com/"]
-    insteadOf = "github:"
-[url "git@gist.github.com:"]
-    insteadOf = "gst:"
-    pushInsteadOf = "gist:"
-    pushInsteadOf = "git://gist.github.com/"
-[url "git://gist.github.com/"]
-    insteadOf = "gist:"
-
 [user]
 	name = Bruno Gama
 	email = bgamap@gmail.com
@@ -99,12 +77,8 @@
     helper = cache --timeout=3600
 [push]
 	default = simple
-[filter "media"]
-	clean = git-media-clean %f
-	smudge = git-media-smudge %f
-[difftool "sourcetree"]
-	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
-	path =
-[mergetool "sourcetree"]
-	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
-	trustExitCode = true
+
+[filter "hawser"]
+	clean = git hawser clean %f
+	smudge = git hawser smudge %f
+	required = true

@@ -56,7 +56,8 @@ cask install karabiner
 cask install seil
 cask install soundcleod
 cask install cloud
-
+cask install itsycal
+cask install clipmenu
 # QuickLook Plugins
 cask install qlcolorcode
 cask install qlstephen
