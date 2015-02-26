@@ -2,32 +2,22 @@
 
 alias dotfiles='e ~/.dotfiles'
 alias sudo='sudo'
-if (( $IS_OSX )); then
-    alias emptytrash='sudo -v; rm -rfv /Volumes/*/.Trashes 2> /dev/null;rm -rfv ~/.Trash 2> /dev/null;rm -rfv /private/var/log/asl/*.asl 2> /dev/null'
-    alias update='sudo softwareupdate -i -a; /usr/libexec/XProtectUpdater; brew update; brew upgrade'
-    # Show/hide hidden files in Finder
-    alias show='defaults write com.apple.Finder AppleShowAllFiles -bool true && killall Finder'
-    alias hide='defaults write com.apple.Finder AppleShowAllFiles -bool false && killall Finder'
-    # Hide/show all desktop icons (useful when presenting)
-    alias hidedesktop='defaults write com.apple.finder CreateDesktop -bool false && killall Finder'
-    alias showdesktop='defaults write com.apple.finder CreateDesktop -bool true && killall Finder'
-    alias k='pkill -9 -fi'
-    alias flushdns='sudo discoveryutil mdnsflushcache;sudo discoveryutil udnsflushcaches;say flushed'
-fi
-
-if (( $IS_LINUX )); then
-    alias k='kill'
-fi
-
+alias emptytrash='sudo -v; rm -rfv /Volumes/*/.Trashes 2> /dev/null;rm -rfv ~/.Trash 2> /dev/null;rm -rfv /private/var/log/asl/*.asl 2> /dev/null'
+alias update='sudo softwareupdate -i -a; /usr/libexec/XProtectUpdater; brew update; brew upgrade'
+# Show/hide hidden files in Finder
+alias show='defaults write com.apple.Finder AppleShowAllFiles -bool true && killall Finder'
+alias hide='defaults write com.apple.Finder AppleShowAllFiles -bool false && killall Finder'
+# Hide/show all desktop icons (useful when presenting)
+alias hidedesktop='defaults write com.apple.finder CreateDesktop -bool false && killall Finder'
+alias showdesktop='defaults write com.apple.finder CreateDesktop -bool true && killall Finder'
+alias k='pkill -9 -fi'
+alias flushdns='sudo discoveryutil mdnsflushcache;sudo discoveryutil udnsflushcaches;say flushed'
 alias g="git"
 alias gps="git push --recurse-submodules=on-demand"
 alias oo="o ."
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias ggo="git checkout -B"
 alias ttl='ping -s 1 www.google.com'
-
-# http://www.jukie.net/~bart/blog/pimping-out-git-log
-alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%an %cr)%Creset' --abbrev-commit --date=relative"
 
 # IP addresses
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
