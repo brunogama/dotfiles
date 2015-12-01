@@ -17,6 +17,7 @@ path=(
 export GRADLE_OPTS='-Dorg.gradle.daemon=true'
 export EDITOR=`which subl`
 export GIT_EDITOR='vim'
+# export HOMEBREW_CASK_OPTS="--appdir=/Applications --caskroom=/etc/Caskroom"
 
 [ -d '/opt/local/share/man' ] && export MANPATH=/opt/local/share/man:$MANPATH
 

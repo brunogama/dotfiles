@@ -1,0 +1,3 @@
+#!/bin/bash
+
+WORD="Turn on the modem"; sleep $((5 * 60));  echo $WORD; say $WORD

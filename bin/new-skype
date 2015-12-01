@@ -1,6 +1,7 @@
 #! /usr/bin/env bash
 
 NEXT_SKYPE_PROCESS=$(echo $(( $(ps aux | grep skype | grep -v "grep" | wc -l | tr -d '[[:space:]]') + 1)))
-open -na $(mdfind 'kMDItemFSName == "Skype.app"'cd) --args -DataPath /Users/$(whoami)/Library/Application\ Support/Skype${NEXT_SKYPE_PROCESS}
+#open -na $(mdfind 'kMDItemFSName == "Skype.app"'cd | head -n 1) --args -DataPath /Users/$(whoami)/Library/Application\ Support/Skype${NEXT_SKYPE_PROCESS}
+open -na /Applications/Skype.app --args -DataPath /Users/$(whoami)/Library/Application\ Support/Skype${NEXT_SKYPE_PROCESS}
 unset NEXT_SKYPE_PROCESS
 exit 0

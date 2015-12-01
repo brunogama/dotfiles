@@ -39,10 +39,11 @@
     #list files from commit
     cols = diff-tree --no-commit-id --name-only -r
     restore-file = !git checkout $(git rev-list -n 1 HEAD -- "$1")^ -- "$1"
+	today = log --since=7am
 
 [core]
     # Use custom `.gitignore` and `.gitattributes`
-	excludesfile = ~/.global_ignore
+	excludesfile = /Users/bruno/.global_ignore
 
 [color]
     # Use colors in Git commands that are capable of colored output when outputting to the terminal
@@ -82,3 +83,9 @@
 	clean = git hawser clean %f
 	smudge = git hawser smudge %f
 	required = true
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path = 
+[mergetool "sourcetree"]
+	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true

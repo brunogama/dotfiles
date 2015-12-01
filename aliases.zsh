@@ -11,9 +11,10 @@ alias hide='defaults write com.apple.Finder AppleShowAllFiles -bool false && kil
 alias hidedesktop='defaults write com.apple.finder CreateDesktop -bool false && killall Finder'
 alias showdesktop='defaults write com.apple.finder CreateDesktop -bool true && killall Finder'
 alias k='pkill -9 -fi'
-alias flushdns='sudo discoveryutil mdnsflushcache;sudo discoveryutil udnsflushcaches;say flushed'
+alias flushdns='sudo killall -HUP mDNSResponder;say flushed'
 alias g="git"
 alias gps="git push --recurse-submodules=on-demand"
+alias gup="git pull --rebase"
 alias oo="o ."
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias ggo="git checkout -B"

@@ -506,7 +506,9 @@
 	<key>MaxVertically</key>
 	<false/>
 	<key>NSNavLastRootDirectory</key>
-	<string>~/.dotfiles</string>
+	<string>~/.dotfiles/settings/iterm2</string>
+	<key>NSNavPanelExpandedSizeForOpenMode</key>
+	<string>{780, 683}</string>
 	<key>NSQuotedKeystrokeBinding</key>
 	<string></string>
 	<key>NSRepeatCountBinding</key>
@@ -530,16 +532,12 @@
 	<array/>
 	<key>NSTableView Sort Ordering KeyBingingTable</key>
 	<array/>
-	<key>NSWindow Frame NSFontPanel</key>
-	<string>378 38 445 308 0 0 1440 877 </string>
 	<key>NSWindow Frame Preferences</key>
-	<string>443 392 924 485 0 0 1440 877 </string>
+	<string>269 110 924 485 0 0 1440 877 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
 	<string>722 0 718 877 0 0 1440 877 </string>
 	<key>NSWindow Frame iTerm Window 1</key>
-	<string>722 0 718 877 0 0 1440 877 </string>
-	<key>NSWindow Frame iTerm Window 2</key>
-	<string>204 0 650 426 0 0 1440 877 </string>
+	<string>183 68 570 351 0 0 1440 877 </string>
 	<key>New Bookmarks</key>
 	<array>
 		<dict>
@@ -760,7 +758,7 @@
 			<key>Custom Command</key>
 			<string>No</string>
 			<key>Custom Directory</key>
-			<string>No</string>
+			<string>Recycle</string>
 			<key>Default Bookmark</key>
 			<string>No</string>
 			<key>Disable Printing</key>
@@ -939,13 +937,6 @@
 					<key>Text</key>
 					<string>[1;6D</string>
 				</dict>
-				<key>0xf702-0x280000</key>
-				<dict>
-					<key>Action</key>
-					<integer>11</integer>
-					<key>Text</key>
-					<string>0x1b 0x1b 0x5b 0x44</string>
-				</dict>
 				<key>0xf703-0x220000</key>
 				<dict>
 					<key>Action</key>
@@ -966,13 +957,6 @@
 					<integer>10</integer>
 					<key>Text</key>
 					<string>[1;6C</string>
-				</dict>
-				<key>0xf703-0x280000</key>
-				<dict>
-					<key>Action</key>
-					<integer>11</integer>
-					<key>Text</key>
-					<string>0x1b 0x1b 0x5b 0x43</string>
 				</dict>
 				<key>0xf704-0x20000</key>
 				<dict>
@@ -1096,13 +1080,13 @@
 			<key>Name</key>
 			<string>Default</string>
 			<key>Non Ascii Font</key>
-			<string>UbuntuMonoDerivativePowerline-Regular 16</string>
+			<string>UbuntuMono-Regular 13</string>
 			<key>Non-ASCII Anti Aliased</key>
 			<true/>
 			<key>Normal Font</key>
-			<string>UbuntuMonoDerivativePowerline-Regular 16</string>
+			<string>UbuntuMono-Regular 13</string>
 			<key>Option Key Sends</key>
-			<integer>0</integer>
+			<integer>1</integer>
 			<key>Prompt Before Closing 2</key>
 			<integer>0</integer>
 			<key>Right Option Key Sends</key>
@@ -1275,6 +1259,10 @@
 			<string>/Users/bruno</string>
 		</dict>
 	</array>
+	<key>NoSyncTimeOfLastPromo</key>
+	<real>457995561.59404403</real>
+	<key>NoSyncTimeOfLastPromoDownload</key>
+	<real>468824610.14064699</real>
 	<key>OnlyWhenMoreTabs</key>
 	<false/>
 	<key>OpenArrangementAtStartup</key>
@@ -1323,7 +1311,7 @@
 		</dict>
 	</dict>
 	<key>PrefsCustomFolder</key>
-	<string>/Users/bruno/.dotfiles</string>
+	<string>/Users/bruno/.dotfiles/settings/iterm2</string>
 	<key>PromptOnQuit</key>
 	<false/>
 	<key>QuitWhenAllWindowsClosed</key>
@@ -1333,15 +1321,15 @@
 	<key>RightOption</key>
 	<integer>3</integer>
 	<key>SUAutomaticallyUpdate</key>
-	<true/>
+	<false/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>http://iterm2.com/appcasts/testing.xml</string>
+	<string>https://iterm2.com/appcasts/testing.xml</string>
 	<key>SUHasLaunchedBefore</key>
 	<true/>
 	<key>SULastCheckTime</key>
-	<date>2015-02-11T17:26:09Z</date>
+	<date>2015-11-10T05:03:02Z</date>
 	<key>SavePasteHistory</key>
 	<false/>
 	<key>ShowBookmarkName</key>
@@ -1382,7 +1370,11 @@
 	<integer>0</integer>
 	<key>WordCharacters</key>
 	<string>/-+\~_.</string>
+	<key>findIgnoreCase_iTerm</key>
+	<true/>
+	<key>findRegex_iTerm</key>
+	<false/>
 	<key>iTerm Version</key>
-	<string>2.0.0.20141103</string>
+	<string>2.1.4</string>
 </dict>
 </plist>
