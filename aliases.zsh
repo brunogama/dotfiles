@@ -19,7 +19,6 @@ alias oo="o ."
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias ggo="git checkout -B"
 alias ttl='ping -s 1 www.google.com'
-
 # IP addresses
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias localip="python -c \"import socket;s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM);s.connect(('8.8.8.8',80));print(s.getsockname()[0]);s.close()\""

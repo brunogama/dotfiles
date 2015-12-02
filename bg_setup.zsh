@@ -4,8 +4,8 @@ setopt interactivecomments  # enable "#" in the shell
 
 export _BGDOTFILES="${ZDOTDIR:-$HOME}/.dotfiles"
 source $_BGDOTFILES/checks.zsh
-source $_BGDOTFILES/exports.zsh
 source $_BGDOTFILES/aliases.zsh
+source $_BGDOTFILES/exports.zsh
 source $_BGDOTFILES/functions.sh
 
 if (( $IS_OSX )); then

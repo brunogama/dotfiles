@@ -533,9 +533,9 @@
 	<key>NSTableView Sort Ordering KeyBingingTable</key>
 	<array/>
 	<key>NSWindow Frame Preferences</key>
-	<string>269 110 924 485 0 0 1440 877 </string>
+	<string>338 255 924 485 0 0 1440 877 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
-	<string>722 0 718 877 0 0 1440 877 </string>
+	<string>718 517 570 351 0 0 1440 877 </string>
 	<key>NSWindow Frame iTerm Window 1</key>
 	<string>183 68 570 351 0 0 1440 877 </string>
 	<key>New Bookmarks</key>
@@ -1098,7 +1098,7 @@
 			<key>Scrollback Lines</key>
 			<integer>0</integer>
 			<key>Scrollback With Status Bar</key>
-			<false/>
+			<true/>
 			<key>Scrollback in Alternate Screen</key>
 			<true/>
 			<key>Selected Text Color</key>
@@ -1234,7 +1234,7 @@
 			<key>Tags</key>
 			<array/>
 			<key>Terminal Type</key>
-			<string>xterm-256color</string>
+			<string>xterm</string>
 			<key>Transparency</key>
 			<real>0.0</real>
 			<key>Triggers</key>
@@ -1246,7 +1246,7 @@
 			<key>Use Bright Bold</key>
 			<true/>
 			<key>Use Canonical Parser</key>
-			<false/>
+			<true/>
 			<key>Use Italic Font</key>
 			<true/>
 			<key>Vertical Spacing</key>
@@ -1262,7 +1262,7 @@
 	<key>NoSyncTimeOfLastPromo</key>
 	<real>457995561.59404403</real>
 	<key>NoSyncTimeOfLastPromoDownload</key>
-	<real>468824610.14064699</real>
+	<real>470748221.946814</real>
 	<key>OnlyWhenMoreTabs</key>
 	<false/>
 	<key>OpenArrangementAtStartup</key>
@@ -1329,7 +1329,7 @@
 	<key>SUHasLaunchedBefore</key>
 	<true/>
 	<key>SULastCheckTime</key>
-	<date>2015-11-10T05:03:02Z</date>
+	<date>2015-12-02T11:19:50Z</date>
 	<key>SavePasteHistory</key>
 	<false/>
 	<key>ShowBookmarkName</key>

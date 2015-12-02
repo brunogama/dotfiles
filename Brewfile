@@ -22,6 +22,7 @@ install the_silver_searcher
 install autojump
 install pyenv
 install pyenv-virtualenv
+install reattach-to-user-namespace
 
 # Install Brew Cask
 install caskroom/cask/brew-cask
