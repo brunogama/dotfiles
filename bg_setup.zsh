@@ -27,5 +27,5 @@ fi
 
 
 if (( $+commands[gibo] )) ; then
-    source $HOME/.dotfiles/gibo-completion.zsh
+    source $_BGDOTFILES/gibo-completion.zsh 2>/dev/null
 fi

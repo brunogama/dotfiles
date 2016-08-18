@@ -85,18 +85,19 @@ var focusApp = function (argument) { return S.op("focus", {"app": argument}); };
 
 S.bnda({
     // App Focus
-    "c:ctrl;shift;alt;cmd": focusApp("Messages"),
-    "i:ctrl;shift;alt;cmd": focusApp("iTerm"),
+    "i:ctrl;shift;alt;cmd": focusApp("iTerm2"),
     "x:ctrl;shift;alt;cmd": focusApp("Xcode"),
+    "z:ctrl;shift;alt;cmd": focusApp("Simulator"),
     "a:ctrl;shift;alt;cmd": focusApp("Android Studio"),
     "e:ctrl;shift;alt;cmd": focusApp("Sublime Text"),
     "f:ctrl;shift;alt;cmd": focusApp("Finder"),
     "b:ctrl;shift;alt;cmd": focusApp("Google Chrome"),
-    "s:ctrl;shift;alt;cmd": focusApp("Slack"),
     "y:ctrl;shift;alt;cmd": focusApp("Skype"),
-    "m:ctrl;shift;alt;cmd": focusApp("Messages"),
-    "d:ctrl;shift;alt;cmd": focusApp("Dash"),
     "t:ctrl;shift;alt;cmd": focusApp("Spotify"),
+    "m:ctrl;shift;alt;cmd": focusApp("Franz"),
+    "s:ctrl;shift;alt;cmd": focusApp("Slack"),
+    "w:ctrl;shift;alt;cmd": focusApp("WhatsApp"),
+
 
     // Push Bindings
     "left:ctrl;shift;alt;cmd": screenResizeLeftHalf,

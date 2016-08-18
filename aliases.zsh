@@ -18,6 +18,7 @@ alias gup="git pull --rebase"
 alias oo="o ."
 alias open-connections="lsof -i | grep -E '(LISTEN|ESTABLISHED)'"
 alias ggo="git checkout -B"
+alias gco="git clone --recursive"
 alias ttl='ping -s 1 www.google.com'
 # IP addresses
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
@@ -35,3 +36,4 @@ alias urldecode='python -c "import sys, urllib as ul; print ul.unquote_plus(sys.
 alias tma='tmux attach -d -t'
 alias tmn='tmux new -s $(basename $(pwd))'
 alias tml='tmux list-sessions'
+alias intellij-case-patch='printf '\''\nidea.case.sensitive.fs=true'\'' >> /Applications/Android\ Studio.app/Contents/bin/idea.properties'

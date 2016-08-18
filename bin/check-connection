@@ -4,6 +4,7 @@ HOST="www.google.com"
 RET=1
 
 while [[ $RET > 0 ]]; do
+	# sudo killall -HUP mDNSResponder
     ping -c 1 -s 1 $HOST &>/dev/null
     RET=$?
     if [[ $RET == 0 ]]; then

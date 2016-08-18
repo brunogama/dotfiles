@@ -7,3 +7,4 @@ fi
 
 source "${ZDOTDIR:-$HOME}/.dotfiles/bg_setup.zsh"
 export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
+if which swiftenv > /dev/null; then eval "$(swiftenv init -)"; fi
