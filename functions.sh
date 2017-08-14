@@ -1,28 +1,9 @@
 #!/usr/bin/env bash
 
-iso_to_utf8() {
-	file_input=$1
-	file_output="utf8_${file_input}"
-	original_charset=$(file -I ${file_input} | awk '{print substr($3,9,length($3))}')
-	iconv -f ${original_charset} -t UTF-8 ${file_input} > ${file_output}
-	unset file_output file_input original_charset
-}
-
 git-version() {
 	version=`git describe --abbrev=0 --tags`
 	short_hash=`git rev-parse --short HEAD`
 	echo "Version: $version ($short_hash)"
-}
-
-# search for tvshow in piratebay
-# parameter 1 is the season
-# parameter 2 the number of episodes from 1 to the parameter
-# tvshow name
-tvshow() {
-    for i in $(seq $2)
-    do
-        open -a "Google Chrome" "`printf "http://thepiratebay.se/search/$3 s%02de%02d" $1 $i`"
-    done
 }
 
 
