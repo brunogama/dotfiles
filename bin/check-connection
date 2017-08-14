@@ -1,17 +1,28 @@
 #!/bin/bash
 
-HOST="www.google.com"
-RET=1
+CHKHOST="www.google.com"
+CHKRET=1
+CHKI=1
 
-while [[ $RET > 0 ]]; do
+while [[ $CHKRET > 0 ]]; do
 	# sudo killall -HUP mDNSResponder
-    ping -c 1 -s 1 $HOST &>/dev/null
-    RET=$?
-    if [[ $RET == 0 ]]; then
+    ping -c 1 -s 1 $CHKHOST &>/dev/null
+    CHKRET=$?
+    if [[ $CHKRET == 0 ]]; then
         echo "You are connected"
     else
-        echo "You are not connected"
+    case $CHKI in
+        1) CHKST='|';;
+        2) CHKST='/';;
+        3) CHKST='\\';CHKI=;;
+        *|:)
+    ;;
+    esac
+        echo -ne "Not connected [$CHKST]"\\r
+        CHKI=$((CHKI+1))
     fi
     sleep 1
 done
-say "You are connected"
+
+unset CHKHOST CHKRET CHKI
+exit 0
