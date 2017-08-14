@@ -21,6 +21,4 @@ export HOMEBREW_CASK_OPTS="--appdir=/Applications --caskroom=/etc/Caskroom"
 
 [ hash node 2>/dev/null ] && export NODE_PATH=`which node`
 
-export DEFAULT_USER='bruno'
-
-export SWIFTENV_ROOT=/usr/local/var/swiftenv
+[ hash swiftenv  2>/dev/null ] && eval "$(swiftenv init -)"
