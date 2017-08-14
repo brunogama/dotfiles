@@ -1,10 +1,5 @@
-DEFAULT_USER='windu'
-DEFAULT_HOSTNAME='Naboo'
-
 if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
 source "${ZDOTDIR:-$HOME}/.dotfiles/bg_setup.zsh"
-export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
-if which swiftenv > /dev/null; then eval "$(swiftenv init -)"; fi
