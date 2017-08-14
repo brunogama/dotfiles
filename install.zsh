@@ -10,7 +10,3 @@ ln -s "${ZDOTDIR:-$HOME}/.dotfiles/prezto}" "${ZDOTDIR:-$HOME}/.zprezto}"
 for bg_dotfile in "${ZDOTDIR:-$HOME}"/.dotfiles/link/^README.md(.N); do
   ln -s "$bg_dotfile" "${ZDOTDIR:-$HOME}/.${bg_dotfile:t}"
 done
-
-# Setup vIM stack
-curl https://j.mp/spf13-vim3 -L > ~/spf13-vim.sh && sh ~/spf13-vim.sh
-cd ~
