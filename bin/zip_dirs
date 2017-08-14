@@ -1,3 +1,6 @@
 #!/usr/bash
-# date %N isn't available in BSD based systems so it was required to the pearl command
-for i in */; do zip -r "${i%/}-$(perl -MTime::HiRes -e 'printf("%.0f\n",Time::HiRes::time()*1000)').zip" "$i"; done
+for i in */;
+do
+    # date %N isn't available in BSD based systems so it was required to the pearl command
+    zip -r "${i%/}-$(perl -MTime::HiRes -e 'printf("%.0f\n",Time::HiRes::time()*1000)').zip" "$i"
+done
