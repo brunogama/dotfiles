@@ -1,0 +1,27 @@
+#!/bin/sh
+ssh_key_setup(){
+
+inform() {
+  local fmt="$1"; shift
+
+  # shellcheck disable=SC2059
+  printf "\n$fmt\n" "$@"
+}
+
+  local pub=$HOME/.ssh/id_rsa.pub
+  inform 'Checking for SSH key...'
+  [[ -f $pub ]] || ssh-keygen -t rsa
+
+  if ! [[ -f $pub ]]; then
+    inform "No ssh key found. Do you want to create one?"
+    select yn in "Yes" "No"; do
+      case $yn in
+        Yes ) ssh-keygen -t rsa;;
+        No ) exit;;
+      esac
+    done
+  fi
+
+  inform 'Copying public key to clipboard. Paste it into your Github account...'
+  [[ -f $pub ]] && cat $pub | pbcopy
+}
