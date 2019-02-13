@@ -1,4 +1,10 @@
 [alias]
+    # Deletes tag
+    # -----------
+    # $ git tag -a 'v10.0.0'
+    # $ git remove-tags 'v10.0.*'
+    # $ git tag -l
+    remove-tags = "!f() { git tag -l ${1} | xargs -I % echo \"git tag -d % && git push --delete origin %\" | sh; }; f"
     st = status
     # View the SHA, description, and history graph of the latest 20 commits
     l = log --pretty=oneline -n 20 --graph
@@ -41,10 +47,13 @@
     restore-file = !git checkout $(git rev-list -n 1 HEAD -- "$1")^ -- "$1"
 	today = log --since=7am
 	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+	ignore = update-index --skip-worktree
+	unignore = update-index --no-skip-worktree
+	ignored = !git ls-files -v | grep \"^S\"
 
 [core]
     # Use custom `.gitignore` and `.gitattributes`
-	excludesfile = /Users/bruno/.global_ignore
+	excludesfile = /Users/gama/.gitignore_global
 
 [color]
     # Use colors in Git commands that are capable of colored output when outputting to the terminal
@@ -62,6 +71,9 @@
     added = yellow
     changed = green
     untracked = cyan
+
+[commit]
+	template = ~/.git-commit-template
 [merge]
     # Include summaries of merged commits in newly created merge commit messages
     log = true
@@ -77,18 +89,18 @@
 
 [credential]
     helper = cache --timeout=3600
-[push]
-	default = simple
 
-[filter "hawser"]
-	clean = git hawser clean %f
-	smudge = git hawser smudge %f
-	required = true
+[push]
+	default = current
+
 [difftool "sourcetree"]
 	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
 	path = 
 [mergetool "sourcetree"]
-	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	cmd = /Applications/Sourcetree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
 	trustExitCode = true
-[pull]
-	rebase = true
+[filter "lfs"]
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f

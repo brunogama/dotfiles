@@ -1,59 +1,46 @@
 #!/bin/sh
 
-# Personal customizations for the awesome
-# Mobile Development Laptop Environment
-
-
 fancy_echo "Updating Homebrew formulae ..."
 brew update
 brew bundle --file=- <<EOF
-
-# Programming languages and package managers
-brew kylef/formulae/swiftenv
-
-# Mac utilities
-brew "mackup"
-
-# Applications
 cask "vlc"
-cask "transmission"
 cask "iterm2"
-cask "firefox"
-cask "sip"
-cask "1password"
 cask "dropbox"
-cask "github-desktop"
-cask "slack"
-cask "spotify"
 cask "skype"
-cask "docker"
-cask "docker-toolbox"
 cask "the-unarchiver"
 cask "tor-browser"
+cask "google-chrome"
 
-# Enhancing Quicklookd
+# Quicklook customizations
 cask "qlcolorcode"
 cask "qlstephen"
 cask "qlmarkdown"
-cask "quicklook-json"
+cask "quicklook"-json"
 cask "qlprettypatch"
-cask "quicklook-csv"
+cask "quicklook"-csv"
 cask "betterzipql"
-cask "webp-quicklook"
-cask "suspicious-package"
+cask "qlimagesize"
+cask "webpquicklook"
+cask "suspicious"-package"
 
-# Quicklook customizations
-cask "qlcolorcode"    # Preview source code files with syntax highlighting
-cask "qlstephen"      # Preview plain text files without a file extension. Example: README, CHANGELOG, etc.
-cask "qlmarkdown"     # Preview Markdown files
-cask "quicklook"-json # Preview JSON files
-cask "qlprettypatch"  # Preview .patch files
-cask "quicklook"-csv  # Preview CSV files
-cask "betterzipql"    # Preview archives
-cask "qlimagesize"    # Display image size and resolution
-cask "webpquicklook"  # Preview WebP images
-cask "suspicious"-package # Preview the contents of a standard Apple installer package
+brew "pyenv"
+brew "pyenv-virtualenv"
 EOF
 
-# Install npm packages
-npm install spoof -g --silent # Because spoofing Mac-address using ifconfig is painful
+pip_install_or_update() {
+  if hash "$1" 2>/dev/null; then
+    pip update "$@"
+  else
+    pip install "$@"
+    pyenv rehash
+  fi
+}
+
+# Setting up latest Python
+find_latest_python() {
+    printf '%s' "$(pyenv install -l | awk '{$1=$1;print}' | tail -n +2)" | grep -oE '^(\d+\.)+\d+$' | tail -1
+}
+python_version="$(find_latest_python)"
+pyenv install "$python_version"
+pyenv global "$python_version"
+pip_install_or_update "bpython"
