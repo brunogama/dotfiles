@@ -15,23 +15,22 @@
     # Pull in remote changes for the current repository and all its submodules
     p = !"git pull; git submodule foreach git pull origin master"
     # Clone a repository including all submodules
-    c = clone --recursive
+    cl = clone --recursive
     # Commit all changes
     ca = !git add -A && git commit -av
-    # Switch to a branch, creating it if necessary
-    go = checkout -B
+
     # Show verbose output about tags, branches or remotes
-    tags = tag -l
+    tags = tag -l   
     branches = branch -a
     remotes = remote -v
     # Credit an author on the latest commit
     credit = "!f() { git commit --amend --author \"$1 <$2>\" -C HEAD; }; f"
-    # Undo a `git push`
-    undopush = push -f origin HEAD^:master
+    # # Undo a `git push`
+    # undopush = push -f origin HEAD^:master
 
     #source: http://net.tutsplus.com/tutorials/tools-and-tips/git-tips-from-the-pros/
     # Amend the staged changes to your last commit.
-    amend = commit --amend -C HEAD
+    # amend = commit --amend -C HEAD
     undo = reset --soft HEAD^
     #This alias will provide a one line git log including date and committer name.
     ls = log --first-parent --graph --pretty=format:'%Cred%h%Creset | %cn | -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
@@ -50,10 +49,6 @@
 	ignore = update-index --skip-worktree
 	unignore = update-index --no-skip-worktree
 	ignored = !git ls-files -v | grep \"^S\"
-
-[core]
-    # Use custom `.gitignore` and `.gitattributes`
-	excludesfile = /Users/gama/.gitignore_global
 
 [color]
     # Use colors in Git commands that are capable of colored output when outputting to the terminal
@@ -84,7 +79,7 @@
     merge = refs/heads/master
 
 [user]
-	name = Bruno Gama
+	name = Bruno Porciuncula
 	email = bgamap@gmail.com
 
 [credential]
@@ -104,3 +99,5 @@
 	process = git-lfs filter-process
 	required = true
 	clean = git-lfs clean -- %f
+[core]
+	excludesfile = /Users/bruno/.gitignore_global

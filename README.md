@@ -1,19 +1,14 @@
 # Bruno Gama dotfiles
 
-## dotfiles
+## Dotfiles
 
-All the magic stuff that makes my life in the Terminal less painful.
 If you need to know more about dotfiles you should read the post: [Why would I want my dotfiles on GitHub?](http://dotfiles.github.com/)
-
-## install
-
-There is a install script that i've started to write but it kinda work.
 
 ## License
 
 All the code is licensed under ICS.
 
-Copyright 2014 Bruno Gama
+Copyright 2019 Bruno Gama
 
 Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
 

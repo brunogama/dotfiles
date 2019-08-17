@@ -2,9 +2,4 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
-source "${ZDOTDIR:-$HOME}/.dotfiles/bg_setup.zsh"
-export PATH="$HOME/.bin:$PATH"
-
-# recommended by brew doctor
-export PATH="/usr/local/bin:$PATH"
-eval "$(rbenv init - --no-rehash)"
+source "${ZDOTDIR:-$HOME}/Developer/dotfiles/bg_setup.zsh"

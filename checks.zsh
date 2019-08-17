@@ -1,4 +1,5 @@
 #!/usr/bin/env zsh
+
 case "$OSTYPE" in
   darwin*)  IS_OSX=1 ;;
   solaris*) IS_SOLARIS=1 ;;

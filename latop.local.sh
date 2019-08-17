@@ -3,44 +3,27 @@
 fancy_echo "Updating Homebrew formulae ..."
 brew update
 brew bundle --file=- <<EOF
-cask "vlc"
-cask "iterm2"
+cask "appcleaner"
 cask "dropbox"
-cask "skype"
-cask "the-unarchiver"
-cask "tor-browser"
-cask "google-chrome"
-
-# Quicklook customizations
-cask "qlcolorcode"
-cask "qlstephen"
+cask "firefox"
+cask "font-source-code-pro"
+cask "font-source-code-pro-for-powerline"
+cask "fork"
+cask "hammerspoon" # scriptable system wide key bindings
+cask "intel-haxm"
+cask "iterm2"
+cask "karabiner-elements"
+cask "lunar" # key bindings to external monitor brightness
+cask "oversight" # Webcam notification
 cask "qlmarkdown"
-cask "quicklook"-json"
-cask "qlprettypatch"
-cask "quicklook"-csv"
-cask "betterzipql"
-cask "qlimagesize"
-cask "webpquicklook"
-cask "suspicious"-package"
-
-brew "pyenv"
-brew "pyenv-virtualenv"
+cask "quicklook-json"
+cask "skype"
+cask "sourcetree"
+cask "sublime-text"
+cask "the-unarchiver"
+cask "toggl"
+cask "tor-browser"
+cask "virtualbox"
+cask "virtualbox-extension-pack"
+cask "vlc"
 EOF
-
-pip_install_or_update() {
-  if hash "$1" 2>/dev/null; then
-    pip update "$@"
-  else
-    pip install "$@"
-    pyenv rehash
-  fi
-}
-
-# Setting up latest Python
-find_latest_python() {
-    printf '%s' "$(pyenv install -l | awk '{$1=$1;print}' | tail -n +2)" | grep -oE '^(\d+\.)+\d+$' | tail -1
-}
-python_version="$(find_latest_python)"
-pyenv install "$python_version"
-pyenv global "$python_version"
-pip_install_or_update "bpython"

@@ -2,7 +2,7 @@
 
 setopt interactivecomments  # enable "#" in the shell
 
-export _BGDOTFILES="${ZDOTDIR:-$HOME}/.dotfiles"
+export _BGDOTFILES="${ZDOTDIR:-$HOME}/Developer/dotfiles"
 source $_BGDOTFILES/checks.zsh
 source $_BGDOTFILES/aliases.zsh
 source $_BGDOTFILES/exports.zsh
@@ -10,22 +10,13 @@ source $_BGDOTFILES/functions.sh
 
 if (( $IS_OSX )); then
     export HOMEBREW_HOME=$(brew --prefix)
-    [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
 
-    if (( $+commands[pyenv] )); then
-        eval "$(pyenv init -)";
-    fi
-
-    grep -q 'virtualenv-init' <(pyenv commands)
-
-    if (( $?==0 )); then
-        eval "$(pyenv virtualenv-init -)";
-    fi
+	source ${HOMEBREW_HOME}/opt/asdf/asdf.sh
+	source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
 fi
-
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
 
 
 if (( $+commands[gibo] )) ; then
     source $_BGDOTFILES/gibo-completion.zsh 2>/dev/null
 fi
+

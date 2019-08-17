@@ -36,3 +36,5 @@ alias cask='brew cask'
 # top
 alias cpu='top -o cpu'
 alias mem='top -o rsize' # memory
+
+alias gitk='/usr/bin/wish $(which gitk)'
