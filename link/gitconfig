@@ -78,10 +78,6 @@
     remote = origin
     merge = refs/heads/master
 
-[user]
-	name = Bruno Porciuncula
-	email = bgamap@gmail.com
-
 [credential]
     helper = cache --timeout=3600
 
