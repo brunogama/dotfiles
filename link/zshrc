@@ -1,15 +1,37 @@
+alias k='pkill -9 -fi'
+alias flushdns='sudo killall -HUP mDNSResponder;say flushed'
+alias degit="find . -name '.git' -exec rm -rf {} \;"
+alias oo="o ."
+alias ttl='ping www.google.com'
+alias tml='tmux list-sessions'
+alias mux='tmuxinator'
+alias cask='brew cask'
+alias gitk='/usr/bin/wish $(which gitk)'
+# Adds colors to cat
+alias ccat='pygmentize -g'
+
+# load custom executable functions
+for function in ~/.dotfiles/functions/*; do
+	source $function
+done
+
+## Loads zprezto
 if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
 	source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
+setopt interactivecomments  # enable "#" in the shell
 
-# Environment setup
+export TERM="xterm-256color" # This sets up colors properly
+
+## Environment setup
 
 export JAVA_HOME=$(/usr/libexec/java_home)
+
 path=(
 	"${HOMEBREW_HOME}"/{bin,sbin}
 	/usr/local/{bin,sbin}
 	"${JAVA_HOME}"/bin
-	"${_BGDOTFILES}"/bin
+	~/.dotfiles/bin
 	$path
 	)
 
@@ -20,21 +42,12 @@ export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 
-setopt interactivecomments  # enable "#" in the shell
-
-export _BGDOTFILES="${ZDOTDIR:-$HOME}/Developer/dotfiles"
-source $_BGDOTFILES/aliases.zsh
-
-# load custom executable functions
-for function in ~/.dotfiles/functions/*; do
-	source $function
-done
-
 export HOMEBREW_HOME=$(brew --prefix)
 
 source ${HOMEBREW_HOME}/opt/asdf/asdf.sh
 source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
+eval "$(brew command-not-found-init)"; 
 
 # Loads custom configuration of the spaceship prompt theme
 # https://github.com/denysdovhan/spaceship-prompt/wiki/Presets
-source $_BGDOTFILES/spaceship.sh 
+source ~/.dotfiles/spaceship.sh 
