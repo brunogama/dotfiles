@@ -3,6 +3,7 @@
 fancy_echo "Updating Homebrew formulae ..."
 brew update
 brew bundle --file=- <<EOF
+cask "aerial"
 cask "appcleaner"
 cask "dropbox"
 cask "firefox"
@@ -17,11 +18,11 @@ cask "lunar" # key bindings to external monitor brightness
 cask "oversight" # Webcam notification
 cask "qlmarkdown"
 cask "quicklook-json"
+cask "slack"
 cask "skype"
 cask "sourcetree"
 cask "sublime-text"
 cask "the-unarchiver"
-cask "toggl"
 cask "tor-browser"
 cask "virtualbox"
 cask "virtualbox-extension-pack"

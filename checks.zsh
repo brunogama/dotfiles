@@ -10,11 +10,12 @@ esac
 
 
 if (( $IS_MAC )); then
-    [[ -x `which brew` ]] &&  HAS_BREW=1
+	(( $+commands[brew] )) && HAS_BREW=1
 fi
 
 if (( $IS_LINUX )); then
-    [[ -x `which apt-get` ]] && HAS_APT=1
-    [[ -x `which yum` ]] && HAS_YUM=1
+	(( $+commands[apt-get] )) && HAS_APT=1
+
+	(( $+commands[yum] )) && HAS_YUM=1
 fi
 
