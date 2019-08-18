@@ -29,7 +29,6 @@ setopt interactivecomments  # enable "#" in the shell
 
 export _BGDOTFILES="${ZDOTDIR:-$HOME}/Developer/dotfiles"
 source $_BGDOTFILES/aliases.zsh
-source $_BGDOTFILES/exports.zsh
 source $_BGDOTFILES/functions.sh
 
 export HOMEBREW_HOME=$(brew --prefix)
@@ -37,4 +36,6 @@ export HOMEBREW_HOME=$(brew --prefix)
 source ${HOMEBREW_HOME}/opt/asdf/asdf.sh
 source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
 
-
+# Loads custom configuration of the spaceship prompt theme
+# https://github.com/denysdovhan/spaceship-prompt/wiki/Presets
+source $_BGDOTFILES/spaceship.sh 
