@@ -2,23 +2,39 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
+# Environment setup
+
+export JAVA_HOME=$(/usr/libexec/java_home)
+path=(
+	"${HOMEBREW_HOME}"/{bin,sbin}
+    /usr/local/{bin,sbin}
+    "${JAVA_HOME}"/bin
+    "${_BGDOTFILES}"/bin
+    $path
+)
+export LDFLAGS="-L/usr/local/opt/readline/lib"
+export CPPFLAGS="-I/usr/local/opt/readline/include"
+export PKG_CONFIG_PATH="/usr/local/opt/readline/lib/pkgconfig"
+EDITOR=editor.sh
+export EDITOR
+export GIT_EDITOR='vim'
+export HOMEBREW_CASK_OPTS="--appdir=/Applications"
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+[ -d '/opt/local/share/man' ] && export MANPATH=/opt/local/share/man:$MANPATH
+
+
 setopt interactivecomments  # enable "#" in the shell
 
 export _BGDOTFILES="${ZDOTDIR:-$HOME}/Developer/dotfiles"
-source $_BGDOTFILES/checks.zsh
 source $_BGDOTFILES/aliases.zsh
 source $_BGDOTFILES/exports.zsh
 source $_BGDOTFILES/functions.sh
 
-if (( $IS_OSX )); then
-    export HOMEBREW_HOME=$(brew --prefix)
+export HOMEBREW_HOME=$(brew --prefix)
 
-	source ${HOMEBREW_HOME}/opt/asdf/asdf.sh
-	source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
-fi
+source ${HOMEBREW_HOME}/opt/asdf/asdf.sh
+source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
 
-
-if (( $+commands[gibo] )) ; then
-    source $_BGDOTFILES/gibo-completion.zsh 2>/dev/null
-fi
 
