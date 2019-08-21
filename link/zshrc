@@ -1,11 +1,12 @@
-export HOMEBREW_HOME=$(brew --prefix)
+setopt interactivecomments  # enable "#" in the shell
 
 ## Loads zprezto
 if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
 	source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
-setopt interactivecomments  # enable "#" in the shell
 
-source ${HOMEBREW_HOME}/opt/asdf/asdf.sh
+export HOMEBREW_HOME=$(brew --prefix)
+
+source $HOME/.asdf/asdf.sh
 source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
 eval "$(brew command-not-found-init)"; 
