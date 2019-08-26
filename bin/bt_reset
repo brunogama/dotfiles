@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+__BT_RESET() {
+	reset() {
+		echo ""
+		echo "Attention: Connected devices will be unresponsive"
+		echo ""
+		blueutil -p 0
+		sleep 5
+		blueutil -p 1
+		echo "Bluetooth restored"
+		exit 0
+	}
+
+	fail() {
+        echo "blueutil is not installed."
+        exit 1		
+	}
+
+
+    if hash blueutil 2>/dev/null; then
+    	reset
+    else
+    	fail
+    fi
+}
+
+
+__BT_RESET
