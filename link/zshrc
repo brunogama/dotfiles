@@ -10,3 +10,4 @@ export HOMEBREW_HOME=$(brew --prefix)
 source $HOME/.asdf/asdf.sh
 source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
 eval "$(brew command-not-found-init)"; 
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
