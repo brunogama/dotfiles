@@ -19,7 +19,6 @@ alias ttl='ping www.google.com'
 alias tml='tmux list-sessions'
 alias mux='tmuxinator'
 alias cask='brew cask'
-alias gitk='/usr/bin/wish $(which gitk)'
 # Adds colors to cat
 alias ccat='pygmentize -g'
 

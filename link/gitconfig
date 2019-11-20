@@ -60,3 +60,6 @@ ff = only
 	oldHighlight = red bold 52
 	newNormal = green bold
 	newHighlight = green bold 22
+[user]
+	email = bruno.porciuncula@cwi.com.br
+	name = Bruno Porciuncula

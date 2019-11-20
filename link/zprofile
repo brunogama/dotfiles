@@ -5,6 +5,10 @@
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
+export ANDROID_HOME=${HOME}/Library/Android/sdk
+export ANDROID_SDK_ROOT=${ANDROID_HOME}
+export ANDROID_AVD_HOME=${HOME}/.android/avd
+
 #
 # Browser
 #
@@ -53,6 +57,9 @@ path=(
 	/usr/local/{bin,sbin}
 	~/.dotfiles/bin
 	$path
+  ${ANDROID_SDK_ROOT}/platform-tools
+  $ANDROID_HOME/tools
+  $ANDROID_AVD_HOME
 )
 
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
@@ -92,9 +99,9 @@ SPACESHIP_PROMPT_ORDER=(
   ruby
   xcode
   swift
-  golang
-  docker
-  venv
+  # golang
+  # docker
+  # venv
   pyenv
 )
 
