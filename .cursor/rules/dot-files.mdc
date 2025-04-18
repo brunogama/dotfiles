@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Dotfiles repository rules
+
+- Should have mostly the scripts createdd by me
+- Should check for api keys and other possible secrets before commit
+- Configurations for services like google cloud and aws should be added to gitignore.

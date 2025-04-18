@@ -1,0 +1,43 @@
+#
+# Defines environment variables.
+#
+# Authors:
+#   Sorin Ionescu <sorin.ionescu@gmail.com>
+#
+
+# Ensure that a non-login, non-interactive shell has a defined environment.
+if [[ ( "$SHLVL" -eq 1 && ! -o LOGIN ) && -s "${ZDOTDIR:-$HOME}/.zprofile" ]]; then
+  source "${ZDOTDIR:-$HOME}/.zprofile"
+fi
+
+# Set the list of directories that Zsh searches for programs.
+
+path=(
+  $HOME/{,s}bin(N)
+  $HOME/.config/bin(N)
+  /opt/{homebrew,local}/{,s}bin(N)
+  /usr/local/{,s}bin(N)
+  $path
+)
+
+# Set the list of directories that cd searches.
+
+cdpath=(
+  $HOME
+  $cdpath
+)
+
+# Set the list of directories that Zsh searches for functions.
+
+fpath=(
+  $HOME/.config/zsh/zfunctions
+  $HOME/.config/zsh/completion
+  ${ZDOTDIR:-$HOME}/.zsh_functions
+  $fpath
+)
+
+autoload -U compinit && compinit
+
+# Set the list of directories that Z
+# sh searches for functions.
+. "$HOME/.cargo/env"

@@ -1,0 +1,118 @@
+#
+# Executes commands at login pre-zshrc.
+#
+# Authors:
+#   Sorin Ionescu <sorin.ionescu@gmail.com>
+#
+
+#
+# Browser
+#
+
+export BROWSER='open'
+
+#
+# Editors
+#
+
+export LOCAL_DEFAULT_EDITOR='nvim'
+
+if [[ -z "$EDITOR" ]]; then
+  export EDITOR=$LOCAL_DEFAULT_EDITOR
+fi
+if [[ -z "$VISUAL" ]]; then
+  export VISUAL=$LOCAL_DEFAULT_EDITOR
+fi
+if [[ -z "$PAGER" ]]; then
+  export PAGER='less'
+fi
+
+export GIT_EDITOR=$EDITOR
+
+#
+# Language
+#
+
+if [[ -z "$LANG" ]]; then
+  export LANG='en_US.UTF-8'
+fi
+
+#
+# Paths
+#
+
+# Ensure path arrays do not contain duplicates.
+typeset -gU cdpath fpath mailpath path
+
+# Set the list of directories that cd searches.
+# cdpath=(
+#   $cdpath
+# )
+
+# Set the list of directories that Zsh searches for programs.
+path=(
+  /opt/homebrew/anaconda3/bin
+  /opt/homebrew//lib/node_modules/ghost-cli/bin/ghost
+  $HOME/{,s}bin(N)
+  $HOME/.config/bin(N)
+  /opt/{homebrew,local}/{,s}bin(N)
+  /usr/local/{,s}bin(N)
+  ~/.local/bin
+
+  $path
+)
+
+#
+# Less
+#
+
+# Set the default Less options.
+# Mouse-wheel scrolling has been disabled by -X (disable screen clearing).
+# Remove -X to enable it.
+if [[ -z "$LESS" ]]; then
+  export LESS='-g -i -M -R -S -w -X -z-4'
+fi
+
+# Set the Less input preprocessor.
+# Try both `lesspipe` and `lesspipe.sh` as either might exist on a system.
+if [[ -z "$LESSOPEN" ]] && (( $#commands[(i)lesspipe(|.sh)] )); then
+  export LESSOPEN="| /usr/bin/env $commands[(i)lesspipe(|.sh)] %s 2>&-"
+fi
+
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+eval "$(rbenv init -)"
+
+# Zoxide setup
+eval "$(zoxide init zsh)"
+
+# Set up fzf key bindings and fuzzy completion
+source <(fzf --zsh)
+
+# Set up uvx
+source $HOME/.local/bin/env
+
+# Preview file content using bat (https://github.com/sharkdp/bat)
+export FZF_CTRL_T_OPTS="
+  --walker-skip .git,node_modules,target
+  --preview 'bat -n --color=always {}'
+  --bind 'ctrl-/:change-preview-window(down|hidden|)'"
+export FZF_DEFAULT_COMMAND='fd --type f --strip-cwd-prefix'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_DEFAULT_COMMAND='fd --type f --strip-cwd-prefix --hidden --follow --exclude .git'
+export FZF_ALT_C_OPTS="
+  --walker-skip .git,node_modules,target
+  --preview 'tree -C {}'"
+  # CTRL-Y to copy the command into clipboard using pbcopy
+export FZF_CTRL_R_OPTS="
+  --bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'
+  --color header:italic
+  --header 'Press CTRL-Y to copy command into clipboard'"
+
+# Set the default text editor.
+
+env RCRC=/Users/bruno/.config/thoughbot-dotfiles/b/rcrc rcup
+
+PREFIX=/opt/homebrew/anaconda3

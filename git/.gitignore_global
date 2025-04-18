@@ -1,0 +1,26 @@
+# macOS system files
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Finder metadata
+.Spotlight-V100
+.Trashes
+
+# Thumbnail cache files
+._*
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
