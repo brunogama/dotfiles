@@ -125,6 +125,26 @@ git pull
 ./install.sh
 ```
 
+## Pre-commit Hooks
+
+This repository uses pre-commit hooks to ensure code quality and consistency.
+
+1.  **Install pre-commit**:
+    ```bash
+    pip install pre-commit
+    # or using Homebrew on macOS
+    # brew install pre-commit
+    ```
+
+2.  **Install the hooks**:
+    Navigate to the repository root and run:
+    ```bash
+    pre-commit install
+    ```
+    This will install the hooks defined in `.pre-commit-config.yaml`, which will run automatically before each commit.
+
+    For iOS development, you can also use my pre-commit configuration template available at [brunogama/pre-commit-configs](https://github.com/brunogama/pre-commit-configs).
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
