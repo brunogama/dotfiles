@@ -1,0 +1,1 @@
+/Users/bruno/.config/zsh/.zprezto/runcoms/zshrc

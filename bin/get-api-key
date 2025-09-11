@@ -1,0 +1,83 @@
+#!/bin/bash
+#
+# get-api-key - Retrieve API keys from macOS Keychain
+# Usage: get-api-key <service_name>
+# Example: get-api-key SERVICEA_API_KEY
+#
+# This script uses the macOS security command to retrieve API keys
+# from the user's login keychain.
+
+set -euo pipefail
+
+# Script name for error messages
+readonly SCRIPT_NAME="$(basename "$0")"
+
+# Function to display usage information
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME <service_name>
+
+Retrieve an API key from the macOS Keychain.
+
+Arguments:
+  service_name    The name/identifier for the API key (e.g., SERVICEA_API_KEY)
+
+Example:
+  $SCRIPT_NAME SERVICEA_API_KEY
+
+Notes:
+  - The key must have been previously stored with store-api-key
+  - You may be prompted to allow access on first use
+  - The API key is printed to stdout
+EOF
+    exit 1
+}
+
+# Function to display error messages
+error() {
+    echo "Error: $1" >&2
+    exit "${2:-1}"
+}
+
+# Check if running on macOS
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    error "This script requires macOS" 2
+fi
+
+# Check if security command is available
+if ! command -v security &> /dev/null; then
+    error "The 'security' command is not available" 2
+fi
+
+# Check number of arguments
+if [[ $# -ne 1 ]]; then
+    usage
+fi
+
+# Assign argument to variable
+readonly SERVICE_NAME="$1"
+
+# Validate service name
+if [[ -z "$SERVICE_NAME" ]]; then
+    error "Service name cannot be empty" 3
+fi
+
+# Validate service name format (alphanumeric, underscore, dash)
+if ! [[ "$SERVICE_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    error "Service name must contain only letters, numbers, underscores, and dashes" 3
+fi
+
+# Retrieve the API key from the keychain
+# -a: account name (using current user)
+# -s: service name
+# -w: output password only
+API_KEY=$(security find-generic-password \
+    -a "$USER" \
+    -s "$SERVICE_NAME" \
+    -w \
+    2>/dev/null) || {
+    error "API key for '$SERVICE_NAME' not found in keychain" 4
+}
+
+# Output the API key
+echo "$API_KEY"

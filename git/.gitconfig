@@ -1,0 +1,167 @@
+[user]
+	name = Bruno da Gama Porciuncula
+	email = 652969+brunogama@users.noreply.github.com
+
+[core]
+    excludesfile = ~/.gitignore_global
+
+[init]
+    templateDir = /Users/bruno/.git-template
+	defaultBranch = main
+
+[push]
+    autoSetupRemote = true
+	default = current
+
+[alias]
+    # ========================================
+    # 1. Basic Git Operations
+    # ========================================
+    st = status
+    br = branch
+    ci = commit
+    df = diff
+    lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+    s = status -s
+    # ========================================
+    # 2. Enhanced Logging
+    # ========================================
+    lga = log --oneline --decorate --all --graph --author --color
+    lgs = log --oneline --decorate --all --graph --stat --color
+    lgt = log --oneline --decorate --all --graph --tags --color
+    lgb = log --oneline --decorate --all --graph --branches --color
+    lgc = log --oneline --decorate --all --graph --color
+    lgr = log --oneline --decorate --all --graph --remotes --color
+    last-commit = log --since=midnight --oneline --decorate --all --graph --color
+    last-changes = log -1 HEAD --stat --color
+    today-commits = log --since=midnight --oneline --decorate --all --graph
+    recent = !git branch --sort=-committerdate --format="%(committerdate:relative)%09%(refname:short)"
+    day = "!git log --since=midnight --author=\"$(git config user.name)\" --oneline"
+
+    # ========================================
+    # 3. Branch Management
+    # ========================================
+    sw = switch
+    swc = "!f() { git switch -c $1 || true; }; f"
+    swh = "!f() { git branch --all && read -p 'Switch to branch: ' branch && git switch $branch; }; f"
+    new-branch = "!f() { git switch -c $1 || true; }; f"
+    switch-last-release = "!git switch $(git last-release)"
+    gcb = "!f() { git switch -c $1; }; f"
+    grb = branch -r
+    gcur = "rev-parse --abbrev-ref HEAD"
+    ahead = "!git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads | awk '$2 {print $1}'"
+    cleanup-branches = "!f() { git branch --merged | grep -v '\\*' | xargs -n 1 git branch -d; }; f"
+
+    # ========================================
+    # 4. Advanced Git Operations
+    # ========================================
+    fa = "!f() { git fetch --all --tags }; f"
+    fes = "!f() { git fetch --all --tags && git submodule foreach --recursive 'git fetch --all --tags' }; f"
+    gp = push
+    gl = pull
+    gfr = "!f() { git fetch && git rebase origin/$(git branch --show-current); }; f"
+    up = "pull --rebase --autostash"
+    p = "!f() { git push --set-upstream origin \"$(git symbolic-ref --short HEAD)\"; }; f"
+
+    # ========================================
+    # 5. Submodule Management
+    # ========================================
+    subup = submodule update --init --recursive
+    subupdate = submodule update --remote --merge
+    subsync = !git submodule sync && git submodule update --init --recursive
+    subrm = "!sh ~/.config/git/scripts/git-subrm.sh"
+    delete-submodule = "!f() { git submodule deinit -f -- $1 || true; git rm -f $1 || true; rm -rf .git/modules/$1 || true; }; f"
+    delete-all-submodules = "!git submodule deinit -f -- . || true; git rm -f . || true; rm -rf .git/modules/* || true"
+    delete-all-submodules-remote = "!git submodule foreach --recursive 'git push origin --delete $(git rev-parse --abbrev-ref HEAD) || true'"
+    delete-all-submodules-local-and-remote = "!git delete-all-submodules && git delete-all-submodules-remote"
+
+    # ========================================
+    # 6. Tag Management
+    # ========================================
+    tag-current = tag -f -a
+    last-tag = describe --tags --abbrev=0
+    last-tag-commits = describe --tags --abbrev=0 --long --color
+    checkout-last-tag = "!f() { LAST_TAG=$(git last-tag); git delete-last-tag; git tag-current $LAST_TAG }; f"
+    delete-last-tag = "!f() { LAST_TAG=$(git last-tag); git tag -d $LAST_TAG; }; f"
+    current-tag = describe --tags --abbrev=0
+    tags = tag -l --sort=-v:refname -n1
+
+    # ========================================
+    # 7. Stash Management
+    # ========================================
+    stash-list = stash list
+    stash-rename = stash rename
+    stash-clear = stash clear
+    gstash = "stash list --stat"
+    stashi = "!f() { git stash save $(date +%Y-%m-%d_%H-%M-%S)_$1; }; f"
+
+    # ========================================
+    # 8. WIP and Savepoint Management
+    # ========================================
+    wip = "!sh ~/.config/git/scripts/git-wip.sh"
+    restore-wip = "!sh ~/.config/git/scripts/git-restore-wip.sh"
+    restore-wip-all = "!sh ~/.config/git/scripts/git-restore-wip-all.sh"
+    restore-last-save = "!sh ~/.config/git/scripts/git-restore-last-savepoint.sh"
+    savepoint = !git add -A && git commit -qm 'chore!: SAVEPOINT' --no-verify && git reset HEAD~1 --hard
+    save-all = "!sh ~/.config/git/scripts/git-save-all.sh"
+
+    # ========================================
+    # 9. Branch and Remote Management
+    # ========================================
+    delete-local-branch = "!f() { git branch -d $1 || true; }; f"
+    delete-remote-branch = "!f() { git push origin --delete $1 || true; }; f"
+    submodules-delete-local-branch = "!f() { git submodule foreach --recursive 'git branch -d $1 || true'; }; f"
+    submodules-delete-remote-branch = "!f() { git submodule foreach --recursive 'git push origin --delete $1 || true'; }; f"
+    destroy-dev-branch = "!git switch main && git submodules git switch main; git delete-local-branch dev && git delete-remote-branch dev; git fetch --all --tags; git submodule git fetch --all-tags; git switch dev; git switch dev"
+    reset-to-upstream = "!git fetch && git reset --hard @{u}"
+
+    # ========================================
+    # 10. Repository Navigation and Information
+    # ========================================
+    root = rev-parse --show-toplevel
+    browse = "!sh ~/.config/git/scripts/git-browse.sh"
+    ls = "!git ls-tree -r HEAD | awk '{print $4}'"
+    size = "count-objects -vH"
+    tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --all
+    aliases = "!git config --get-regexp ^alias\\. | sed -e s/^alias\\.// -e s/\\ /\\ =\\ /"
+
+    # ========================================
+    # 11. Conventional Commits
+    # ========================================
+    feat = "!sh ~/.config/git/scripts/git-conventional-commit.sh feat"
+    fix = "!sh ~/.config/git/scripts/git-conventional-commit.sh fix"
+    docs = "!sh ~/.config/git/scripts/git-conventional-commit.sh docs"
+    style = "!sh ~/.config/git/scripts/git-conventional-commit.sh style"
+    refactor = "!sh ~/.config/git/scripts/git-conventional-commit.sh refactor"
+    test = "!sh ~/.config/git/scripts/git-conventional-commit.sh test"
+    chore = "!sh ~/.config/git/scripts/git-conventional-commit.sh chore"
+
+    # ========================================
+    # 12. Utility Commands
+    # ========================================
+    undo = reset HEAD~1 --mixed
+    gundo = reset --soft HEAD~1
+    amend = commit --amend --no-edit
+    grebase = "!f() { git rebase -i HEAD~$1; }; f"
+    ri = "!f() { git rebase -i --autosquash HEAD~$1; }; f"
+    staged = diff --cached
+    news = "!git log --patch --since='1 day ago' --reverse"
+    find = "!f() { git log --pretty=format:'%C(yellow)%h  %Cblue%ad  %Creset%s%Cgreen  [%cn] %Cred%d' --decorate --date=short --grep=$1; }; f"
+    blame-summary = "!f() { git ls-files | xargs -n1 git blame --line-porcelain | grep '^author ' | sort | uniq -c | sort -nr; }; f"
+    make-patch = "format-patch -1 HEAD"
+    export = "!f() { git archive --format=zip HEAD > ${1:-archive}.zip; }; f"
+    cm = "!f() { git add -A && git commit -m \"$1\"; }; f"
+    changed = "show --name-only --oneline HEAD"
+    cherry-pick-interactive = "!python3 ~/.config/git/scripts/interactive-cherry-pick"
+    squash-commits-with-same-name = "!sh ~/.config/git/scripts/git-squash-commits-which-contains-same-name-sequencially.sh"
+	delete-remote-tags = !git tag -l | xargs -r git push --delete origin
+	delete-local-tags = !git tag -l | xargs -r git tag -d
+	delete-all-tags = !git delete-remote-tags && git delete-local-tags
+
+[commit]
+	template = /Users/bruno/.config/git/conventional-commits-gitmessage
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true

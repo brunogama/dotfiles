@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Define colors
+USER_COLOR='\033[0;32m'  # Green for user-owned paths
+NON_USER_COLOR='\033[0;31m'  # Red for non-user-owned paths
+RESET='\033[0m'
+
+# Get the username
+CURRENT_USER=$(whoami)
+
+# Split the PATH variable into directories
+IFS=':' read -ra DIRECTORIES <<< "$PATH"
+
+# Print header
+printf "%-50s %-20s\n" "Directory" "Ownership"
+
+# Print paths with different colors based on ownership
+for dir in "${DIRECTORIES[@]}"; do
+    if [ -d "$dir" ]; then
+        owner=$(ls -ld "$dir" | awk '{print $3}')
+        if [ "$owner" = "$CURRENT_USER" ]; then
+            printf "${USER_COLOR}%-50s %-20s${RESET}\n" "$dir" "Owned by $CURRENT_USER"
+        else
+            printf "${NON_USER_COLOR}%-50s %-20s${RESET}\n" "$dir" "Owned by $owner"
+        fi
+    fi
+done
