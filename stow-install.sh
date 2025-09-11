@@ -110,29 +110,29 @@ install_packages() {
     log_info "Installing dotfiles packages..."
     cd "$DOTFILES_DIR"
     
-    # Make stow install script executable
-    chmod +x ./stow-install.sh
+    # Make install script executable
+    chmod +x ./install.sh
     
     # Install core packages first
     log_info "Installing core packages (zsh, git, bin)..."
-    ./stow-install.sh zsh git bin
+    ./install.sh zsh git bin
     
     # Install sync service
     log_info "Installing sync service..."
-    ./stow-install.sh sync-service
+    ./install.sh sync-service
     
     # Install shell tools
     log_info "Installing shell tools..."
-    ./stow-install.sh shell-tools
+    ./install.sh shell-tools
     
     # Install homebrew management
     log_info "Installing homebrew management..."
-    ./stow-install.sh homebrew
+    ./install.sh homebrew
     
     # Install macOS apps configuration (optional)
     if [[ -d "stow-packages/macos" ]]; then
         log_info "Installing macOS app configurations..."
-        ./stow-install.sh macos
+        ./install.sh macos
     fi
 }
 

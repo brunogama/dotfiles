@@ -30,28 +30,42 @@ Modern, organized dotfiles using GNU Stow for clean symlink management.
 
 ## Quick Start
 
-### Prerequisites
+### One-Line Installation (Recommended)
 
 ```bash
-# Install GNU Stow (if not already installed)
-brew install stow
+# Complete setup with one command (includes all dependencies)
+curl -fsSL https://raw.githubusercontent.com/brunogama/dotfiles/main/install.sh | bash
 ```
 
-### Installation
+This will automatically:
+- Install Xcode Command Line Tools (if needed)
+- Install Homebrew (if needed)  
+- Install GNU Stow
+- Clone this repository with submodules (includes Prezto)
+- Install all dotfiles packages
+- Configure your shell
+- Set up credential management
+
+### Manual Installation
+
+If you prefer manual control:
 
 ```bash
+# Install prerequisites
+brew install stow
+
 # Clone this repository with submodules (includes Prezto)
-git clone --recurse-submodules <your-repo-url> ~/.config
+git clone --recurse-submodules https://github.com/brunogama/dotfiles.git ~/.config
 cd ~/.config
 
 # Or if you already cloned without submodules:
 git submodule update --init --recursive
 
 # Install all packages
-./install.sh
+./stow-install.sh
 
 # Or install specific packages
-./install.sh zsh git bin
+./stow-install.sh zsh git bin
 ```
 
 ### First Time Setup
@@ -74,26 +88,26 @@ work-mode on
 
 ## Management Commands
 
-### Installation Script (`./install.sh`)
+### Stow Package Management (`./stow-install.sh`)
 
 ```bash
 # Install all packages
-./install.sh
+./stow-install.sh
 
 # Install specific packages
-./install.sh zsh git bin sync-service
+./stow-install.sh zsh git bin sync-service
 
 # List available packages
-./install.sh --list
+./stow-install.sh --list
 
 # Dry run (see what would be installed)
-./install.sh --dry-run
+./stow-install.sh --dry-run
 
 # Backup existing configs before installing
-./install.sh --backup
+./stow-install.sh --backup
 
 # Force installation (resolve conflicts)
-./install.sh --force
+./stow-install.sh --force
 ```
 
 ### Home Sync Service (`home-sync`)
