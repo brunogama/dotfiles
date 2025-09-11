@@ -54,7 +54,7 @@ cd ~/.config && git add . && git commit -m "feat: add new-package"
 
 ```bash
 # Clone your dotfiles
-git clone <your-repo> ~/.config
+git clone https://github.com/brunogama/dotfiles.git ~/.config
 cd ~/.config
 
 # Install the homebrew package
