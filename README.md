@@ -40,9 +40,12 @@ brew install stow
 ### Installation
 
 ```bash
-# Clone this repository
-git clone <your-repo-url> ~/.config
+# Clone this repository with submodules (includes Prezto)
+git clone --recurse-submodules <your-repo-url> ~/.config
 cd ~/.config
+
+# Or if you already cloned without submodules:
+git submodule update --init --recursive
 
 # Install all packages
 ./install.sh
