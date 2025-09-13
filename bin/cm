@@ -2,59 +2,305 @@
 
 set -euo pipefail
 
+# Colors for better UX
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Emojis for commit types
+declare -A COMMIT_EMOJIS=(
+    ["feat"]="✨"
+    ["fix"]="🐛"
+    ["docs"]="📚"
+    ["style"]="💄"
+    ["refactor"]="♻️"
+    ["test"]="🧪"
+    ["chore"]="🔧"
+    ["perf"]="⚡"
+    ["ci"]="👷"
+    ["build"]="📦"
+    ["revert"]="⏪"
+)
+
 # Help function
 show_help() {
     cat << EOF
-Usage: cm <type>[scope] <message>
-Example: cm feat(auth) "add login feature"
-        cm fix "resolve null pointer"
+${CYAN}Enhanced Conventional Commit Tool${NC}
 
-Types:
-    feat:     New feature
-    fix:      Bug fix
-    docs:     Documentation changes
-    style:    Code style changes
-    refactor: Code refactoring
-    test:     Testing
-    chore:    Maintenance tasks
+${YELLOW}Usage:${NC}
+  cm                           # Interactive mode
+  cm <type>[scope] <message>   # Direct commit
+  cm --help                    # Show this help
+
+${YELLOW}Examples:${NC}
+  cm feat(auth) "add OAuth login"
+  cm fix "resolve memory leak"
+  cm docs "update API documentation"
+
+${YELLOW}Commit Types:${NC}
+  ${GREEN}feat${NC}     ✨ New feature
+  ${GREEN}fix${NC}      🐛 Bug fix
+  ${GREEN}docs${NC}     📚 Documentation changes
+  ${GREEN}style${NC}    💄 Code style changes (formatting, etc)
+  ${GREEN}refactor${NC} ♻️  Code refactoring
+  ${GREEN}test${NC}     🧪 Testing
+  ${GREEN}chore${NC}    🔧 Maintenance tasks
+  ${GREEN}perf${NC}     ⚡ Performance improvements
+  ${GREEN}ci${NC}       👷 CI/CD changes
+  ${GREEN}build${NC}    📦 Build system changes
+  ${GREEN}revert${NC}   ⏪ Revert previous commit
+
+${YELLOW}Interactive Features:${NC}
+  • Auto-detects unstaged changes
+  • Suggests commit types based on file changes
+  • Shows git status and diff preview
+  • Validates commit message format
 EOF
 }
 
-# Validate input
-if [ $# -lt 1 ]; then
-    show_help
-    exit 1
-fi
+# Check if we're in a git repository
+check_git_repo() {
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        echo -e "${RED}Error: Not in a git repository${NC}"
+        exit 1
+    fi
+}
 
-# Extract type and scope
-commit_type="${1%%\(*}"  # Extract type before parenthesis
-scope=""
+# Show current git status
+show_git_status() {
+    echo -e "${BLUE}=== Git Status ===${NC}"
+    git status --short
+    echo
+    
+    # Show staged changes count
+    staged_count=$(git diff --cached --name-only | wc -l | tr -d ' ')
+    unstaged_count=$(git diff --name-only | wc -l | tr -d ' ')
+    untracked_count=$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')
+    
+    echo -e "${GREEN}Staged: ${staged_count}${NC} | ${YELLOW}Modified: ${unstaged_count}${NC} | ${RED}Untracked: ${untracked_count}${NC}"
+    echo
+}
 
-if [[ $1 =~ \(.*\) ]]; then
-    scope=$(echo "$1" | sed -n 's/.*(\(.*\)).*/\1/p')
-fi
+# Auto-suggest commit type based on file changes
+suggest_commit_type() {
+    local staged_files=$(git diff --cached --name-only)
+    local modified_files=$(git diff --name-only)
+    local all_files="${staged_files} ${modified_files}"
+    
+    if [[ -z "$all_files" ]]; then
+        return
+    fi
+    
+    # Analyze file patterns
+    if echo "$all_files" | grep -q -E "\.(md|txt|rst)$"; then
+        echo "docs"
+    elif echo "$all_files" | grep -q -E "\.(test|spec)\.|test/|spec/"; then
+        echo "test"
+    elif echo "$all_files" | grep -q -E "package\.json|Gemfile|requirements\.txt|Cargo\.toml"; then
+        echo "chore"
+    elif echo "$all_files" | grep -q -E "\.yml$|\.yaml$|Dockerfile|\.ci|\.github"; then
+        echo "ci"
+    elif git diff --cached --name-only | head -1 | grep -q -E "\.(js|ts|py|rb|go|rs|swift)$"; then
+        # If code files, suggest feat for new files, fix for existing
+        if git diff --cached --diff-filter=A --name-only | grep -q .; then
+            echo "feat"
+        else
+            echo "fix"
+        fi
+    else
+        echo "chore"
+    fi
+}
 
-# Validate commit type
-valid_types=("feat" "fix" "docs" "style" "refactor" "test" "chore")
-if [[ ! " ${valid_types[*]} " =~ ${commit_type} ]]; then
-    echo "Error: Invalid commit type '${commit_type}'"
-    show_help
-    exit 1
-fi
+# Interactive mode
+interactive_mode() {
+    echo -e "${PURPLE}🚀 Interactive Commit Mode${NC}"
+    echo
+    
+    show_git_status
+    
+    # Check if there are staged changes
+    if ! git diff --cached --quiet; then
+        echo -e "${GREEN}✅ You have staged changes ready to commit${NC}"
+    elif ! git diff --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+        echo -e "${YELLOW}⚠️  You have unstaged changes${NC}"
+        echo -e "${CYAN}Would you like to stage all changes? (y/N):${NC}"
+        read -r stage_all
+        if [[ $stage_all =~ ^[Yy]$ ]]; then
+            git add -A
+            echo -e "${GREEN}✅ All changes staged${NC}"
+        else
+            echo -e "${CYAN}Stage specific files with: git add <file>${NC}"
+            echo -e "${CYAN}Or stage all with: git add -A${NC}"
+            exit 0
+        fi
+    else
+        echo -e "${RED}❌ No changes to commit${NC}"
+        exit 1
+    fi
+    
+    echo
+    
+    # Suggest commit type
+    suggested_type=$(suggest_commit_type)
+    if [ -n "$suggested_type" ]; then
+        echo -e "${CYAN}💡 Suggested type based on your changes: ${GREEN}${suggested_type}${NC}"
+    fi
+    
+    # Get commit type
+    echo -e "${CYAN}Select commit type (or press Enter for ${suggested_type:-feat}):${NC}"
+    echo -e "${YELLOW}1) feat     ✨ 2) fix      🐛 3) docs     📚"
+    echo -e "4) style    💄 5) refactor ♻️  6) test     🧪"
+    echo -e "7) chore    🔧 8) perf     ⚡ 9) ci       👷${NC}"
+    
+    read -r type_choice
+    
+    case $type_choice in
+        1) commit_type="feat" ;;
+        2) commit_type="fix" ;;
+        3) commit_type="docs" ;;
+        4) commit_type="style" ;;
+        5) commit_type="refactor" ;;
+        6) commit_type="test" ;;
+        7) commit_type="chore" ;;
+        8) commit_type="perf" ;;
+        9) commit_type="ci" ;;
+        "") commit_type="${suggested_type:-feat}" ;;
+        *) commit_type="$type_choice" ;;
+    esac
+    
+    # Validate commit type
+    valid_types=("feat" "fix" "docs" "style" "refactor" "test" "chore" "perf" "ci" "build" "revert")
+    if [[ ! " ${valid_types[*]} " =~ ${commit_type} ]]; then
+        echo -e "${RED}Error: Invalid commit type '${commit_type}'${NC}"
+        exit 1
+    fi
+    
+    # Get scope (optional)
+    echo -e "${CYAN}Enter scope (optional, e.g., 'auth', 'api', 'ui'):${NC}"
+    read -r scope
+    
+    # Get commit message
+    echo -e "${CYAN}Enter commit message:${NC}"
+    read -r message
+    
+    if [ -z "$message" ]; then
+        echo -e "${RED}Error: Commit message cannot be empty${NC}"
+        exit 1
+    fi
+    
+    # Build and execute commit
+    build_and_commit "$commit_type" "$scope" "$message"
+}
 
-# Build commit message template
-if [ -n "$scope" ]; then
-    template="${commit_type}(${scope}): "
-else
-    template="${commit_type}: "
-fi
+# Build commit message and execute
+build_and_commit() {
+    local type="$1"
+    local scope="$2"
+    local message="$3"
+    local emoji="${COMMIT_EMOJIS[$type]:-}"
+    
+    # Build commit message
+    if [ -n "$scope" ]; then
+        full_message="${emoji} ${type}(${scope}): ${message}"
+    else
+        full_message="${emoji} ${type}: ${message}"
+    fi
+    
+    echo -e "${YELLOW}Committing:${NC} ${full_message}"
+    
+    # Show what will be committed
+    echo -e "\n${BLUE}Files to be committed:${NC}"
+    git diff --cached --name-status
+    
+    # Confirm commit
+    echo -e "\n${CYAN}Proceed with commit? (Y/n):${NC}"
+    read -r confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        echo -e "${YELLOW}Commit cancelled${NC}"
+        exit 0
+    fi
+    
+    # Execute commit
+    if git commit -m "$full_message"; then
+        echo -e "${GREEN}✅ Commit successful!${NC}"
+        
+        # Show recent commits
+        echo -e "\n${BLUE}Recent commits:${NC}"
+        git log --oneline -5 --color=always
+    else
+        echo -e "${RED}❌ Commit failed${NC}"
+        exit 1
+    fi
+}
 
-# Start git commit with template
-if [ $# -eq 1 ]; then
-    git commit -m "$template" -e
-else
-    # Remove the first argument and join the rest
-    shift
-    message="$*"
-    git commit -m "${template}${message}"
-fi
+# Parse command line arguments
+parse_args() {
+    local input="$1"
+    
+    # Extract type and scope
+    commit_type="${input%%\(*}"  # Extract type before parenthesis
+    scope=""
+    
+    if [[ $input =~ \(.*\) ]]; then
+        scope=$(echo "$input" | sed -n 's/.*(\(.*\)).*/\1/p')
+    fi
+    
+    # Validate commit type
+    valid_types=("feat" "fix" "docs" "style" "refactor" "test" "chore" "perf" "ci" "build" "revert")
+    if [[ ! " ${valid_types[*]} " =~ ${commit_type} ]]; then
+        echo -e "${RED}Error: Invalid commit type '${commit_type}'${NC}"
+        show_help
+        exit 1
+    fi
+    
+    echo "$commit_type|$scope"
+}
+
+# Main execution
+main() {
+    check_git_repo
+    
+    # Handle help
+    if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+        show_help
+        exit 0
+    fi
+    
+    # Interactive mode if no arguments
+    if [ $# -eq 0 ]; then
+        interactive_mode
+        exit 0
+    fi
+    
+    # Parse first argument
+    parsed=$(parse_args "$1")
+    commit_type=$(echo "$parsed" | cut -d'|' -f1)
+    scope=$(echo "$parsed" | cut -d'|' -f2)
+    
+    # Handle message
+    if [ $# -eq 1 ]; then
+        # No message provided, open editor with template
+        emoji="${COMMIT_EMOJIS[$commit_type]:-}"
+        if [ -n "$scope" ]; then
+            template="${emoji} ${commit_type}(${scope}): "
+        else
+            template="${emoji} ${commit_type}: "
+        fi
+        
+        show_git_status
+        git commit -m "$template" -e
+    else
+        # Message provided
+        shift
+        message="$*"
+        build_and_commit "$commit_type" "$scope" "$message"
+    fi
+}
+
+# Run main function
+main "$@"
