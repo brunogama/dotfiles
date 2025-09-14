@@ -6,12 +6,18 @@
     excludesfile = ~/.gitignore_global
 
 [init]
-    templateDir = /Users/bruno/.git-template
+    templateDir = ~/.git-template
 	defaultBranch = main
 
 [push]
     autoSetupRemote = true
 	default = current
+
+[pull]
+    rebase = true
+
+[rebase]
+    autoStash = true
 
 [alias]
     # ========================================
@@ -23,18 +29,13 @@
     df = diff
     lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
     s = status -s
+
     # ========================================
     # 2. Enhanced Logging
     # ========================================
-    lga = log --oneline --decorate --all --graph --author --color
-    lgs = log --oneline --decorate --all --graph --stat --color
-    lgt = log --oneline --decorate --all --graph --tags --color
-    lgb = log --oneline --decorate --all --graph --branches --color
-    lgc = log --oneline --decorate --all --graph --color
-    lgr = log --oneline --decorate --all --graph --remotes --color
     last-commit = log --since=midnight --oneline --decorate --all --graph --color
+    last-commits = "!f() { n=${1:-3}; case $n in (''|*[!0-9]*) n=3;; esac; git log -n $n --oneline --decorate --all --graph --color; }; f"
     last-changes = log -1 HEAD --stat --color
-    today-commits = log --since=midnight --oneline --decorate --all --graph
     recent = !git branch --sort=-committerdate --format="%(committerdate:relative)%09%(refname:short)"
     day = "!git log --since=midnight --author=\"$(git config user.name)\" --oneline"
 
@@ -42,15 +43,8 @@
     # 3. Branch Management
     # ========================================
     sw = switch
-    swc = "!f() { git switch -c $1 || true; }; f"
+    swc = "!f() { git switch -c $1; }; f"
     swh = "!f() { git branch --all && read -p 'Switch to branch: ' branch && git switch $branch; }; f"
-    new-branch = "!f() { git switch -c $1 || true; }; f"
-    switch-last-release = "!git switch $(git last-release)"
-    gcb = "!f() { git switch -c $1; }; f"
-    grb = branch -r
-    gcur = "rev-parse --abbrev-ref HEAD"
-    ahead = "!git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads | awk '$2 {print $1}'"
-    cleanup-branches = "!f() { git branch --merged | grep -v '\\*' | xargs -n 1 git branch -d; }; f"
 
     # ========================================
     # 4. Advanced Git Operations
@@ -60,7 +54,6 @@
     gp = push
     gl = pull
     gfr = "!f() { git fetch && git rebase origin/$(git branch --show-current); }; f"
-    up = "pull --rebase --autostash"
     p = "!f() { git push --set-upstream origin \"$(git symbolic-ref --short HEAD)\"; }; f"
 
     # ========================================
@@ -83,14 +76,12 @@
     last-tag-commits = describe --tags --abbrev=0 --long --color
     checkout-last-tag = "!f() { LAST_TAG=$(git last-tag); git delete-last-tag; git tag-current $LAST_TAG }; f"
     delete-last-tag = "!f() { LAST_TAG=$(git last-tag); git tag -d $LAST_TAG; }; f"
-    current-tag = describe --tags --abbrev=0
     tags = tag -l --sort=-v:refname -n1
 
     # ========================================
     # 7. Stash Management
     # ========================================
     stash-list = stash list
-    stash-rename = stash rename
     stash-clear = stash clear
     gstash = "stash list --stat"
     stashi = "!f() { git stash save $(date +%Y-%m-%d_%H-%M-%S)_$1; }; f"
@@ -98,12 +89,9 @@
     # ========================================
     # 8. WIP and Savepoint Management
     # ========================================
-    wip = "!sh ~/.config/git/scripts/git-wip.sh"
-    restore-wip = "!sh ~/.config/git/scripts/git-restore-wip.sh"
-    restore-wip-all = "!sh ~/.config/git/scripts/git-restore-wip-all.sh"
-    restore-last-save = "!sh ~/.config/git/scripts/git-restore-last-savepoint.sh"
-    savepoint = !git add -A && git commit -qm 'chore!: SAVEPOINT' --no-verify && git reset HEAD~1 --hard
-    save-all = "!sh ~/.config/git/scripts/git-save-all.sh"
+    savepoint = !git add -A && git commit -qm 'chore!: SAVEPOINT' --no-verify
+    restore-savepoint = !git reset HEAD~1 --hard
+    wipe = !git add -A && git commit -qm 'chore(backup): wipe savepoint' && git reset HEAD~1 --hard
 
     # ========================================
     # 9. Branch and Remote Management
@@ -141,7 +129,6 @@
     # ========================================
     undo = reset HEAD~1 --mixed
     gundo = reset --soft HEAD~1
-    amend = commit --amend --no-edit
     grebase = "!f() { git rebase -i HEAD~$1; }; f"
     ri = "!f() { git rebase -i --autosquash HEAD~$1; }; f"
     staged = diff --cached
@@ -157,11 +144,50 @@
 	delete-remote-tags = !git tag -l | xargs -r git push --delete origin
 	delete-local-tags = !git tag -l | xargs -r git tag -d
 	delete-all-tags = !git delete-remote-tags && git delete-local-tags
+    backup-staging = '!git diff --name-only --cached -z > .git/_staged.lst && git reset && echo "Staging backup created"'
+    restore-staging = '![ -f .git/_staged.lst ] && xargs -0 git add -- < .git/_staged.lst && rm .git/_staged.lst && echo "Staging restored" || echo "No backup found"'
+
+    # ========================================
+    # 13. Advanced Branch Management
+    # ========================================
+    default = !git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'
+    bdone = "!f() { DEFAULT=$(git default); git switch ${1-$DEFAULT} && git up && git bclean ${1-$DEFAULT}; }; f"
+    bclean = "!f() { DEFAULT=$(git default); git branch --merged ${1-$DEFAULT} | grep -v " ${1-$DEFAULT}$" | xargs git branch -d; }; f"
+    up = !git pull --rebase --prune $@ && git submodule update --init --recursive
+    amend = commit -a --amend
+    new-branch = "!f() { \
+        if [ $# -ne 2 ]; then \
+            echo \"Error: new-branch requires exactly 2 parameters: <base-branch> <new-branch-name>\"; \
+            exit 1; \
+        fi; \
+        BASE_BRANCH=\"$1\"; \
+        NEW_BRANCH=\"$2\"; \
+        if [ -z \"$BASE_BRANCH\" ] || [ -z \"$NEW_BRANCH\" ]; then \
+            echo \"Error: Both parameters must be non-empty\"; \
+            exit 1; \
+        fi; \
+        echo \"Running: git bdone $BASE_BRANCH\"; \
+        git bdone \"$BASE_BRANCH\" && \
+        echo \"Creating new branch: $NEW_BRANCH from $BASE_BRANCH\" && \
+        git switch -c \"$NEW_BRANCH\"; \
+    }; f"
+
+    # ========================================
+    # 14. Additional Useful Aliases
+    # ========================================
+    unstage = reset HEAD --
+    discard = checkout --
+    branches = branch -vv
+    remotes = remote -v
 
 [commit]
-	template = /Users/bruno/.config/git/conventional-commits-gitmessage
+	template = ~/.config/git/conventional-commits-gitmessage
+
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+
+[rerere]
+    enabled = true
