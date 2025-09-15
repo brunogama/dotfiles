@@ -24,6 +24,8 @@ alias brew-full-sync="brew-sync sync"
 # Personal environment variables
 export MACHINE_TYPE="personal"
 export HOME_ENV="personal"
+export EDITOR="code"
+export VISUAL="code"
 
 # Personal-specific aliases and functions
 alias personal-backup="home-sync push && echo '✅ Personal environment backed up'"
