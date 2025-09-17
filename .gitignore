@@ -121,6 +121,22 @@ gcloud
 **/.yarnrc
 **/.bundle/config
 
+# Node.js and npm artifacts
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/lerna-debug.log*
+**/.npm
+**/.yarn/
+**/package-lock.json
+**/yarn.lock
+
+# NVM (Node Version Manager)
+**/.nvm/
+**/nvm/
+**/.nvmrc.local
+
 # Additional cloud service configurations
 **/gcloud/
 **/.gcloud/
