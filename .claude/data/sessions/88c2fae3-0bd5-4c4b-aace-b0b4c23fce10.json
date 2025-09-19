@@ -1,0 +1,9 @@
+{
+  "session_id": "88c2fae3-0bd5-4c4b-aace-b0b4c23fce10",
+  "prompts": [
+    "@.bmad-core/tasks/ @.claude/ai_docs/spec/ ",
+    "your only job is to register tasks do not change code",
+    "start tasks using @agent-ios-fp "
+  ],
+  "agent_name": "Synth"
+}

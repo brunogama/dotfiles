@@ -1,0 +1,8 @@
+{
+  "session_id": "f43795d9-2181-43e7-880f-11124d7f04fa",
+  "prompts": [
+    "@agent-ios-fp continue kanban tasks",
+    "/all_tools "
+  ],
+  "agent_name": "Sage"
+}

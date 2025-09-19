@@ -1,0 +1,8 @@
+{
+  "session_id": "09662e83-987b-4444-9cfc-7cbd608d2c88",
+  "prompts": [
+    "I dont want the files in zsh/ to be symlinks from zprezto make it a file each symlink",
+    "you are hanging"
+  ],
+  "agent_name": "Nexus"
+}
