@@ -24,12 +24,28 @@ mise/local.toml
 **/tmp/
 **/*.tmp
 
+# Backup files
+**/*.backup*
+**/*.bak
+**/*.old
+**/*~
+
 # Zsh specific files
 zsh/.zsh_history*
+**/zsh_history.zsh
+**/*_history.zsh
+**/.zsh_history*
 # zsh/.zprezto - now tracked as symlink to submodule
 zsh/.zsh_sessions
 zsh/.zcompdump*
 zsh/.zcompcache/
+
+# Shell history files (all shells)
+**/*_history
+**/.bash_history*
+**/.fish_history*
+**/.node_repl_history*
+**/.python_history*
 # Ignore build artifacts
 **/build/
 # Ignore IDE specific files
