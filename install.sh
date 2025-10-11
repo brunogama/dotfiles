@@ -110,45 +110,39 @@ install_packages() {
     log_info "Installing dotfiles packages..."
     cd "$DOTFILES_DIR"
     
-    # Make stow install script executable
-    chmod +x ./stow-install.sh
-    
-    # Install core packages first
+    # Install core packages first using stow directly
     log_info "Installing core packages (zsh, git, bin)..."
-    ./stow-install.sh zsh git bin
-    
+    stow -d stow-packages -t "$HOME" zsh git bin
+
     # Install sync service
     log_info "Installing sync service..."
-    ./stow-install.sh sync-service
-    
+    stow -d stow-packages -t "$HOME" sync-service
+
     # Install shell tools
     log_info "Installing shell tools..."
-    ./stow-install.sh shell-tools
-    
+    stow -d stow-packages -t "$HOME" shell-tools
+
     # Install homebrew management
     log_info "Installing homebrew management..."
-    ./stow-install.sh homebrew
+    stow -d stow-packages -t "$HOME" homebrew
     
     # Install macOS apps configuration (optional)
     if [[ -d "stow-packages/macos" ]]; then
         log_info "Installing macOS app configurations..."
-        ./stow-install.sh macos
+        stow -d stow-packages -t "$HOME" macos
     fi
 }
 
 # Set up Prezto
 setup_prezto() {
-    log_info "Setting up Prezto configuration..."
-    
-    # Prezto should already be available via submodule
+    log_info "Checking Prezto configuration..."
+
+    # Check if Prezto is already installed
     if [[ -d "$HOME/.zprezto" ]]; then
-        log_success "Prezto is already available via submodule"
+        log_success "Prezto is already installed"
     else
-        # Create symlink if it doesn't exist
-        if [[ -d "$DOTFILES_DIR/stow-packages/zsh/.zprezto" ]]; then
-            ln -sf "$DOTFILES_DIR/stow-packages/zsh/.zprezto" "$HOME/.zprezto"
-            log_success "Created Prezto symlink"
-        fi
+        log_info "Prezto not found. Install manually if needed: https://github.com/sorin-ionescu/prezto"
+        log_info "Note: Your zsh configuration will work without Prezto"
     fi
 }
 
