@@ -187,3 +187,38 @@ cursor/
 !bin/dump-api-keys
 !bin/get-password-from-keytchain
 **/*-secret
+
+# Runtime & VM
+colima/
+*.pid
+*.sock
+
+uv/
+
+
+# Claude Code
+.claude/data/sessions/
+.claude/settings.local.json
+
+# Credentials
+*.key
+*.pem
+*_rsa
+*_ed25519
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+*.plist
+
+# Logs
+*.log
+
+# Temporary
+*.tmp
+*.temp
+.cache/
