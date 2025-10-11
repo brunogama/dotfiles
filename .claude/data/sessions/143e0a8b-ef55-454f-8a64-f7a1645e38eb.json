@@ -1,7 +1,0 @@
-{
-  "session_id": "143e0a8b-ef55-454f-8a64-f7a1645e38eb",
-  "prompts": [
-    "@agent-meta-agent run tree in .claude/ai_docs/spec/ - I need a Agent specialized in analyze specs documentation and break down the content into tasks a series of atomic tasks sorted by logical order and register it into the kanban "
-  ],
-  "agent_name": "Nexus"
-}

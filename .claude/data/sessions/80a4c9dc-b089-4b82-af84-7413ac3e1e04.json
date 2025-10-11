@@ -1,8 +1,0 @@
-{
-  "session_id": "80a4c9dc-b089-4b82-af84-7413ac3e1e04",
-  "prompts": [
-    "check my files /Users/bruno/.config/zsh/.zlogin\n/Users/bruno/.config/zsh/.zlogout\n/Users/bruno/.config/zsh/.zpreztorc\n/Users/bruno/.config/zsh/.zprofile\n/Users/bruno/.config/zsh/.zshenv\n/Users/bruno/.config/zsh/.zshrc\n/Users/bruno/.config/zsh/zprofile.zsh",
-    "i want you to configure it so I can hit option back arrow the cursor shoul jump to begining of the previous word"
-  ],
-  "agent_name": "Helix"
-}
