@@ -1,0 +1,398 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# dependencies = [
+#   "spacy>=3.7.0",
+#   "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl",
+#   "scikit-learn>=1.3.0",
+#   "rich>=13.7.0",
+#   "typer>=0.12.0",
+#   "tiktoken>=0.5.0",
+# ]
+# ///
+"""Intelligent Prompt Compression Tool.
+
+Compress prompts for LLMs using NLP techniques without relying on LLMs.
+Uses spaCy for sentence parsing and TF-IDF for importance ranking.
+"""
+
+from __future__ import annotations
+
+import sys
+from enum import Enum
+from pathlib import Path
+from typing import Optional
+
+import spacy
+import tiktoken
+import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+app = typer.Typer(help="Intelligent Prompt Compression Tool")
+console = Console()
+
+
+class CompressionStrategy(str, Enum):
+    """Compression strategy options."""
+
+    TFIDF = "tfidf"
+    POSITION = "position"
+    HYBRID = "hybrid"
+
+
+class TokenCounter:
+    """Token counter for various LLM encodings."""
+
+    def __init__(self, encoding: str = "cl100k_base") -> None:
+        """Initialize token counter.
+
+        Args:
+            encoding: tiktoken encoding name (cl100k_base for GPT-4, GPT-3.5)
+        """
+        self.encoder = tiktoken.get_encoding(encoding)
+
+    def count(self, text: str) -> int:
+        """Count tokens in text."""
+        return len(self.encoder.encode(text))
+
+
+class PromptCompressor:
+    """Compress prompts using NLP techniques."""
+
+    def __init__(self) -> None:
+        """Initialize compressor with spaCy model."""
+        self.nlp = spacy.load("en_core_web_sm")
+
+    def extract_sentences(self, text: str) -> list[str]:
+        """Extract sentences from text.
+
+        Args:
+            text: Input text
+
+        Returns:
+            List of sentences
+        """
+        doc = self.nlp(text)
+        return [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+
+    def compress_tfidf(
+        self, text: str, target_ratio: float = 0.3, min_sentences: int = 1
+    ) -> str:
+        """Compress using TF-IDF importance ranking.
+
+        Args:
+            text: Input text to compress
+            target_ratio: Target compression ratio (0.0-1.0)
+            min_sentences: Minimum sentences to keep
+
+        Returns:
+            Compressed text
+        """
+        sentences = self.extract_sentences(text)
+
+        if len(sentences) <= min_sentences:
+            return text
+
+        # Calculate TF-IDF scores
+        vectorizer = TfidfVectorizer(stop_words="english")
+        try:
+            tfidf_matrix = vectorizer.fit_transform(sentences)
+        except ValueError:
+            # Not enough variety in sentences
+            return self._compress_by_position(sentences, target_ratio, min_sentences)
+
+        # Sum TF-IDF scores per sentence
+        scores = tfidf_matrix.sum(axis=1).A1
+
+        # Calculate number of sentences to keep
+        n_keep = max(min_sentences, int(len(sentences) * target_ratio))
+
+        # Get top scoring sentences
+        top_indices = scores.argsort()[-n_keep:][::-1]
+        top_indices.sort()  # Maintain original order
+
+        return " ".join(sentences[i] for i in top_indices)
+
+    def compress_position(
+        self, text: str, target_ratio: float = 0.3, min_sentences: int = 1
+    ) -> str:
+        """Compress by keeping first and last sentences (position bias).
+
+        Args:
+            text: Input text to compress
+            target_ratio: Target compression ratio (0.0-1.0)
+            min_sentences: Minimum sentences to keep
+
+        Returns:
+            Compressed text
+        """
+        sentences = self.extract_sentences(text)
+
+        if len(sentences) <= min_sentences:
+            return text
+
+        return self._compress_by_position(sentences, target_ratio, min_sentences)
+
+    def _compress_by_position(
+        self, sentences: list[str], target_ratio: float, min_sentences: int
+    ) -> str:
+        """Helper for position-based compression."""
+        n_keep = max(min_sentences, int(len(sentences) * target_ratio))
+
+        # Keep first and last sentences (most important)
+        n_first = (n_keep + 1) // 2
+        n_last = n_keep - n_first
+
+        selected = []
+        selected.extend(sentences[:n_first])
+
+        if n_last > 0 and len(sentences) > n_first:
+            selected.extend(sentences[-n_last:])
+
+        return " ".join(selected)
+
+    def compress_hybrid(
+        self, text: str, target_ratio: float = 0.3, min_sentences: int = 1
+    ) -> str:
+        """Compress using hybrid approach (TF-IDF + position bias).
+
+        Args:
+            text: Input text to compress
+            target_ratio: Target compression ratio (0.0-1.0)
+            min_sentences: Minimum sentences to keep
+
+        Returns:
+            Compressed text
+        """
+        sentences = self.extract_sentences(text)
+
+        if len(sentences) <= min_sentences:
+            return text
+
+        # Calculate TF-IDF scores
+        vectorizer = TfidfVectorizer(stop_words="english")
+        try:
+            tfidf_matrix = vectorizer.fit_transform(sentences)
+        except ValueError:
+            return self._compress_by_position(sentences, target_ratio, min_sentences)
+
+        scores = tfidf_matrix.sum(axis=1).A1
+
+        # Boost scores for first and last sentences (position bias)
+        position_boost = 0.5
+        if len(scores) > 0:
+            scores[0] += scores[0] * position_boost
+        if len(scores) > 1:
+            scores[-1] += scores[-1] * position_boost
+
+        # Calculate number to keep
+        n_keep = max(min_sentences, int(len(sentences) * target_ratio))
+
+        # Get top scoring sentences
+        top_indices = scores.argsort()[-n_keep:][::-1]
+        top_indices.sort()  # Maintain order
+
+        return " ".join(sentences[i] for i in top_indices)
+
+    def compress(
+        self,
+        text: str,
+        strategy: CompressionStrategy = CompressionStrategy.HYBRID,
+        target_ratio: float = 0.3,
+        min_sentences: int = 1,
+    ) -> str:
+        """Compress text using specified strategy.
+
+        Args:
+            text: Input text
+            strategy: Compression strategy
+            target_ratio: Target compression ratio
+            min_sentences: Minimum sentences to keep
+
+        Returns:
+            Compressed text
+        """
+        if strategy == CompressionStrategy.TFIDF:
+            return self.compress_tfidf(text, target_ratio, min_sentences)
+        elif strategy == CompressionStrategy.POSITION:
+            return self.compress_position(text, target_ratio, min_sentences)
+        else:  # HYBRID
+            return self.compress_hybrid(text, target_ratio, min_sentences)
+
+
+@app.command()
+def compress(
+    input_file: Optional[Path] = typer.Option(
+        None, "--input", "-i", help="Input file (reads from stdin if not provided)"
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output file (writes to stdout if not provided)"
+    ),
+    ratio: float = typer.Option(
+        0.3,
+        "--ratio",
+        "-r",
+        min=0.1,
+        max=0.9,
+        help="Target compression ratio (0.1-0.9)",
+    ),
+    strategy: CompressionStrategy = typer.Option(
+        CompressionStrategy.HYBRID,
+        "--strategy",
+        "-s",
+        help="Compression strategy",
+    ),
+    min_sentences: int = typer.Option(
+        1, "--min-sentences", "-m", help="Minimum sentences to keep"
+    ),
+    encoding: str = typer.Option(
+        "cl100k_base",
+        "--encoding",
+        "-e",
+        help="Token encoding (cl100k_base for GPT-4/3.5)",
+    ),
+    show_stats: bool = typer.Option(
+        True, "--stats/--no-stats", help="Show compression statistics"
+    ),
+) -> None:
+    """Compress prompts for LLMs using NLP techniques.
+
+    Reduces token usage while preserving important information.
+    """
+    # Read input
+    if input_file:
+        if not input_file.exists():
+            console.print(f"[red]Error:[/red] File not found: {input_file}")
+            raise typer.Exit(1)
+        text = input_file.read_text()
+    else:
+        if sys.stdin.isatty():
+            console.print("[yellow]Reading from stdin (Ctrl+D to finish):[/yellow]")
+        text = sys.stdin.read()
+
+    if not text.strip():
+        console.print("[red]Error:[/red] No input provided")
+        raise typer.Exit(1)
+
+    # Initialize
+    token_counter = TokenCounter(encoding)
+    compressor = PromptCompressor()
+
+    # Compress
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Compressing..."),
+        console=console,
+    ) as progress:
+        progress.add_task("compress", total=None)
+        compressed = compressor.compress(
+            text, strategy=strategy, target_ratio=ratio, min_sentences=min_sentences
+        )
+
+    # Calculate stats
+    original_tokens = token_counter.count(text)
+    compressed_tokens = token_counter.count(compressed)
+    saved_tokens = original_tokens - compressed_tokens
+    actual_ratio = compressed_tokens / original_tokens if original_tokens > 0 else 0
+
+    # Output
+    if output_file:
+        output_file.write_text(compressed)
+        console.print(f"[green]✓[/green] Compressed text written to: {output_file}")
+    else:
+        console.print("\n[bold]Compressed Output:[/bold]")
+        console.print(Panel(compressed, border_style="green"))
+
+    # Show statistics
+    if show_stats:
+        table = Table(title="Compression Statistics", show_header=True)
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="green")
+
+        table.add_row("Original Tokens", str(original_tokens))
+        table.add_row("Compressed Tokens", str(compressed_tokens))
+        table.add_row("Tokens Saved", f"{saved_tokens} ({saved_tokens/original_tokens*100:.1f}%)")
+        table.add_row("Actual Ratio", f"{actual_ratio:.2%}")
+        table.add_row("Target Ratio", f"{ratio:.2%}")
+        table.add_row("Strategy", strategy.value)
+        table.add_row("Encoding", encoding)
+
+        console.print()
+        console.print(table)
+
+
+@app.command()
+def compare(
+    input_file: Optional[Path] = typer.Argument(
+        None, help="Input file (reads from stdin if not provided)"
+    ),
+    ratio: float = typer.Option(
+        0.3, "--ratio", "-r", min=0.1, max=0.9, help="Target compression ratio"
+    ),
+) -> None:
+    """Compare all compression strategies side by side."""
+    # Read input
+    if input_file:
+        if not input_file.exists():
+            console.print(f"[red]Error:[/red] File not found: {input_file}")
+            raise typer.Exit(1)
+        text = input_file.read_text()
+    else:
+        if sys.stdin.isatty():
+            console.print("[yellow]Reading from stdin (Ctrl+D to finish):[/yellow]")
+        text = sys.stdin.read()
+
+    if not text.strip():
+        console.print("[red]Error:[/red] No input provided")
+        raise typer.Exit(1)
+
+    # Initialize
+    token_counter = TokenCounter()
+    compressor = PromptCompressor()
+    original_tokens = token_counter.count(text)
+
+    # Compare strategies
+    table = Table(title="Strategy Comparison", show_header=True)
+    table.add_column("Strategy", style="cyan")
+    table.add_column("Tokens", style="green", justify="right")
+    table.add_column("Saved", style="yellow", justify="right")
+    table.add_column("Ratio", style="magenta", justify="right")
+
+    strategies = [
+        CompressionStrategy.TFIDF,
+        CompressionStrategy.POSITION,
+        CompressionStrategy.HYBRID,
+    ]
+
+    for strategy in strategies:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn(f"[bold blue]Testing {strategy.value}..."),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task("compress", total=None)
+            compressed = compressor.compress(text, strategy=strategy, target_ratio=ratio)
+
+        compressed_tokens = token_counter.count(compressed)
+        saved = original_tokens - compressed_tokens
+        actual_ratio = compressed_tokens / original_tokens if original_tokens > 0 else 0
+
+        table.add_row(
+            strategy.value.upper(),
+            str(compressed_tokens),
+            f"{saved} ({saved/original_tokens*100:.1f}%)",
+            f"{actual_ratio:.2%}",
+        )
+
+    console.print()
+    console.print(f"[dim]Original tokens:[/dim] {original_tokens}")
+    console.print()
+    console.print(table)
+
+
+if __name__ == "__main__":
+    app()
