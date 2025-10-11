@@ -130,23 +130,24 @@ dump_default() {
     local description="${3:-}"
 
     local value
-    if value=$(defaults read "$domain" "$key" 2>/dev/null); then
-        local value_type
-        value_type=$(echo "$value" | head -1)
+    value=$(defaults read "$domain" "$key" 2>/dev/null) || return 0
 
-        # Detect value type and format accordingly
-        if [[ "$value" == "1" ]] || [[ "$value" == "0" ]]; then
-            echo "# $description"
-            echo "defaults write $domain $key -bool $([ "$value" == "1" ] && echo "true" || echo "false")"
-        elif [[ "$value" =~ ^-?[0-9]+$ ]]; then
-            echo "# $description"
-            echo "defaults write $domain $key -int $value"
+    # Output description
+    printf "# %s\n" "$description"
+
+    # Detect value type and format accordingly
+    if [[ "$value" == "1" ]] || [[ "$value" == "0" ]]; then
+        if [[ "$value" == "1" ]]; then
+            printf "defaults write %s %s -bool true\n" "$domain" "$key"
         else
-            echo "# $description"
-            echo "defaults write $domain $key -string \"$value\""
+            printf "defaults write %s %s -bool false\n" "$domain" "$key"
         fi
-        echo ""
+    elif [[ "$value" =~ ^-?[0-9]+$ ]]; then
+        printf "defaults write %s %s -int %s\n" "$domain" "$key" "$value"
+    else
+        printf "defaults write %s %s -string \"%s\"\n" "$domain" "$key" "$value"
     fi
+    printf "\n"
 }
 
 # Keyboard & Input
