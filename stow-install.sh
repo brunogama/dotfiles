@@ -144,6 +144,36 @@ setup_prezto() {
         log_info "Prezto not found. Install manually if needed: https://github.com/sorin-ionescu/prezto"
         log_info "Note: Your zsh configuration will work without Prezto"
     fi
+
+    # Create Prezto configuration symlinks if they don't exist
+    log_info "Creating Prezto configuration symlinks..."
+
+    if [[ ! -e "$HOME/.zpreztorc" ]]; then
+        ln -sf "$HOME/.config/zsh/.zpreztorc" "$HOME/.zpreztorc"
+        log_success "Created symlink: ~/.zpreztorc"
+    else
+        log_info "Symlink already exists: ~/.zpreztorc"
+    fi
+
+    if [[ ! -e "$HOME/.zprofile" ]]; then
+        ln -sf "$HOME/.config/zsh/.zprofile" "$HOME/.zprofile"
+        log_success "Created symlink: ~/.zprofile"
+    else
+        log_info "Symlink already exists: ~/.zprofile"
+    fi
+
+    if [[ ! -e "$HOME/.p10k.zsh" ]]; then
+        ln -sf "$HOME/.config/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+        log_success "Created symlink: ~/.p10k.zsh"
+    else
+        log_info "Symlink already exists: ~/.p10k.zsh"
+    fi
+
+    # Create history file if it doesn't exist
+    if [[ ! -f "$HOME/.config/zsh/.zsh_history" ]]; then
+        touch "$HOME/.config/zsh/.zsh_history"
+        log_success "Created history file: ~/.config/zsh/.zsh_history"
+    fi
 }
 
 # Configure shell
