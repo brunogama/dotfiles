@@ -1,11 +1,14 @@
 #!/bin/bash
 #
 # store-api-key - Store API keys securely in macOS Keychain
-# Usage: store-api-key <service_name> <api_key> [--force]
-# Example: store-api-key SERVICEA_API_KEY randomapikey
+# Usage: store-api-key <service_name> [--force]
+# Example: store-api-key SERVICEA_API_KEY
+#          echo "randomapikey" | store-api-key SERVICEA_API_KEY
+#          store-api-key SERVICEA_API_KEY < key.txt
 #
 # This script uses the macOS security command to store API keys
-# in the user's login keychain securely.
+# in the user's login keychain securely. API keys are NEVER passed
+# as command-line arguments to prevent shell history exposure.
 
 set -euo pipefail
 
@@ -18,25 +21,46 @@ FORCE_UPDATE=false
 # Function to display usage information
 usage() {
     cat << EOF
-Usage: $SCRIPT_NAME <service_name> <api_key> [--force]
+Usage: $SCRIPT_NAME <service_name> [--force]
 
-Store an API key securely in the macOS Keychain.
+Store an API key securely in the macOS Keychain without exposing it in shell history.
 
 Arguments:
   service_name    The name/identifier for the API key (e.g., SERVICEA_API_KEY)
-  api_key         The API key value to store
 
 Options:
   --force         Override existing key without confirmation
 
-Example:
-  $SCRIPT_NAME SERVICEA_API_KEY randomapikey
-  $SCRIPT_NAME SERVICEA_API_KEY newkey --force
+Input Methods (in order of preference):
+  1. Interactive prompt (default):
+     $SCRIPT_NAME SERVICEA_API_KEY
+
+  2. From stdin (pipe):
+     echo "randomapikey" | $SCRIPT_NAME SERVICEA_API_KEY
+
+  3. From file:
+     $SCRIPT_NAME SERVICEA_API_KEY < key.txt
+     cat key.txt | $SCRIPT_NAME SERVICEA_API_KEY
+
+Examples:
+  # Interactive prompt (secure - no history)
+  $SCRIPT_NAME SERVICEA_API_KEY
+
+  # From environment variable (secure - no history)
+  echo "\$MY_KEY" | $SCRIPT_NAME SERVICEA_API_KEY
+
+  # From file
+  $SCRIPT_NAME SERVICEA_API_KEY < api_key.txt
+
+  # Force update without confirmation
+  echo "newkey" | $SCRIPT_NAME SERVICEA_API_KEY --force
 
 Notes:
+  - API keys are NEVER passed as command-line arguments
   - The key is stored in the user's login keychain
   - If a key with the same service name exists, you'll be prompted to confirm unless --force is used
   - The script requires macOS and the 'security' command
+  - For interactive prompt, input is hidden (not echoed to screen)
 EOF
     exit 1
 }
@@ -58,24 +82,35 @@ if ! command -v security &> /dev/null; then
 fi
 
 # Parse arguments
-if [[ $# -lt 2 || $# -gt 3 ]]; then
+if [[ $# -lt 1 || $# -gt 2 ]]; then
     usage
 fi
 
 # Check for force flag
-if [[ $# -eq 3 && "$3" == "--force" ]]; then
+if [[ $# -eq 2 && "$2" == "--force" ]]; then
     FORCE_UPDATE=true
-elif [[ $# -eq 3 ]]; then
-    error "Unknown option: $3" 1
+elif [[ $# -eq 2 ]]; then
+    error "Unknown option: $2" 1
 fi
 
-# Assign arguments to variables
+# Assign service name
 readonly SERVICE_NAME="$1"
-readonly API_KEY="$2"
 
 # Validate service name
 if [[ -z "$SERVICE_NAME" ]]; then
     error "Service name cannot be empty" 3
+fi
+
+# Read API key securely (never from command-line arguments)
+API_KEY=""
+
+if [[ -t 0 ]]; then
+    # stdin is a terminal - use interactive prompt with hidden input
+    read -s -p "Enter API key for '$SERVICE_NAME': " API_KEY
+    echo  # New line after hidden input
+else
+    # stdin is piped or redirected - read from it
+    read -r API_KEY
 fi
 
 # Validate API key
