@@ -1,0 +1,115 @@
+title: "Kiro IDE Documentation"
+version: "1.0.0"
+last_updated: "2025-10-13T06:05:00Z"
+
+sources:
+  - name: "Kiro MCP Configuration"
+    url: "https://kiro.dev/docs/mcp/configuration/"
+    type: "official_documentation"
+    fetch_frequency: "weekly"
+    validation: "checksum"
+    last_fetched: "2025-10-12T21:39:53Z"
+
+  - name: "Kiro Agent Hooks"
+    url: "https://kiro.dev/docs/hooks/"
+    type: "official_documentation"
+    fetch_frequency: "weekly"
+    validation: "checksum"
+    last_fetched: "2025-10-13T06:05:00Z"
+
+  - name: "Kiro Steering Documentation"
+    url: "https://kiro.dev/docs/steering/"
+    type: "official_documentation"
+    fetch_frequency: "weekly"
+    validation: "checksum"
+    last_fetched: "2025-10-13T10:30:00Z"
+
+  - name: "Kiro Custom Commands and Prompts"
+    url: "https://kiro.dev/docs/hooks/"
+    type: "official_documentation"
+    fetch_frequency: "weekly"
+    validation: "checksum"
+    last_fetched: "2025-10-13T10:45:00Z"
+
+  - name: "Kiro Agent Hooks Blog Post"
+    url: "https://kiro.dev/blog/automate-your-development-workflow-with-agent-hooks/"
+    type: "blog_post"
+    fetch_frequency: "monthly"
+    validation: "checksum"
+    last_fetched: "2025-10-13T12:00:00Z"
+
+files:
+  - path: "configuration---docs---kiro.md"
+    title: "Kiro MCP Configuration Guide"
+    topics: ["mcp", "configuration", "kiro", "ide", "setup"]
+    agent_relevance: ["all"]
+
+  - path: "mcp-configuration-examples.md"
+    title: "MCP Configuration Examples"
+    topics: ["mcp", "configuration", "examples", "patterns", "json"]
+    agent_relevance: ["all"]
+
+  - path: "hooks-overview.md"
+    title: "Kiro Agent Hooks - Overview"
+    topics: ["hooks", "automation", "workflow", "ide", "kiro"]
+    agent_relevance: ["all"]
+
+  - path: "steering-documentation.md"
+    title: "Kiro Steering Documentation"
+    topics:
+      [
+        "steering",
+        "configuration",
+        "project-knowledge",
+        "standards",
+        "conventions",
+      ]
+    agent_relevance: ["all"]
+
+  - path: "custom-commands-and-prompts.md"
+    title: "Kiro Custom Commands and Pre-defined Prompts"
+    topics:
+      [
+        "hooks",
+        "custom-commands",
+        "prompts",
+        "automation",
+        "manual-triggers",
+        "steering",
+      ]
+    agent_relevance: ["all"]
+
+  - path: "agent-hooks-blog.md"
+    title: "Automate Your Development Workflow with Kiro's AI Agent Hooks"
+    topics:
+      [
+        "hooks",
+        "automation",
+        "workflow",
+        "best-practices",
+        "examples",
+        "tutorial",
+        "team-collaboration",
+      ]
+    agent_relevance: ["all"]
+
+domains:
+  [
+    "ide",
+    "kiro",
+    "mcp",
+    "configuration",
+    "hooks",
+    "automation",
+    "steering",
+    "project-knowledge",
+    "custom-commands",
+    "prompts",
+    "best-practices",
+    "tutorial",
+  ]
+
+ide_integration:
+  xcode:
+    indexable: true
+    autocomplete_prefix: "kiro_"

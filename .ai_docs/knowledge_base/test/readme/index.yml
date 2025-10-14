@@ -1,0 +1,18 @@
+title: "Test README Documentation"
+version: "1.0.0"
+last_updated: "2025-10-12T22:00:00Z"
+
+sources: []
+
+files:
+  - path: "knowledge-base-management-documentation.md"
+    title: "Knowledge Base Management Documentation (Test)"
+    topics: ["knowledge-base", "test", "documentation"]
+    agent_relevance: ["all"]
+
+domains: ["test", "readme", "documentation"]
+
+ide_integration:
+  xcode:
+    indexable: false
+    autocomplete_prefix: "test_readme_"
