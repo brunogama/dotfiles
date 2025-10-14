@@ -16,7 +16,7 @@ YELLOW := \033[1;33m
 RED := \033[0;31m
 NC := \033[0m
 
-.PHONY: help install uninstall link unlink backup clean test setup-prezto check-prezto
+.PHONY: help install uninstall link unlink backup clean test setup-prezto check-prezto dump-macos
 
 help:
 	@echo "$(BLUE)Bruno's Dotfiles - Makefile$(NC)"
@@ -29,6 +29,7 @@ help:
 	@echo "  $(GREEN)install-scripts$(NC) - Install scripts to ~/.local/bin"
 	@echo "  $(GREEN)setup-prezto$(NC)   - Install Prezto framework (one-time setup)"
 	@echo "  $(GREEN)check-prezto$(NC)   - Check if Prezto is installed"
+	@echo "  $(GREEN)dump-macos$(NC)     - Export current macOS preferences"
 	@echo "  $(GREEN)uninstall$(NC)      - Remove all symlinks"
 	@echo "  $(GREEN)link$(NC)           - Create all symlinks"
 	@echo "  $(GREEN)unlink$(NC)         - Remove all symlinks"
@@ -169,3 +170,10 @@ clean:
 	@echo "$(YELLOW)Cleaning old backups...$(NC)"
 	@find $(HOME_DIR) -maxdepth 1 -name ".dotfiles-backup-*" -type d -mtime +30 -exec rm -rf {} \;
 	@echo "$(GREEN)✓ Old backups cleaned$(NC)"
+
+# Dump macOS preferences
+dump-macos:
+	@echo "$(BLUE)Dumping macOS preferences...$(NC)"
+	@$(SCRIPTS_DIR)/macos/dump-macos-settings $(CONFIG_DIR)/macos-preferences/system-preferences.sh
+	@echo "$(GREEN)✓ Preferences dumped to: $(CONFIG_DIR)/macos-preferences/system-preferences.sh$(NC)"
+	@echo "$(YELLOW)Note: Review the file before committing or restoring$(NC)"
