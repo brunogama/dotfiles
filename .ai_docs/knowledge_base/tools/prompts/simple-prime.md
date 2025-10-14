@@ -22,7 +22,7 @@ README.md and ai/memorybank/README.md
 #   - command: realpath .
 #     exit: 0
 #     output: |
-#       /Users/bi002853/.cursor
+#       ${HOME}/.cursor
 #   - command: false
 #     exit: 1
 #   - command: echo hello world
@@ -36,7 +36,7 @@ README.md and ai/memorybank/README.md
 
 - run command /meta-context-always-active
 - \[CODEBASE_ASSESSIBLE, CODEBASE_STRUCTURE_ALL, AI_MEMORY\] = run
-  `uv run ~/.cursor/scripts/proxy.py "git ls-files" "eza . --tree" "cat /Users/bi002853/Developer/application/ai/memorybank/README.md"`
+  `uv run ~/.cursor/scripts/proxy.py "git ls-files" "eza . --tree" "cat ai/memorybank/README.md"`
 
 ## Reporting
 

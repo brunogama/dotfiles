@@ -1,7 +1,7 @@
 Software Architecture Analysis and Documentation for Root SPM Package
 
 Context: The goal is to perform a comprehensive software architecture analysis of the root Swift Package Manager (SPM)
-package for the project located at `/Users/bi002853/Developer/application/`. The deliverable is a Markdown document
+package for the project located at `${PROJECT_ROOT}` (absolute path to project root). The deliverable is a Markdown document
 following the structure of `ai/templates/my-templates/spm-package-software-structure.md`, to be saved as
 `ai/memorybank/snake_cased_main_package_name__-__snake_cased_spm_package_name__-__package_architecture.md`. The analysis
 must reflect the actual modular, layered, and Clean Architecture patterns used in the codebase, referencing real
@@ -15,24 +15,24 @@ Instructions:
 
 Step 1: Identify the Root SPM Package and Its Structure
 
-- Action: Confirm the root SPM package is defined by `/Users/bi002853/Developer/application/Package.swift` and enumerate
+- Action: Confirm the root SPM package is defined by `${PROJECT_ROOT}/Package.swift` and enumerate
   its main modules.
 - Objective: Establish the scope and boundaries of the architecture analysis.
 - Rationale: The root package aggregates all business domains and shared modules.
 - Example: List modules such as Core, CoreFrontend, Cards, CustomerRelationship, DigitalAccount, Insurance, Integrity,
   Marketplace, Investments, Onboarding, Shared, DependencyInjection, InternationalAccount, DigitalCredit.
-- MCP Routing: Use `mcp_desktop-commander_read_file` to read `/Users/bi002853/Developer/application/Package.swift`
+- MCP Routing: Use `mcp_desktop-commander_read_file` to read `${PROJECT_ROOT}/Package.swift`
   (length=1000).
 
 Step 2: Gather Module and Directory Structure
 
-- Action: Recursively list all files and directories under `/Users/bi002853/Developer/application/` excluding .gitignore
+- Action: Recursively list all files and directories under `${PROJECT_ROOT}/` excluding .gitignore
   patterns.
 - Objective: Map the physical structure of the package and its modules.
 - Rationale: Accurate structure is required for the architecture and for referencing in the documentation.
-- Example: Use `find /Users/bi002853/Developer/application/ -print`.
+- Example: Use `find ${PROJECT_ROOT}/ -print`.
 - MCP Routing: Use `mcp_desktop-commander_start_process` with
-  `command="find /Users/bi002853/Developer/application/ -print"`, `timeout_ms=60000`.
+  `command="find ${PROJECT_ROOT}/ -print"`, `timeout_ms=60000`.
 
 Step 3: Analyze Architectural Patterns and Layering
 
@@ -52,7 +52,7 @@ Step 4: Document Module Dependencies and Interactions
 - Rationale: Understanding dependencies is key for refactoring and onboarding.
 - Example: Core provides shared utilities, Cards depends on Core, etc.
 - MCP Routing: Use `mcp_desktop-commander_read_file` to read relevant `Package.swift` files for each module (e.g.,
-  `/Users/bi002853/Developer/application/Core/Package.swift`).
+  `${PROJECT_ROOT}/Core/Package.swift`).
 
 Step 5: Populate the Documentation Template
 
@@ -73,7 +73,7 @@ Step 5: Populate the Documentation Template
 Step 6: Save the Completed Document
 
 - Action: Write the final Markdown document to
-  `/Users/bi002853/Developer/application/ai/memorybank/snake_cased_main_package_name__-__snake_cased_spm_package_name__-__package_architecture.md`.
+  `${PROJECT_ROOT}/ai/memorybank/snake_cased_main_package_name__-__snake_cased_spm_package_name__-__package_architecture.md`.
 - Objective: Persist the architecture analysis for future reference and onboarding.
 - Rationale: Centralizes architectural knowledge for the team.
 - Example: Use `mcp_desktop-commander_write_file` with the full absolute path and `mode="rewrite"`.

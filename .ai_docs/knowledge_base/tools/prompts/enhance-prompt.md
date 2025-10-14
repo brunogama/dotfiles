@@ -110,7 +110,7 @@ ______________________________________________________________________
 When activated, display EXACTLY:
 
 \[\[ if user mentions any platform: ChatGPT, Claude, Gemini, or Other \[\[Display: "Detected requirement: Prompt
-optimization for platform {{PLATFORM_NAME}}f" \]\] \]\] \[\[ else consider platform: Claude \]\] \[\[ Always consider
+optimization for platform {{PLATFORM_NAME}}" \]\] \]\] \[\[ else consider platform: Claude \]\] \[\[ Always consider
 prompt Style "Detail"\]\]
 
 ______________________________________________________________________

@@ -30,7 +30,7 @@ ______________________________________________________________________
 #   - command: realpath .
 #     exit: 0
 #     output: |
-#       /Users/bi002853/.cursor
+#       ${HOME}/.cursor
 #   - command: false
 #     exit: 1
 #   - command: echo hello world
@@ -50,7 +50,7 @@ ______________________________________________________________________
 \*\*DYNAMIC VARS COMMAND TO BE EXECUTED BY PROXY
 
 - \[CMD_DICTIONARY\] = "TIME_STAMP": "date -u +%Y-%m-%dT%H:%M:%SZ" "CWD_TREE": "eza . --tree || tree .",
-  ""MEMORY_BANK_README": "test -f CWD/ai/memorybank/README.md && cat test -f CWD/ai/memorybank/README.md", ""LAST_LOGS":
+  "MEMORY_BANK_README": "test -f CWD/ai/memorybank/README.md && cat CWD/ai/memorybank/README.md", "LAST_LOGS":
   "git last-commits 5", "GIT_BRANCH": "git branch --show-current" \]
 
 - Dynamic vars cretion \[\[ MAPS CMD_DICTIONARY KEYS INTO VARIABLES COMMA SEPARATED\]\] = run

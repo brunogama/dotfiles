@@ -123,7 +123,7 @@ deployment_process:
 
 ## Report
 
-```
+```text
 YAML Optimization Summary:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📝 Input Length: {{input_length}} characters

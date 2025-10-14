@@ -56,8 +56,9 @@ private func validateOrder(_ order: Order) -> Bool {
 }
 
 private func calculateDiscount(for order: Order) -> Double {
+    guard let customer = order.customer else { return 0 }
     var discount = 0.0
-    if order.customer.isPremium {
+    if customer.isPremium {
         discount = order.totalAmount * 0.1
     }
     if order.totalAmount > 100 {

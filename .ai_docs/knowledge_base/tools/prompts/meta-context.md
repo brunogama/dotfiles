@@ -12,7 +12,7 @@ ______________________________________________________________________
 
 ## Variables
 
-- Variables will be set in tupple like pseudo code, the sequence of shell commands will be set in the sequence of the
+- Variables will be set in tuple like pseudo code, the sequence of shell commands will be set in the sequence of the
   variables inside the tuple
 
 **Sample**
@@ -25,7 +25,7 @@ ______________________________________________________________________
 #   - command: realpath .
 #     exit: 0
 #     output: |
-#       /Users/bi002853/.cursor
+#       ${HOME}/.cursor
 #   - command: false
 #     exit: 1
 #   - command: echo hello world
@@ -38,7 +38,7 @@ ______________________________________________________________________
 **Don't output to the user the variables and its contents**
 
 - \[CWD, TIMESTAMP, GIT_BRANCH, GIT_RECENT, GLOBAL_CURSOR_PATH\] = run
-  `uv run /Users/bi002853/.cursor/scripts/proxy.py "realpath ." "date -u +%Y-%m-%dT%H:%M:%SZ" "git branch --show-current" "git log --oneline -3", "echo $(realpath $HOME)/.cursor"`
+  `uv run ${HOME}/.cursor/scripts/proxy.py "realpath ." "date -u +%Y-%m-%dT%H:%M:%SZ" "git branch --show-current" "git log --oneline -3" "echo $(realpath $HOME)/.cursor"`
 - DEVELOPER = Bruno da Gama Porciuncula
 - TEMPLATE_PATH = GLOBAL_CURSOR_PATH/templates
 - SCRIPTS_PATH = GLOBAL_CURSOR_PATH/scripts

@@ -175,6 +175,13 @@ extension DependencyValues {
 ```swift
 @Reducer
 struct UserFeature {
+    @ObservableState
+    struct State: Equatable {
+        var user: User?
+        var isLoading = false
+        var alert: AlertState<Action>?
+    }
+
     @Dependency(\.apiClient) var apiClient
 
     enum Action {
