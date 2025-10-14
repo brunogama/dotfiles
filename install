@@ -104,6 +104,13 @@ install_dotfiles() {
     cd "$DOTFILES_DIR"
     
     if [[ -f "Makefile" ]]; then
+        # Check if Prezto needs to be installed
+        if [[ ! -d "$HOME/.zprezto" ]]; then
+            log_info "Prezto not found. Installing..."
+            make setup-prezto
+        fi
+        
+        # Install dotfiles
         make install
     else
         log_error "Makefile not found. Installation failed."

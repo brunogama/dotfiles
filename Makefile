@@ -16,7 +16,7 @@ YELLOW := \033[1;33m
 RED := \033[0;31m
 NC := \033[0m
 
-.PHONY: help install uninstall link unlink backup clean test
+.PHONY: help install uninstall link unlink backup clean test setup-prezto check-prezto
 
 help:
 	@echo "$(BLUE)Bruno's Dotfiles - Makefile$(NC)"
@@ -27,6 +27,8 @@ help:
 	@echo "  $(GREEN)install-zsh$(NC)    - Install ZSH configuration only"
 	@echo "  $(GREEN)install-git$(NC)    - Install Git configuration only"
 	@echo "  $(GREEN)install-scripts$(NC) - Install scripts to ~/.local/bin"
+	@echo "  $(GREEN)setup-prezto$(NC)   - Install Prezto framework (one-time setup)"
+	@echo "  $(GREEN)check-prezto$(NC)   - Check if Prezto is installed"
 	@echo "  $(GREEN)uninstall$(NC)      - Remove all symlinks"
 	@echo "  $(GREEN)link$(NC)           - Create all symlinks"
 	@echo "  $(GREEN)unlink$(NC)         - Remove all symlinks"
@@ -61,7 +63,7 @@ link: link-zsh link-git link-homebrew link-misc
 	@echo "$(GREEN)✓ All symlinks created$(NC)"
 
 # Individual component linking
-link-zsh:
+link-zsh: check-prezto
 	@echo "$(BLUE)Linking ZSH configuration...$(NC)"
 	@mkdir -p $(HOME_DIR)/.config
 	@ln -sfn $(CONFIG_DIR)/zsh $(HOME_DIR)/.config/zsh
@@ -71,6 +73,26 @@ link-zsh:
 	@ln -sf $(CONFIG_DIR)/zsh/.p10k.zsh $(HOME_DIR)/.p10k.zsh
 	@test -f $(CONFIG_DIR)/zsh/.zsh_history || touch $(CONFIG_DIR)/zsh/.zsh_history
 	@echo "$(GREEN)✓ ZSH linked$(NC)"
+
+# Check if Prezto is installed
+check-prezto:
+	@if [ ! -d "$(HOME_DIR)/.zprezto" ]; then \
+		echo "$(YELLOW)⚠ Prezto not found at ~/.zprezto$(NC)"; \
+		echo "$(YELLOW)  Your custom configs will be linked, but Prezto framework is missing.$(NC)"; \
+		echo "$(YELLOW)  Run 'make setup-prezto' to install it.$(NC)"; \
+	fi
+
+# Install Prezto framework (one-time setup)
+setup-prezto:
+	@echo "$(BLUE)Setting up Prezto framework...$(NC)"
+	@if [ -d "$(HOME_DIR)/.zprezto" ]; then \
+		echo "$(GREEN)✓ Prezto already installed$(NC)"; \
+	else \
+		echo "$(BLUE)Cloning Prezto...$(NC)"; \
+		git clone --recursive https://github.com/sorin-ionescu/prezto.git "$(HOME_DIR)/.zprezto"; \
+		echo "$(GREEN)✓ Prezto installed$(NC)"; \
+		echo "$(YELLOW)Note: Your custom configs from $(CONFIG_DIR)/zsh/ will be used$(NC)"; \
+	fi
 
 link-git:
 	@echo "$(BLUE)Linking Git configuration...$(NC)"
