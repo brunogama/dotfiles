@@ -115,7 +115,7 @@ Common use cases that you can automate with Kiro's agent hooks:
 **Scenario**: You're working on a Python application, and you want your tests to stay synchronized with your components.
 
 **Hook description**:
-```
+```text
 You are a test-driven development assistant. The user has modified a Python source file. Your task is to:
 1. Analyze the changes in the source file
 2. Identify any new functions, methods, or classes that were added
@@ -127,7 +127,7 @@ Focus on writing practical, meaningful tests that verify the behavior of the new
 ```
 
 **File path(s) to watch for change**:
-```
+```text
 *.py: all the python files
 !test_*.py: exclude the files that start with test_ and ends with .py
 ```
@@ -139,12 +139,12 @@ Focus on writing practical, meaningful tests that verify the behavior of the new
 **Scenario**: You want your API documentation to stay current with code changes.
 
 **Hook description**:
-```
+```text
 Monitor all my typescript files and review the API changes in workspace and update the corresponding documentation in docs/api/. Include new endpoints, parameter changes, and response formats. Maintain consistent documentation style.
 ```
 
 **File path(s) to watch for change**:
-```
+```text
 **/*.ts, **/*.tsx: all the files with ts and tsx extension.
 ```
 
@@ -160,7 +160,7 @@ Begin with basic file-to-file relationships like updating tests when you change 
 
 The more context you provide in your hook prompts, the better the AI will understand your intentions:
 
-```
+```javascript
 // Good
 "Update the test file to cover the new authentication method, including edge cases for invalid tokens and expired sessions"
 
@@ -172,7 +172,7 @@ The more context you provide in your hook prompts, the better the AI will unders
 
 You can reference your project's documentation, coding standards, and patterns in hook prompts to maintain consistency.
 
-```
+```javascript
 // Good
 "Update or create new test files to cover the new functions, make sure to include multiple tests for each function to cover different paths."
 

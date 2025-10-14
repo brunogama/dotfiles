@@ -43,10 +43,9 @@ configuration file structure, server setup, and best practices.
 
 ## [](https://kiro.dev/docs/mcp/configuration/#configuration-file-structure)Configuration File Structure
 
-MCP configuration files use JSON format with the following structure: json
+MCP configuration files use JSON format with the following structure:
 
-```
-
+```json
 {
   "mcpServers": {
     "server-name": {
@@ -112,10 +111,7 @@ If both files exist, configurations are merged with workspace settings taking pr
 1. Open the Kiro panel
 1. Select the **Open MCP Config** icon
 
-json
-
-```
-
+```json
 {
   "mcpServers": {
     "web-search": {
@@ -140,10 +136,9 @@ json
 
 ## [](https://kiro.dev/docs/mcp/configuration/#environment-variables)Environment Variables
 
-Many MCP servers require environment variables for authentication or configuration: json
+Many MCP servers require environment variables for authentication or configuration:
 
-```
-
+```json
 {
   "mcpServers": {
     "server-name": {
@@ -165,10 +160,9 @@ Many MCP servers require environment variables for authentication or configurati
 
 ## [](https://kiro.dev/docs/mcp/configuration/#disabling-servers-temporarily)Disabling Servers Temporarily
 
-To temporarily disable an MCP server without removing its configuration: json
+To temporarily disable an MCP server without removing its configuration:
 
-```
-
+```json
 {
   "mcpServers": {
     "server-name": {

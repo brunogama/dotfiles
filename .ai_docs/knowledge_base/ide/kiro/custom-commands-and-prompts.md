@@ -33,7 +33,7 @@ Trigger when new files matching specific patterns are created.
 - Set up test files when creating implementation files
 
 **Example: React Component Setup**
-```
+```text
 When a new React component file is created, add:
 1. Import statements for React and necessary hooks
 2. A functional component with TypeScript props interface
@@ -52,7 +52,7 @@ Trigger when files matching specific patterns are saved.
 - Run tests for changed files
 
 **Example: Update Test Coverage**
-```
+```text
 When a JavaScript/TypeScript file is saved:
 1. Identify the corresponding test file
 2. Update tests to maintain coverage for any new functions
@@ -69,7 +69,7 @@ Trigger when files matching specific patterns are deleted.
 - Maintain project integrity
 
 **Example: Clean Up References**
-```
+```text
 When a component file is deleted:
 1. Find all imports of this component across the codebase
 2. Remove or comment out those import statements
@@ -86,7 +86,7 @@ Manually execute a hook - **This is the closest to custom commands!**
 - Performance optimization
 
 **Example: Code Review Button**
-```
+```text
 Review the current file for:
 1. Code quality issues
 2. Potential bugs
@@ -115,7 +115,7 @@ Review the current file for:
 **Trigger Type:** File Save  
 **Target:** `**/*`
 
-```
+```text
 Review changed files for potential security issues:
 1. Look for API keys, tokens, or credentials in source code
 2. Check for private keys or sensitive credentials
@@ -136,7 +136,7 @@ For each issue found:
 **Trigger Type:** File Save  
 **Target:** `src/locales/en/*.json`
 
-```
+```text
 When an English locale file is updated:
 1. Identify which string keys were added or modified
 2. Check all other language files for these keys
@@ -148,7 +148,7 @@ When an English locale file is updated:
 #### Documentation Generator
 **Trigger Type:** Manual Trigger
 
-```
+```text
 Generate comprehensive documentation for the current file:
 1. Extract function and class signatures
 2. Document parameters and return types
@@ -161,7 +161,7 @@ Generate comprehensive documentation for the current file:
 **Trigger Type:** File Save  
 **Target:** `src/**/*.{js,ts,jsx,tsx}`
 
-```
+```text
 When a source file is modified:
 1. Identify new or modified functions and methods
 2. Check if corresponding tests exist and cover the changes
@@ -183,7 +183,7 @@ Agent Hooks can be enhanced with Model Context Protocol (MCP) capabilities:
 **Trigger Type:** File Save Hook  
 **Target:** `*.css` `*.html`
 
-```
+```text
 Use the Figma MCP to analyze the updated html or css files and check that they follow
 established design patterns in the figma design. Verify elements like hero sections,
 feature highlights, navigation elements, colors, and button placements align.
@@ -217,7 +217,7 @@ Files are available on-demand by referencing them with `#steering-file-name` in 
 #### Troubleshooting Guide
 **File:** `.kiro/steering/troubleshooting-guide.md`
 
-```yaml
+```markdown
 ---
 inclusion: manual
 ---
@@ -239,7 +239,7 @@ When debugging issues in this project:
 #### Performance Optimization
 **File:** `.kiro/steering/performance-optimization.md`
 
-```yaml
+```markdown
 ---
 inclusion: manual
 ---
