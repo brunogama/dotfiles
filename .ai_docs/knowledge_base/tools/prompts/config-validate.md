@@ -28,12 +28,14 @@ Analyze existing configuration structure and identify validation needs:
 
 ```python
 import os
-import yaml
+import re
 import json
 import toml
+import yaml
 import configparser
+from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Any, Set
+from typing import Any, Dict, List, Set
 
 class ConfigurationAnalyzer:
     def analyze_project(self, project_path: str) -> Dict[str, Any]:
@@ -138,6 +140,63 @@ class ConfigurationAnalyzer:
                         })
         
         return inconsistencies
+    
+    def _looks_like_real_secret(self, content: str, pattern: str) -> bool:
+        """Heuristic to determine if a matched pattern is likely a real secret"""
+        # Check if it's a placeholder (e.g., "YOUR_API_KEY", "example.com", etc.)
+        placeholder_patterns = [
+            r'(YOUR|CHANGE|REPLACE|EXAMPLE|PLACEHOLDER|TODO|FIXME)',
+            r'(xxx+|aaa+|111+|000+)',
+            r'(test|demo|sample|fake)',
+        ]
+        
+        for placeholder_pattern in placeholder_patterns:
+            if re.search(placeholder_pattern, content, re.IGNORECASE):
+                return False
+        
+        # If the value looks too short or generic, it's probably not real
+        if len(content) < 10:
+            return False
+            
+        return True
+    
+    def _extract_config_keys(self, path: str) -> Set[str]:
+        """Extract configuration keys from a config file"""
+        keys = set()
+        file_path = Path(path)
+        
+        try:
+            if file_path.suffix in ['.json']:
+                with open(file_path) as f:
+                    data = json.load(f)
+                    keys = self._extract_keys_from_dict(data)
+            elif file_path.suffix in ['.yaml', '.yml']:
+                with open(file_path) as f:
+                    data = yaml.safe_load(f)
+                    keys = self._extract_keys_from_dict(data)
+            elif file_path.suffix == '.toml':
+                data = toml.load(file_path)
+                keys = self._extract_keys_from_dict(data)
+            elif file_path.suffix in ['.ini', '.cfg']:
+                config = configparser.ConfigParser()
+                config.read(file_path)
+                for section in config.sections():
+                    keys.update(config.options(section))
+        except Exception:
+            pass
+        
+        return keys
+    
+    def _extract_keys_from_dict(self, data: Any, prefix: str = '') -> Set[str]:
+        """Recursively extract keys from nested dict structure"""
+        keys = set()
+        if isinstance(data, dict):
+            for key, value in data.items():
+                full_key = f"{prefix}.{key}" if prefix else key
+                keys.add(full_key)
+                if isinstance(value, dict):
+                    keys.update(self._extract_keys_from_dict(value, full_key))
+        return keys
 ```
 
 ### 2. Schema Definition and Validation
@@ -235,6 +294,25 @@ export class ConfigValidator {
     }
     
     const valid = validate(configData);
+    
+    if (!valid && validate.errors) {
+      return {
+        valid: false,
+        errors: validate.errors.map(error => ({
+          path: error.instancePath || '/',
+          message: error.message || 'Validation error',
+          keyword: error.keyword,
+          params: error.params
+        }))
+      };
+    }
+    
+    return { valid: true };
+  }
+  
+  validateValue(value: unknown, schema: JSONSchema7): ValidationResult {
+    const validate = this.ajv.compile(schema);
+    const valid = validate(value);
     
     if (!valid && validate.errors) {
       return {

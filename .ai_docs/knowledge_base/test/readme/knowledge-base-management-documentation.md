@@ -1,6 +1,6 @@
 ---
 title: Knowledge Base Management Documentation
-source_url: file:///Users/bruno/Developer/Inbox/RefactorFlow/Tooling/KnoledgeBase/kb-tools/README.md
+source_path: Tooling/KnowledgeBase/kb-tools/README.md
 last_fetched: '2025-10-12T19:53:54.995100+00:00'
 checksum: sha256:0685ae6f96dfe678cb8c62f94a8ad93d73fec17363dedc4bdc06228148724bf4
 type: official_documentation

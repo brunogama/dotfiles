@@ -117,6 +117,8 @@ Identify potential breaking changes:
 **Breaking Change Scanner**
 
 ```python
+import re
+
 class BreakingChangeDetector:
     def detect_breaking_changes(self, package_name, current_version, target_version):
         """
@@ -358,9 +360,9 @@ npm test -- --updateSnapshot
 npm run integration-tests
 ````
 
-**Key Changes**: {self.\_summarize_changes(step)}
+**Key Changes**: {self._summarize_changes(step)}
 
-**Testing Focus**: {self.\_get_test_focus(step)}
+**Testing Focus**: {self._get_test_focus(step)}
 
 ______________________________________________________________________
 

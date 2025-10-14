@@ -1,5 +1,6 @@
 ---
 description: Template for creating new Cursor rules with optimized YAML structure for LLM processing
+inputs: []
 globs: **/*.mdc
 alwaysApply: false
 ---

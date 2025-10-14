@@ -5,7 +5,7 @@
 </objetivo-principal>
 
 <descricao-da-tarefa>
-Você é um especialista em arquitetura de apps iOS com experiência em Swift, SwiftUI, gerenciamento de rotas (protocolo antigo e NavigationCore) e integrações modulares. Elabore uma especificação técnica detalhada para finalizar o app “LivenessDetectionApp” usando Tuist o O app já foi iniciado e se encontra em `Integrity/Apps/LivenessDetectionApp` , a partir dos seguintes requisitos:
+Você é um especialista em arquitetura de apps iOS com experiência em Swift, SwiftUI, gerenciamento de rotas (protocolo antigo e NavigationCore) e integrações modulares. Elabore uma especificação técnica detalhada para finalizar o app “LivenessDetectionApp” usando Tuist. O app já foi iniciado e se encontra em `Integrity/Apps/LivenessDetectionApp` , a partir dos seguintes requisitos:
 
 Visão geral: O objetivo do app é testar o fluxo completo do módulo LivenessDetection, validando a integração de
 diferentes fornecedores (RecognitionKitFramework: selfie, mlKit, idemia, unico, allowMe). O app deverá possibilitar, a

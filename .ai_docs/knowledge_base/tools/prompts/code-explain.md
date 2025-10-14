@@ -724,7 +724,7 @@ class Counter:
         return self.count
 ```
 
-''' } \]
+''' } ]
 
 ```
 for pitfall in pitfall_patterns:

@@ -374,6 +374,13 @@ Handle language version upgrades:
 **Python 2 to 3 Migration**
 
 ```python
+import json
+import ast
+import re
+from pathlib import Path
+from collections import defaultdict
+import astor
+
 class Python2to3Migrator:
     def __init__(self):
         self.transformations = {
