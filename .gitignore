@@ -222,3 +222,10 @@ venv/
 *.tmp
 *.temp
 .cache/
+
+# New structure - ignore backups
+.dotfiles-backup-*/
+
+# Old stow structure (deprecated)
+# Keep for reference during migration
+# stow-packages/
