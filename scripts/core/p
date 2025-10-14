@@ -1,0 +1,5 @@
+ if [ -z "$1" ]; then
+    python3
+  else
+    python3 $@
+  fi

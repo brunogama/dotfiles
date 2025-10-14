@@ -1,0 +1,108 @@
+#!/bin/bash
+#
+# markdown_clipper.sh
+#
+# This script checks if the clipboard contains markdown structure.
+# If it does, it saves the content to a file named with ISO 8601 date
+# and the first line of the content (lowercase and snake_cased).
+#
+# Usage: markdown_clipper.sh
+#
+# Place this script in your bin directory for easy access.
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Function to convert text to lowercase and snake_case
+to_snake_case() {
+    # Convert to lowercase, replace non-alphanumeric with underscores,
+    # compress multiple underscores, remove leading/trailing underscores
+    echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | sed 's/_\+/_/g' | sed 's/^_//;s/_$//'
+}
+
+# Get clipboard content
+if command -v pbpaste >/dev/null 2>&1; then
+    # macOS
+    clipboard_content=$(pbpaste)
+elif command -v xclip >/dev/null 2>&1; then
+    # Linux with xclip
+    clipboard_content=$(xclip -selection clipboard -o)
+elif command -v wl-paste >/dev/null 2>&1; then
+    # Wayland
+    clipboard_content=$(wl-paste)
+else
+    echo "Error: No clipboard command found (pbpaste, xclip, or wl-paste required)."
+    exit 1
+fi
+
+# Check if clipboard is empty
+if [ -z "${clipboard_content}" ]; then
+    echo "Error: Clipboard is empty."
+    exit 1
+fi
+
+# Define markdown patterns to check for
+markdown_patterns=(
+    '^\s*#+'                # Headers
+    '^\s*[*\-+]( \[[ x]\])? ' # Bullet points (with or without checkboxes)
+    '^```'                  # Code blocks
+    '\[.*\]\(.*\)'          # Links
+    '\*\*.*\*\*'            # Bold text
+    '\*.*\*'                # Italic text (asterisks)
+    '_.*_'                  # Italic text (underscores)
+    '^\s*>.*'               # Blockquotes
+    '^\|.*\|.*\|'           # Tables
+    '^---+$'                # Horizontal rules
+)
+
+# Check if content matches any markdown pattern
+is_markdown=false
+for pattern in "${markdown_patterns[@]}"; do
+    if echo "${clipboard_content}" | grep -qE "${pattern}"; then
+        is_markdown=true
+        break
+    fi
+done
+
+if [ "${is_markdown}" = true ]; then
+    # Try to find a header line (starting with #) in the content
+    header_line=$(echo "${clipboard_content}" | grep -E "^#+ .*\S" | head -n 1)
+
+    if [ -n "${header_line}" ]; then
+        # Header found - use it for the title (remove the # marks and spaces)
+        title=$(echo "${header_line}" | sed 's/^#\+\s*//' | cut -c 1-50)
+    else
+        # No header found - fall back to first line
+        title=$(echo "${clipboard_content}" | head -n 1 | cut -c 1-50)
+    fi
+
+    # Convert to snake_case
+    snake_case_title=$(to_snake_case "${title}")
+
+    # If title is empty or only has special chars, use "untitled"
+    if [ -z "${snake_case_title}" ]; then
+        snake_case_title="untitled"
+    fi
+
+    # Generate ISO 8601 date and time (YYYY-MM-DDTHH:MM:SS)
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S")
+
+    # Create filename (avoid potential conflicts by adding a suffix if needed)
+    base_filename="${timestamp}_${snake_case_title}.md"
+    filename="${base_filename}"
+    counter=1
+
+    while [ -e "${filename}" ]; do
+        filename="${timestamp}_${snake_case_title}_${counter}.md"
+        ((counter++))
+    done
+
+    # Save content to file
+    echo "${clipboard_content}" > "${filename}"
+
+    echo "Markdown saved to: ${filename}"
+    echo "Path: $(realpath "${filename}")"
+else
+    echo "Clipboard content doesn't appear to be markdown."
+    exit 0
+fi
