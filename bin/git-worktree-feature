@@ -1,5 +1,0 @@
-#!/bin/bash
-# Proxy script to Python implementation
-# This provides backward compatibility for the git-worktree-feature command
-
-exec uv run --quiet --script "$(dirname "$0")/git-worktree-feature-py" "$@"

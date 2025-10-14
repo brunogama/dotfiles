@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-if [ -z "$1" ]; then
-  git status -s
-  git log -n 3 --oneline
-else
-  git "$@"
-fi

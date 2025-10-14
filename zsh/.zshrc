@@ -1,1 +1,0 @@
-/Users/bruno/.config/stow-packages/zsh/.config/zsh/.zshrc

@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-sh ~/.config//bin/conventional-commit $1 $2 

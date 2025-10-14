@@ -1,5 +1,0 @@
-  if [ -z "$1" ]; then
-    ruby
-  else
-    ruby $@
-  fi
