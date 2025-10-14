@@ -122,11 +122,28 @@ install_dotfiles() {
 configure_shell() {
     log_info "Configuring shell..."
     
+    # Verify ZSH is installed
+    local zsh_path
+    zsh_path="$(which zsh 2>/dev/null)"
+    
+    if [[ -z "$zsh_path" ]]; then
+        log_error "ZSH not found in PATH"
+        return 1
+    fi
+    
     # Change default shell to zsh
     if [[ "$SHELL" != */zsh ]]; then
         log_info "Changing default shell to zsh..."
-        chsh -s "$(which zsh)"
-        log_success "Shell changed to zsh"
+        log_warning "This requires your password..."
+        
+        if chsh -s "$zsh_path" 2>&1; then
+            log_success "Shell changed to zsh"
+        else
+            log_warning "Failed to change shell automatically"
+            log_warning "Run manually: chsh -s $zsh_path"
+        fi
+    else
+        log_success "Shell is already zsh"
     fi
 }
 
@@ -135,6 +152,16 @@ print_next_steps() {
     echo ""
     log_success "🎉 Installation complete!"
     echo ""
+    
+    # Check if ~/.local/bin is in PATH
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        log_warning "⚠️  ~/.local/bin is NOT in your PATH"
+        echo ""
+        echo "Add to your PATH by adding this line to ~/.zshrc:"
+        echo '  export PATH="$HOME/.local/bin:$PATH"'
+        echo ""
+    fi
+    
     echo "📋 Next steps:"
     echo "  1. Restart terminal or run: source ~/.zshrc"
     echo "  2. Set up sync service: make -C $DOTFILES_DIR install-sync"

@@ -89,10 +89,20 @@ setup-prezto:
 	@if [ -d "$(HOME_DIR)/.zprezto" ]; then \
 		echo "$(GREEN)✓ Prezto already installed$(NC)"; \
 	else \
+		echo "$(BLUE)Checking prerequisites...$(NC)"; \
+		if ! command -v git >/dev/null 2>&1; then \
+			echo "$(RED)✗ Error: git is not installed$(NC)"; \
+			exit 1; \
+		fi; \
 		echo "$(BLUE)Cloning Prezto...$(NC)"; \
-		git clone --recursive https://github.com/sorin-ionescu/prezto.git "$(HOME_DIR)/.zprezto"; \
-		echo "$(GREEN)✓ Prezto installed$(NC)"; \
-		echo "$(YELLOW)Note: Your custom configs from $(CONFIG_DIR)/zsh/ will be used$(NC)"; \
+		if git clone --recursive https://github.com/sorin-ionescu/prezto.git "$(HOME_DIR)/.zprezto" 2>&1; then \
+			echo "$(GREEN)✓ Prezto installed$(NC)"; \
+			echo "$(YELLOW)Note: Your custom configs from $(CONFIG_DIR)/zsh/ will be used$(NC)"; \
+		else \
+			echo "$(RED)✗ Error: Failed to clone Prezto$(NC)"; \
+			echo "$(YELLOW)  Check network connection and try again$(NC)"; \
+			exit 1; \
+		fi; \
 	fi
 
 link-git:
@@ -134,18 +144,25 @@ install-git: backup link-git
 # Unlink all
 unlink:
 	@echo "$(YELLOW)Removing symlinks...$(NC)"
-	@rm -f $(HOME_DIR)/.zshrc
-	@rm -f $(HOME_DIR)/.zprofile
-	@rm -f $(HOME_DIR)/.zpreztorc
-	@rm -f $(HOME_DIR)/.p10k.zsh
-	@rm -f $(HOME_DIR)/.config/zsh
-	@rm -f $(HOME_DIR)/.config/git
-	@rm -f $(HOME_DIR)/.config/homebrew
-	@rm -f $(HOME_DIR)/.config/mise
-	@rm -f $(HOME_DIR)/.config/fish
-	@rm -f $(HOME_DIR)/.config/ios-cli
-	@rm -f $(HOME_DIR)/.config/sync-service
-	@find $(HOME_DIR)/.local/bin -type l -exec rm {} \; 2>/dev/null || true
+	@rm -f "$(HOME_DIR)/.zshrc"
+	@rm -f "$(HOME_DIR)/.zprofile"
+	@rm -f "$(HOME_DIR)/.zpreztorc"
+	@rm -f "$(HOME_DIR)/.p10k.zsh"
+	@rm -f "$(HOME_DIR)/.config/zsh"
+	@rm -f "$(HOME_DIR)/.config/git"
+	@rm -f "$(HOME_DIR)/.config/homebrew"
+	@rm -f "$(HOME_DIR)/.config/mise"
+	@rm -f "$(HOME_DIR)/.config/fish"
+	@rm -f "$(HOME_DIR)/.config/ios-cli"
+	@rm -f "$(HOME_DIR)/.config/sync-service"
+	@# Only remove symlinks that point to our scripts directory
+	@find "$(HOME_DIR)/.local/bin" -type l 2>/dev/null | while read link; do \
+		target=$$(readlink "$$link" 2>/dev/null || true); \
+		if [[ "$$target" == "$(SCRIPTS_DIR)"* ]]; then \
+			rm -f "$$link"; \
+			echo "Removed: $$link"; \
+		fi; \
+	done || true
 	@echo "$(GREEN)✓ Symlinks removed$(NC)"
 
 # Uninstall
@@ -174,6 +191,10 @@ clean:
 # Dump macOS preferences
 dump-macos:
 	@echo "$(BLUE)Dumping macOS preferences...$(NC)"
-	@$(SCRIPTS_DIR)/macos/dump-macos-settings $(CONFIG_DIR)/macos-preferences/system-preferences.sh
+	@if [ ! -x "$(SCRIPTS_DIR)/macos/dump-macos-settings" ]; then \
+		echo "$(RED)✗ Error: dump-macos-settings script not found or not executable$(NC)"; \
+		exit 1; \
+	fi
+	@"$(SCRIPTS_DIR)/macos/dump-macos-settings" "$(CONFIG_DIR)/macos-preferences/system-preferences.sh"
 	@echo "$(GREEN)✓ Preferences dumped to: $(CONFIG_DIR)/macos-preferences/system-preferences.sh$(NC)"
 	@echo "$(YELLOW)Note: Review the file before committing or restoring$(NC)"
