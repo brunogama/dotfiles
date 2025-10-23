@@ -335,14 +335,11 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ## Why This Structure?
 
-**Previous (Stow-based):**
-```
-stow-packages/zsh/.config/zsh/.zshrc  # Confusing nested structure
-```
-
-**Current (Unix-native):**
+**Unix-Native Organization:**
 ```
 config/zsh/.zshrc                      # Clear, direct path
+scripts/core/work-mode                 # Easy to find
+docs/guides/HOMEBREW_MANAGEMENT_GUIDE.md  # Self-documenting
 ```
 
 ### Advantages
@@ -352,26 +349,24 @@ config/zsh/.zshrc                      # Clear, direct path
 ✅ **Standard Tools** - Makefile, not custom abstractions  
 ✅ **Easy Debugging** - Direct paths, no indirection  
 ✅ **Git-Friendly** - Clear diffs, obvious locations  
-✅ **Beginner-Friendly** - Unix conventions, not Stow quirks
+✅ **Beginner-Friendly** - Unix conventions, clear organization
 
-## Migration from Stow
+## Upgrading from Previous Versions
 
-If you're upgrading from the old Stow-based structure:
+If you have an older installation (pre-October 2024):
 
 ```bash
-# Backup first
+# Backup existing configuration
 make backup
 
-# Uninstall old structure
-cd old-location
-./stow-install.sh --uninstall
+# Clean old installation
+make uninstall
 
-# Install new structure
-cd ~/.config/dotfiles
+# Fresh install with new structure
 make install
 ```
 
-All your configurations are preserved—just organized better!
+Your configurations are preserved in the backup (timestamped in `~/.dotfiles-backup-*/`).
 
 ## Contributing
 

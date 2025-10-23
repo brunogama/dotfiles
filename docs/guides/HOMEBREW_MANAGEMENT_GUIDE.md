@@ -1,12 +1,12 @@
 # 🍺 Homebrew Package Management Guide
 
-Your Homebrew packages are now fully managed through your Stow-based dotfiles system!
+Your Homebrew packages are now fully managed through your dotfiles system!
 
 ## 🎉 **What's Been Set Up**
 
-### ✅ **Homebrew Stow Package**
+### ✅ **Homebrew Configuration**
 
-- **Location:** `stow-packages/homebrew/`
+- **Location:** `config/homebrew/`
 - **Brewfile:** `~/.config/homebrew/Brewfile` (170+ packages synced)
 - **Management Script:** `brew-sync` (available in PATH)
 
@@ -218,7 +218,7 @@ source ~/.zshrc
 - ✅ **170+ packages** managed in Brewfile
 - ✅ **System in sync** - no differences between Brewfile and installed
 - ✅ **Automatic backups** enabled
-- ✅ **Integration** with Stow-based dotfiles
+- ✅ **Integration** with dotfiles management system
 - ✅ **Team sharing** ready via Git
 
 ### **Key Benefits**

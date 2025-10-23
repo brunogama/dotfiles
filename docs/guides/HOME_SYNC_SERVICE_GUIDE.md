@@ -13,7 +13,7 @@ Your home environment now has a comprehensive sync service that automatically ke
 
 ### ✅ **Automatic Synchronization**
 
-- **Dotfiles:** Stow packages, configurations, scripts
+- **Dotfiles:** Configuration files, scripts, settings
 - **Credentials:** Keychain secrets via credmatch encrypted backup
 - **Homebrew:** Package lists and installations
 - **Environment:** Shell configurations and work settings
@@ -119,7 +119,7 @@ home-sync pull --quiet       # Silent pull
 #### **1. Dotfiles Sync**
 
 - Pulls latest changes from your dotfiles Git repository
-- Re-stows Stow packages to update symlinks
+- Updates symlinks to latest configurations
 - Commits any local changes before syncing
 - Handles conflicts intelligently
 
