@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md to track user-facing changes
 - Pre-commit hooks for code quality and CHANGELOG enforcement
 - CHANGELOG validation script to ensure documentation of changes
+- OpenSpec proposal for home-sync fixes (fix-home-sync-issues)
+  - Git repository auto-detection for flexible dotfiles location
+  - Script auto-installation on shell startup
+  - Git repository validation before operations
+
+### Fixed
+- Makefile color escaping - ANSI colors now render correctly in terminal output
+- home-sync missing dependency error (store-api-key) - run `make install-scripts` to resolve immediately
+- home-sync git repository detection issues (see proposal: openspec/changes/fix-home-sync-issues/)
 
 ## [1.0.0] - 2025-01-23
 

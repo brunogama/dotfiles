@@ -9,12 +9,12 @@ SCRIPTS_DIR := $(DOTFILES_DIR)/scripts
 DOCS_DIR := $(DOTFILES_DIR)/docs
 BACKUP_DIR := $(HOME)/.dotfiles-backup-$(shell date +%Y%m%d-%H%M%S)
 
-# Colors
-BLUE := \033[0;34m
-GREEN := \033[0;32m
-YELLOW := \033[1;33m
-RED := \033[0;31m
-NC := \033[0m
+# Colors (shell-expanded for proper rendering)
+BLUE := $(shell printf '\033[0;34m')
+GREEN := $(shell printf '\033[0;32m')
+YELLOW := $(shell printf '\033[1;33m')
+RED := $(shell printf '\033[0;31m')
+NC := $(shell printf '\033[0m')
 
 .PHONY: help install uninstall link unlink backup clean test setup-prezto check-prezto dump-macos
 

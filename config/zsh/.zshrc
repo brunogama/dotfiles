@@ -49,7 +49,7 @@ alias config='code $(realpath .)'
 alias gitconfig='code ~/.gitconfig'
 alias mkdir="mkdir -p"
 alias commit="git commit"
-alias ppulls="git pull || true; git submodule foreach 'git pull || true'" 
+alias ppulls="git pull || true; git submodule foreach 'git pull || true'"
 alias ppush="git push || true; git submodule foreach 'git push || true'"
 alias reset-hard="git reset --hard || true"
 alias reset-hard-all="reset-hard; git submodule foreach 'git reset --hard'"
@@ -170,10 +170,12 @@ fpath=(/Users/bruno/.docker/completions $fpath)
 autoload -Uz compinit
 compinit
 
-export NVM_DIR="$HOME/.config/nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+# export NVM_DIR="$HOME/.config/nvm"
+# [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+# [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
 
 
 
