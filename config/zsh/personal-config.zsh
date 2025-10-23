@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ~/.config/zsh/personal-config.zsh
 # Personal machine configuration and aliases
 
@@ -30,18 +31,24 @@ fi
 
 # Display available commands
 echo "🏠 Personal environment loaded (prompt shows: HOME:PERSONAL). Available commands:"
-echo "  home-sync / home-sync-up  - Sync home environment"
-echo "  home-push / home-pull     - Push/pull changes"
-echo "  sync-start / sync-stop    - Control sync service"
+echo "  syncenv / sync            - Sync dotfiles (smart git strategy)"
+echo "  syncenv --status          - Check sync status"
+echo "  home-sync / home-sync-up  - Legacy sync (use syncenv instead)"
 
-# Personal environment sync aliases
+# Modern syncenv aliases (recommended)
+alias sync="syncenv"
+alias sync-personal="syncenv personal"
+alias sync-work="syncenv work"
+alias sync-status="syncenv --status"
+alias sync-dry="syncenv --dry-run"
+
+# Legacy aliases (deprecated, use syncenv instead)
 alias home-sync-up="home-sync sync"
 alias home-push="home-sync push"
 alias home-pull="home-sync pull"
 alias home-status="home-sync status"
 alias sync-start="home-sync-service start"
 alias sync-stop="home-sync-service stop"
-alias sync-status="home-sync-service status"
 
 # Homebrew management aliases
 alias brew-install="brew-sync install"

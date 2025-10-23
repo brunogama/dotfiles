@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Work Configuration
 # This file contains work-specific shell configuration
 
@@ -67,14 +68,20 @@ alias brew-install="brew-sync install"
 alias brew-update="brew-sync update"
 alias brew-full-sync="brew-sync sync"
 
-# Home sync service aliases
+# Modern syncenv aliases (recommended)
+alias sync="syncenv"
+alias sync-personal="syncenv personal"
+alias sync-work="syncenv work"
+alias sync-status="syncenv --status"
+alias sync-dry="syncenv --dry-run"
+
+# Legacy home sync aliases (deprecated, use syncenv instead)
 alias home-sync-up="home-sync sync"
 alias home-push="home-sync push"
 alias home-pull="home-sync pull"
 alias home-status="home-sync status"
 alias sync-start="home-sync-service start"
 alias sync-stop="home-sync-service stop"
-alias sync-status="home-sync-service status"
 
 # Work environment variables (customize as needed)
 export WORK_ENV="work"  # This enables the "WORK" indicator in the prompt
@@ -116,9 +123,9 @@ _work_profile_completion() {
 compdef _work_profile_completion work-profile
 
 echo "💼 Work environment loaded (prompt shows: WORK). Available commands:"
+echo "  syncenv / sync            - Sync dotfiles (smart git strategy)"
+echo "  syncenv --status          - Check sync status"
 echo "  ws / load-work-secrets    - Load work secrets into environment"
 echo "  ws-list                   - List available work secrets"
-echo "  ws-store <key> <value>    - Store a new work secret"
-echo "  ws-get <key>              - Get a specific work secret"
 echo "  work-profile <env>        - Switch work environment (dev/prod/staging)"
 echo ""

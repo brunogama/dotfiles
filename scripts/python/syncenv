@@ -332,6 +332,29 @@ def main(environment, dry_run, verbose, force, no_push, status):
         display_status(repo, detected_env)
         sys.exit(0)
 
+    # Dry-run mode (check early to avoid side effects)
+    if dry_run:
+        changed_files = check_uncommitted_changes(repo)
+        console.print("[yellow]━━━ DRY RUN MODE ━━━[/yellow]")
+        console.print()
+
+        if changed_files and not force:
+            console.print(f"[yellow]⚠[/yellow] Would fail: {len(changed_files)} uncommitted changes")
+            console.print("[dim]Use --force to auto-commit[/dim]")
+            console.print()
+
+        console.print("Would perform:")
+        if changed_files and force:
+            console.print(f"  0. [yellow]Auto-commit {len(changed_files)} uncommitted changes[/yellow]")
+        console.print(f"  1. [cyan]git pull --rebase origin {branch}[/cyan]")
+        console.print(f"  2. If rebase fails: [cyan]git pull --no-ff origin {branch}[/cyan]")
+        if not no_push:
+            console.print(f"  3. [cyan]git push origin {branch}[/cyan]")
+        else:
+            console.print("  3. [dim]Skip push (--no-push)[/dim]")
+        console.print()
+        sys.exit(0)
+
     # Check uncommitted changes
     changed_files = check_uncommitted_changes(repo)
     if changed_files and not force:
@@ -359,20 +382,6 @@ def main(environment, dry_run, verbose, force, no_push, status):
             console.print(f"[red]✗[/red] Failed to commit: {e}")
             sys.exit(1)
         console.print()
-
-    # Dry-run mode
-    if dry_run:
-        console.print("[yellow]━━━ DRY RUN MODE ━━━[/yellow]")
-        console.print()
-        console.print("Would perform:")
-        console.print(f"  1. [cyan]git pull --rebase origin {branch}[/cyan]")
-        console.print(f"  2. If rebase fails: [cyan]git pull --no-ff origin {branch}[/cyan]")
-        if not no_push:
-            console.print(f"  3. [cyan]git push origin {branch}[/cyan]")
-        else:
-            console.print("  3. [dim]Skip push (--no-push)[/dim]")
-        console.print()
-        sys.exit(0)
 
     # Pull with rebase
     with console.status("[cyan]⏳ Pulling from remote (rebase)..."):
