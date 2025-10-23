@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Checks all critical components (scripts, ZSH, Git, Prezto)
   - Color-coded status with actionable fix commands
   - Overall installation health summary
+- OpenSpec proposal for syncenv command (add-syncenv-command)
+  - Python-based environment sync with marvelous DX
+  - Smart git strategy: rebase with auto-fallback to merge
+  - Environment-aware syncing (work vs personal)
+  - Beautiful CLI with rich output, spinners, and progress
+  - Comprehensive error handling with actionable guidance
 
 ### Fixed
 - Makefile color escaping - ANSI colors now render correctly in terminal output
