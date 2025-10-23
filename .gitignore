@@ -236,3 +236,4 @@ venv/
 # Old stow structure (deprecated)
 # Keep for reference during migration
 # stow-packages/
+config/zsh/.zcompdump
