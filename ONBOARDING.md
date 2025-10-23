@@ -1,9 +1,10 @@
 # Comprehensive Onboarding Guide
+
 ## Bruno's Dotfiles Project
 
-**Target Audience:** Senior developers new to this codebase  
-**Last Updated:** 2025-10-23  
-**Repository:** https://github.com/brunogama/dotfiles
+**Target Audience:** Senior developers new to this codebase
+**Last Updated:** 2025-10-23
+**Repository:** <https://github.com/brunogama/dotfiles>
 
 ---
 
@@ -37,6 +38,7 @@ Bruno's Dotfiles is a modern, Unix-native dotfiles management system designed fo
 ### Main Functionality
 
 **Core Features:**
+
 - **work-mode:** Switch between work/personal environments with one command
 - **home-sync:** Synchronize dotfiles across machines automatically
 - **credfile/credmatch:** Secure credential and file encryption/storage
@@ -44,6 +46,7 @@ Bruno's Dotfiles is a modern, Unix-native dotfiles management system designed fo
 - **OpenSpec Integration:** Spec-driven development for major changes
 
 **Visual Indicators:**
+
 - Work environment shows `WORK` (orange) in shell prompt
 - Personal environment shows `HOME:PERSONAL` (blue)
 - Dynamic updates based on profile (dev/prod/staging)
@@ -51,22 +54,26 @@ Bruno's Dotfiles is a modern, Unix-native dotfiles management system designed fo
 ### Tech Stack
 
 #### Languages & Shells
+
 - **Primary:** Bash 5.x (shell scripts)
 - **Secondary:** Python 3.11+ (utilities, with `uv` for dependency management)
 - **Shell:** ZSH with Prezto framework + Powerlevel10k theme
 
 #### Frameworks & Tools
+
 - **Prezto:** ZSH framework for prompt management and plugins
 - **Powerlevel10k:** Highly customizable ZSH theme with instant prompt
 - **OpenSpec:** Internal pattern for spec-driven development
 - **GNU Make:** Standard Unix installation interface
 
 #### Package Management
+
 - **Homebrew:** macOS package manager (Brewfile-based)
 - **uv:** Python package manager for single-file scripts
 - **Git submodules:** For Prezto framework
 
 #### Development Tools
+
 - **Git:** Version control with conventional commits
 - **shellcheck:** Shell script linting (mandatory for all bash scripts)
 - **Claude Code:** AI coding assistant with custom hooks and agents
@@ -75,12 +82,14 @@ Bruno's Dotfiles is a modern, Unix-native dotfiles management system designed fo
 ### Architecture Pattern
 
 **Unix-Native Flat Structure:**
+
 - No complex frameworks or abstractions
 - Direct symlinks from `~/.config/` and `~/.local/bin`
 - Simple Makefile targets for installation
 - Self-contained scripts with minimal dependencies
 
 **Design Philosophy:**
+
 1. **Simplicity First:** Prefer straightforward bash over complex tools
 2. **Standard Tools:** Use Unix conventions (Makefile, symlinks, man pages)
 3. **Fast Navigation:** Flat hierarchy, easy to find anything
@@ -90,6 +99,7 @@ Bruno's Dotfiles is a modern, Unix-native dotfiles management system designed fo
 ### Key Dependencies
 
 #### Runtime Dependencies (Required)
+
 - **macOS:** Primary target platform (10.15+)
 - **ZSH:** Default shell (`/bin/zsh`)
 - **Git:** Version control (2.x+)
@@ -97,17 +107,20 @@ Bruno's Dotfiles is a modern, Unix-native dotfiles management system designed fo
 - **Prezto:** ZSH framework (installed via git submodule or `make setup-prezto`)
 
 #### Development Dependencies
+
 - **shellcheck:** Shell script linter (required for contributions)
 - **uv:** Python package manager (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - **make:** Build automation (pre-installed on macOS)
 
 #### Optional Dependencies
+
 - **gh:** GitHub CLI (for PR creation, branch management)
 - **jq:** JSON processor (for parsing configurations)
 - **fzf:** Fuzzy finder (for interactive searches)
 - **bat, exa, fd, ripgrep:** Modern CLI tool replacements
 
 #### Tool Versions
+
 ```bash
 # Minimum required versions
 zsh >= 5.8
@@ -117,6 +130,7 @@ shellcheck >= 0.8.0
 ```
 
 **Version Constraints:**
+
 - Prezto requires ZSH 5.1+
 - Powerlevel10k requires ZSH 5.1+ and Git 2.x
 - Python scripts use PEP 723 inline script metadata (Python 3.11+)
@@ -325,43 +339,55 @@ openspec/
 
 1. **macOS 10.15+** (Catalina or later)
    - Why: Primary target platform, uses macOS-specific features (Keychain, LaunchAgents)
-   
+
 2. **Xcode Command Line Tools**
+
    ```bash
    xcode-select --install
    ```
+
    - Why: Required for git, make, and development tools
 
 3. **Homebrew**
+
    ```bash
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
    ```
+
    - Why: Package manager for all other dependencies
 
 4. **Git 2.30+**
+
    ```bash
    brew install git
    ```
+
    - Why: Version control and submodule support
 
 **Recommended Software:**
 
 1. **shellcheck**
+
    ```bash
    brew install shellcheck
    ```
+
    - Why: Required for contributing (lint shell scripts)
 
 2. **uv (Python package manager)**
+
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
+
    - Why: Required for Python utilities and Claude hooks
 
 3. **Modern CLI tools**
+
    ```bash
    brew install bat exa fd ripgrep fzf jq
    ```
+
    - Why: Enhanced command-line experience with aliases
 
 ### Environment Setup Commands
@@ -573,12 +599,14 @@ home-sync sync
 **Not Applicable:** This is a dotfiles configuration project, not a compiled application.
 
 **"Production" Setup:**
+
 1. Install on your actual machine (not test VM)
 2. Configure real credentials and secrets
 3. Enable sync service for automatic updates
 4. Set up work-mode for appropriate environment
 
 **Deployment Checklist:**
+
 ```bash
 # 1. Full installation
 make install
@@ -737,6 +765,7 @@ exec zsh
 ### Entry Points
 
 **Primary Entry Point: `config/zsh/.zshrc`**
+
 - **Purpose:** Main shell configuration with environment detection
 - **Location:** `config/zsh/.zshrc` → `~/.zshrc`
 - **What it does:**
@@ -748,6 +777,7 @@ exec zsh
   6. Sources additional tools (fzf, mise, nvm, etc.)
 
 **Key Lines:**
+
 ```zsh
 # Line 27-37: Environment detection
 if [[ "$DOTFILES_ENV" == "work" ]]; then
@@ -758,6 +788,7 @@ fi
 ```
 
 **Secondary Entry Point: `Makefile`**
+
 - **Purpose:** Standard Unix installation interface
 - **Location:** `Makefile` (root)
 - **What it does:**
@@ -768,6 +799,7 @@ fi
   5. Offers component-specific installs
 
 **Key Targets:**
+
 ```makefile
 install: backup link install-scripts  # Full installation
 install-zsh: backup link-zsh          # ZSH only
@@ -776,6 +808,7 @@ install-scripts: ...                  # Scripts only
 ```
 
 **Tertiary Entry Point: `install` Script**
+
 - **Purpose:** One-line installer for new users
 - **Location:** `install` (root)
 - **What it does:**
@@ -793,6 +826,7 @@ install-scripts: ...                  # Scripts only
 **Purpose:** Switch between work and personal environments
 
 **Key Functions:**
+
 ```bash
 get_current_env()      # Read DOTFILES_ENV from ~/.zshenv
 set_work_env()         # Set DOTFILES_ENV=work
@@ -802,6 +836,7 @@ offer_reload()         # Interactive shell reload
 ```
 
 **Logic Flow:**
+
 ```
 work-mode work
 ├─> Check if already in work mode → exit if true
@@ -819,6 +854,7 @@ work-mode work
 **Purpose:** Orchestrate dotfiles synchronization
 
 **Key Functions:**
+
 ```bash
 sync_dotfiles()        # Full sync (pull + push)
 push_changes()         # Git push with safety checks
@@ -828,6 +864,7 @@ backup_current()       # Create backup before sync
 ```
 
 **Logic Flow:**
+
 ```
 home-sync sync
 ├─> Check git status
@@ -846,6 +883,7 @@ home-sync sync
 **Purpose:** Secure file encryption and storage
 
 **Key Functions:**
+
 ```bash
 encrypt_file()         # Encrypt file with credmatch
 decrypt_file()         # Decrypt file from credmatch
@@ -854,6 +892,7 @@ retrieve_file()        # Retrieve from git and decrypt
 ```
 
 **Logic Flow:**
+
 ```
 credfile put "name" /path/to/file
 ├─> Read file content
@@ -868,6 +907,7 @@ credfile put "name" /path/to/file
 **Purpose:** Display environment in prompt
 
 **Key Function:**
+
 ```zsh
 prompt_env_context() {
   local label color
@@ -887,6 +927,7 @@ prompt_env_context() {
 ```
 
 **Integration Point:**
+
 ```zsh
 # Line 55 in .p10k.zsh
 typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
@@ -901,6 +942,7 @@ typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
 **Not Applicable:** This project doesn't use traditional databases.
 
 **Data Storage:**
+
 - **Credentials:** macOS Keychain (via `security` command)
 - **Encrypted Files:** Git repository with credmatch (AES-256-CBC)
 - **Configs:** Plain text files in git
@@ -1014,6 +1056,7 @@ git show HEAD:$KEY | \
 ```
 
 **Access Control:**
+
 - **Keychain:** Protected by macOS user account password
 - **CredMatch:** Protected by master password in Keychain
 - **Environment separation:** work-config.zsh vs personal-config.zsh
@@ -1045,12 +1088,14 @@ brew bundle dump --file=config/homebrew/Brewfile.generated
 **3. Claude Code Integration**
 
 **Hooks:**
+
 - `pre_tool_use.py`: Validate before tool execution
 - `post_tool_use.py`: Post-process tool results
 - `user_prompt_submit.py`: Process user input
 - `session_start.py`: Initialize session context
 
 **Agents:**
+
 - 18 specialized agents for different tasks
 - Custom slash commands for workflows
 - Status line integration with uv
@@ -1058,11 +1103,13 @@ brew bundle dump --file=config/homebrew/Brewfile.generated
 **4. Factory.ai Integration**
 
 **Droid-Shield:**
+
 - Secret detection in commits
 - Blocks commits with exposed credentials
 - Integrates with git commit workflow
 
 **OpenSpec Commands:**
+
 - `/openspec proposal`: Create change proposal
 - `/openspec apply`: Apply approved changes
 - `/openspec archive`: Archive completed changes
@@ -1106,6 +1153,7 @@ POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
 ### Git Branch Naming Conventions
 
 **Branch Types:**
+
 ```
 main              # Main development branch (default)
 feature/*         # New features (feature/add-credential-storage)
@@ -1116,6 +1164,7 @@ chore/*           # Maintenance tasks (chore/update-dependencies)
 ```
 
 **Examples:**
+
 ```bash
 # Good branch names
 feature/add-docker-support
@@ -1131,6 +1180,7 @@ my-changes       # Not descriptive
 ```
 
 **Current Branches:**
+
 ```
 main             # Current development (latest features)
 bugged-main      # Old state before environment switching
@@ -1152,6 +1202,7 @@ Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.g
 ```
 
 **Types:**
+
 - **feat:** New feature (user-facing)
 - **fix:** Bug fix
 - **docs:** Documentation only changes
@@ -1190,12 +1241,126 @@ chore: update .gitignore for new structure
 ```
 
 **Commit Checklist:**
+
 - [ ] Type is correct (feat/fix/docs/etc.)
 - [ ] Description is concise (<72 chars)
 - [ ] Body explains why (not what)
 - [ ] No secrets or credentials
 - [ ] Co-author line included
-- [ ] Passes pre-commit hooks (if any)
+- [ ] Passes pre-commit hooks
+- [ ] CHANGELOG updated (if user-facing: feat/fix/perf/refactor)
+
+### Pre-Commit Hooks
+
+**Setup:**
+
+```bash
+# Install pre-commit
+brew install pre-commit  # macOS
+# or
+pip install pre-commit   # via pip
+
+# Install hooks in repository
+cd ~/.config/dotfiles
+pre-commit install
+
+# Test installation
+pre-commit run --all-files
+```
+
+**Available Hooks:**
+
+```yaml
+# Code Quality
+- shellcheck           # Shell script linting (mandatory)
+- trailing-whitespace  # Remove trailing whitespace
+- end-of-file-fixer    # Ensure files end with newline
+- check-yaml           # Validate YAML syntax
+- check-json           # Validate JSON syntax
+- mixed-line-ending    # Fix line endings (LF)
+
+# Python (if applicable)
+- black               # Code formatting
+- isort               # Import sorting
+
+# Documentation
+- markdownlint        # Markdown linting
+- validate-changelog  # Ensure CHANGELOG.md updated
+```
+
+**CHANGELOG Enforcement:**
+
+Pre-commit hooks enforce CHANGELOG.md updates for user-facing changes:
+
+```bash
+# These commit types REQUIRE CHANGELOG update:
+feat:      # New features → Add to "### Added"
+fix:       # Bug fixes → Add to "### Fixed"
+perf:      # Performance → Add to "### Changed"
+refactor:  # User-visible refactoring → Add to "### Changed"
+
+# These commit types SKIP CHANGELOG validation:
+chore:     # Maintenance
+docs:      # Documentation only
+test:      # Tests only
+ci:        # CI/CD configuration
+build:     # Build system
+style:     # Code formatting
+```
+
+**Example Workflow:**
+
+```bash
+# Make changes
+vim scripts/core/my-script.sh
+
+# Try to commit (will fail without CHANGELOG)
+git add .
+git commit -m "feat: add new script"
+# ERROR: CHANGELOG.md not updated for user-facing change
+
+# Update CHANGELOG
+vim CHANGELOG.md
+# Add to [Unreleased] section:
+# ### Added
+# - New script for doing X
+
+# Commit again (will pass)
+git add CHANGELOG.md
+git commit -m "feat: add new script"
+# ✓ shellcheck passed
+# ✓ CHANGELOG validated
+# ✓ All hooks passed
+```
+
+**Bypassing Hooks (When Needed):**
+
+```bash
+# Skip all hooks (not recommended)
+git commit --no-verify -m "chore: emergency fix"
+
+# Better: Fix the issues reported by hooks
+pre-commit run --all-files  # See what's failing
+# Fix the issues
+git commit -m "chore: fix shellcheck issues"
+```
+
+**Troubleshooting:**
+
+```bash
+# Hooks not running?
+pre-commit install  # Reinstall hooks
+
+# Update hook versions
+pre-commit autoupdate
+
+# Clear cache
+pre-commit clean
+
+# Run specific hook
+pre-commit run shellcheck --all-files
+pre-commit run validate-changelog
+```
 
 ### Starting a New Feature or Bugfix
 
@@ -1353,6 +1518,7 @@ credfile --help
 **Shell Scripts (Bash/ZSH):**
 
 **Style Guide:**
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail  # REQUIRED: Exit on error, undefined var, pipe fail
@@ -1400,6 +1566,7 @@ done
 ```
 
 **shellcheck Rules (Enforced):**
+
 ```bash
 # SC2086: Quote variables
 echo "$var"          # Not: echo $var
@@ -1421,6 +1588,7 @@ var=$(cmd)           # Not: local var=$(cmd)
 **Python Scripts:**
 
 **Style Guide (PEP 8):**
+
 ```python
 #!/usr/bin/env -S uv run
 # /// script
@@ -1459,6 +1627,7 @@ if __name__ == "__main__":
 ```
 
 **Formatting:**
+
 ```bash
 # Line length: 88 characters (Black default)
 # Indentation: 4 spaces
@@ -1469,6 +1638,7 @@ if __name__ == "__main__":
 **Git Commits:**
 
 **Format:**
+
 ```
 type: short description (<72 chars)
 
@@ -1479,6 +1649,7 @@ Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.g
 ```
 
 **Rules:**
+
 - First line: <72 characters
 - Body: Wrap at 72 characters
 - Blank line between subject and body
@@ -1592,7 +1763,7 @@ jobs:
         run: |
           sudo apt-get install shellcheck
           find scripts -type f ! -name "*.md" -exec shellcheck {} \;
-  
+
   test:
     runs-on: macos-latest
     steps:
@@ -1606,6 +1777,7 @@ jobs:
 **Current Strategy:** Continuous deployment to `main` branch
 
 **No Formal Releases:**
+
 - No version tags
 - No CHANGELOG
 - No semantic versioning
@@ -1654,12 +1826,14 @@ git log v0.9.0..v1.0.0 --oneline --no-merges > CHANGELOG-v1.0.0.md
 **Decision:** No framework abstractions like rcm, yadm, or chezmoi
 
 **Rationale:**
+
 - Direct symlinks are transparent and easy to debug
 - Standard Unix tools (Make, ln) have no learning curve
 - Failures are obvious and fixable
 - No magic, no surprises
 
 **Implementation:**
+
 ```makefile
 # Makefile - simple symlink creation
 link-zsh:
@@ -1672,12 +1846,14 @@ link-zsh:
 **Decision:** Load configs based on `DOTFILES_ENV` variable
 
 **Rationale:**
+
 - Single source of truth (one variable)
 - Easy to switch environments
 - Clean separation of work/personal
 - Visual feedback via prompt
 
 **Implementation:**
+
 ```zsh
 # .zshrc
 if [[ "$DOTFILES_ENV" == "work" ]]; then
@@ -1692,12 +1868,14 @@ fi
 **Decision:** All scripts include help text and usage examples
 
 **Rationale:**
+
 - Discoverable via `--help`
 - No external documentation needed
 - Examples show real usage
 - Consistent UX across all scripts
 
 **Implementation:**
+
 ```bash
 # work-mode script
 case "${1:-status}" in
@@ -1719,12 +1897,14 @@ esac
 **Decision:** Never store secrets in plain text git
 
 **Rationale:**
+
 - macOS Keychain for runtime secrets
 - AES-256 encryption for synced secrets
 - Git shows encrypted blobs only
 - Master password protects all
 
 **Implementation:**
+
 ```bash
 # Store in Keychain
 security add-generic-password \
@@ -1739,12 +1919,14 @@ credmatch store "$MASTER_PASSWORD" "$KEY" "$VALUE"
 **Decision:** OpenSpec proposals for significant changes
 
 **Rationale:**
+
 - Think before coding
 - Document decisions
 - Review architecture
 - Track why changes were made
 
 **Implementation:**
+
 ```
 openspec/changes/add-new-feature/
 ├── proposal.md   # Why, what, impact
@@ -1757,6 +1939,7 @@ openspec/changes/add-new-feature/
 **1. Configuration State**
 
 **Storage:** Plain text files in Git
+
 ```
 config/zsh/.zshrc         # Version controlled
 config/zsh/.zsh_history   # Gitignored (user-specific)
@@ -1768,6 +1951,7 @@ config/zsh/.zcompdump     # Gitignored (generated)
 **2. Environment State**
 
 **Storage:** `~/.zshenv` file (user-created)
+
 ```bash
 export DOTFILES_ENV=work  # Persisted between sessions
 ```
@@ -1777,10 +1961,12 @@ export DOTFILES_ENV=work  # Persisted between sessions
 **3. Secrets State**
 
 **Storage:** Dual system
+
 - **Runtime:** macOS Keychain (`security` command)
 - **Sync:** Encrypted git repository (credmatch)
 
 **Access:**
+
 ```bash
 # Runtime (from Keychain)
 get-api-key "KEY_NAME"
@@ -1792,6 +1978,7 @@ credmatch fetch "$MASTER_PASSWORD" "KEY_NAME"
 **4. Sync State**
 
 **Storage:**
+
 - Git metadata (commits, refs)
 - LaunchAgent logs (`~/Library/Logs/home-sync-service.log`)
 
@@ -1885,6 +2072,7 @@ log_error()   { echo -e "${RED}[✗]${NC} $1" >&2; }
 **Location:** `~/Library/Logs/home-sync-service.log`
 
 **Format:**
+
 ```
 [2025-10-23 12:34:56] INFO: Starting sync
 [2025-10-23 12:35:01] SUCCESS: Sync completed
@@ -1893,6 +2081,7 @@ log_error()   { echo -e "${RED}[✗]${NC} $1" >&2; }
 ```
 
 **View logs:**
+
 ```bash
 tail -f ~/Library/Logs/home-sync-service.log
 ```
@@ -1923,6 +2112,7 @@ git log --follow -- config/zsh/.zshrc
 **1. Secret Management**
 
 **macOS Keychain:**
+
 ```bash
 # Secure storage
 security add-generic-password -s "dotfiles.KEY" -w "VALUE"
@@ -1932,6 +2122,7 @@ security find-generic-password -s "dotfiles.KEY" -w
 ```
 
 **Encrypted Git (CredMatch):**
+
 ```bash
 # AES-256-CBC with PBKDF2
 openssl enc -aes-256-cbc -pbkdf2 \
@@ -1942,6 +2133,7 @@ openssl enc -aes-256-cbc -pbkdf2 \
 **2. Never Commit Secrets**
 
 **gitignore:**
+
 ```gitignore
 # Credentials
 *.key
@@ -2304,7 +2496,7 @@ uv run path/to/script.py
 - [ ] Test installation on clean machine
 - [ ] Commit with clear breaking change note:
       feat!: upgrade to XYZ v2 (BREAKING)
-      
+
       BREAKING: API changed from X to Y
       Migration: Update usage from `old` to `new`
 ```
@@ -2321,16 +2513,16 @@ uv run path/to/script.py
 # Check for old system
 if [[ -f ~/.work-machine ]]; then
     echo "Migrating from old marker file system..."
-    
+
     # Read old state
     work_enabled="true"
-    
+
     # Set new state
     work-mode work
-    
+
     # Remove old marker
     rm ~/.work-machine
-    
+
     echo "Migration complete"
 fi
 ```
@@ -2364,6 +2556,7 @@ make install-scripts
 **Location:** `~/.zshenv` (in home directory)
 
 **How it's Created:**
+
 ```bash
 # Automatically by work-mode
 work-mode work  # Creates ~/.zshenv with DOTFILES_ENV=work
@@ -2375,6 +2568,7 @@ echo 'export DOTFILES_ENV=work' >> ~/.zshenv
 **Gotcha:** If deleted, environment switching stops working
 
 **Fix:**
+
 ```bash
 work-mode work  # Recreates file
 ```
@@ -2384,11 +2578,13 @@ work-mode work  # Recreates file
 **Issue:** If `XDG_CONFIG_HOME` is set, ZSH looks there instead of `~/.config`
 
 **Check:**
+
 ```bash
 echo $XDG_CONFIG_HOME  # Should be empty or ~/.config
 ```
 
 **Fix if Different:**
+
 ```bash
 # Edit ~/.zshenv
 export XDG_CONFIG_HOME="$HOME/.config"
@@ -2400,6 +2596,7 @@ export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 **Issue:** Prezto is not auto-installed with `make install`
 
 **Required Step:**
+
 ```bash
 make setup-prezto  # Must run once
 ```
@@ -2411,11 +2608,13 @@ make setup-prezto  # Must run once
 **Issue:** macOS doesn't include `~/.local/bin` in default PATH
 
 **Check:**
+
 ```bash
 echo $PATH | grep "$HOME/.local/bin"
 ```
 
 **Fix:** Add to `~/.zshenv`:
+
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
@@ -2481,19 +2680,22 @@ p10k configure  # Interactive theme configuration
 
 **1. GitHub (Required for Git Operations)**
 
-**Dependency:** https://github.com
+**Dependency:** <https://github.com>
 
 **Used For:**
+
 - Cloning repository
 - Pushing/pulling changes
 - Sync service operation
 
 **Failure Modes:**
+
 - No internet: Sync fails, local operations work
 - GitHub down: Sync fails, local operations work
 - Auth expired: Push/pull fails
 
 **Workarounds:**
+
 ```bash
 # Work offline
 work-mode status  # Still works
@@ -2506,14 +2708,17 @@ work-mode status  # Still works
 **Dependency:** Built-in macOS service
 
 **Used For:**
+
 - Storing API keys
 - Retrieving secrets
 
 **Failure Modes:**
+
 - Keychain locked: Prompts for password
 - Keychain corrupted: Credential operations fail
 
 **Fix:**
+
 ```bash
 # Unlock keychain
 security unlock-keychain ~/Library/Keychains/login.keychain-db
@@ -2524,17 +2729,20 @@ security unlock-keychain ~/Library/Keychains/login.keychain-db
 
 **3. Homebrew (Required for Installation)**
 
-**Dependency:** https://brew.sh
+**Dependency:** <https://brew.sh>
 
 **Used For:**
+
 - Installing dependencies
 - Package management
 
 **Failure Modes:**
+
 - Homebrew not installed: Installation fails
 - Repository unreachable: Updates fail
 
 **Fix:**
+
 ```bash
 # Install Homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -2545,18 +2753,21 @@ brew doctor
 
 **4. Prezto (Required for Shell Features)**
 
-**Dependency:** https://github.com/sorin-ionescu/prezto
+**Dependency:** <https://github.com/sorin-ionescu/prezto>
 
 **Used For:**
+
 - ZSH framework
 - Prompt management
 - Syntax highlighting
 
 **Failure Modes:**
+
 - Not installed: Shell lacks features
 - Corrupted: Shell errors on startup
 
 **Fix:**
+
 ```bash
 # Reinstall Prezto
 rm -rf ~/.zprezto
@@ -2570,12 +2781,14 @@ make setup-prezto
 **Issue:** Simultaneous sync on multiple machines causes conflicts
 
 **Scenario:**
+
 ```
 Machine A: git pull → edit → git push
 Machine B: git pull → edit → git push  # Conflict!
 ```
 
 **Workaround:**
+
 ```bash
 # Use sync service (one machine as primary)
 # Or manual coordination (sync before editing)
@@ -2590,6 +2803,7 @@ Machine B: git pull → edit → git push  # Conflict!
 **Impact:** Slow initial installation
 
 **Workaround:**
+
 ```bash
 # Shallow clone (faster but limited)
 git clone --depth 1 https://github.com/sorin-ionescu/prezto.git ~/.zprezto
@@ -2602,6 +2816,7 @@ git clone --depth 1 https://github.com/sorin-ionescu/prezto.git ~/.zprezto
 **Issue:** shellcheck flags intentional patterns
 
 **Example:**
+
 ```bash
 # SC2086: Intentional word splitting
 files="file1 file2"
@@ -2619,6 +2834,7 @@ rm $files
 **Affected Versions:** 10.14 and earlier
 
 **Workaround:**
+
 ```bash
 # Use alternative credential storage
 export CREDMATCH_MASTER_PASSWORD="password"  # NOT RECOMMENDED
@@ -2631,6 +2847,7 @@ export CREDMATCH_MASTER_PASSWORD="password"  # NOT RECOMMENDED
 **Scenario:** Initial commit on new branch
 
 **Workaround:**
+
 ```bash
 git commit --allow-empty -m "Initial commit"
 ```
@@ -2642,6 +2859,7 @@ git commit --allow-empty -m "Initial commit"
 **Bottleneck:** Loading heavy frameworks (NVM, SDKMAN)
 
 **Measurement:**
+
 ```bash
 time zsh -ic exit  # Measure startup time
 ```
@@ -2655,11 +2873,13 @@ time zsh -ic exit  # Measure startup time
 **Bottleneck:** History file > 10MB slows down search
 
 **Check:**
+
 ```bash
 du -h ~/.config/zsh/.zsh_history
 ```
 
 **Solution:**
+
 ```bash
 # Truncate history (keep last 10000 lines)
 tail -10000 ~/.config/zsh/.zsh_history > /tmp/history
@@ -2671,12 +2891,14 @@ mv /tmp/history ~/.config/zsh/.zsh_history
 **Bottleneck:** Syncing with large history
 
 **Measurement:**
+
 ```bash
 time git pull
 time git push
 ```
 
 **Solution:**
+
 ```bash
 # Shallow clone for new machines
 git clone --depth 1 https://github.com/brunogama/dotfiles.git
@@ -2690,6 +2912,7 @@ git filter-branch --prune-empty --subdirectory-filter . -- --all
 **Bottleneck:** OpenSSL encryption is CPU-intensive
 
 **Measurement:**
+
 ```bash
 time credmatch store "..." "KEY" "value"
 time credmatch fetch "..." "KEY"
@@ -2842,6 +3065,7 @@ man dotfiles-system # System overview
 **Installation:** Man pages accessible if `~/.local/share/man` in MANPATH
 
 **Add to MANPATH:**
+
 ```bash
 # Add to ~/.zshenv
 export MANPATH="$HOME/.local/share/man:$MANPATH"
@@ -2851,13 +3075,15 @@ export MANPATH="$HOME/.local/share/man:$MANPATH"
 
 **No Wiki:** All documentation in repository
 
-**Why:** 
+**Why:**
+
 - Single source of truth (git)
 - Version controlled
 - Searchable with grep/rg
 - Works offline
 
 **Find Documentation:**
+
 ```bash
 # Search all docs
 rg "credential" docs/
@@ -2880,6 +3106,7 @@ dotfiles-help
 **Self-Documenting Scripts:**
 
 Every script includes help text:
+
 ```bash
 work-mode --help
 home-sync --help
@@ -2887,6 +3114,7 @@ credfile --help
 ```
 
 **Format:**
+
 ```
 Usage: command [COMMAND] [OPTIONS]
 
@@ -2930,6 +3158,7 @@ work-profile [ENV]           # Switch work profile
 **Guides:**
 
 1. **Quick Deployment (One-Line):**
+
    ```bash
    curl -fsSL https://raw.githubusercontent.com/brunogama/dotfiles/main/install | bash
    ```
@@ -2941,6 +3170,7 @@ work-profile [ENV]           # Switch work profile
    See `docs/guides/HOME_SYNC_SERVICE_GUIDE.md`
 
 **Deployment Checklist:**
+
 ```markdown
 - [ ] Prerequisites installed (Xcode tools, Homebrew)
 - [ ] Repository cloned
@@ -2960,6 +3190,7 @@ work-profile [ENV]           # Switch work profile
 **Location:** `AGENTS.md` → "Code Quality Rules"
 
 **Key Rules:**
+
 - Use `set -euo pipefail`
 - Quote all variables
 - Use `[[` over `[`
@@ -2971,6 +3202,7 @@ work-profile [ENV]           # Switch work profile
 **Standard:** PEP 8
 
 **Enforced Rules:**
+
 - 88 character line length
 - 4 space indentation
 - Double quotes for strings
@@ -2981,6 +3213,7 @@ work-profile [ENV]           # Switch work profile
 **Standard:** Conventional Commits
 
 **Format:**
+
 ```
 type: description
 
@@ -2992,6 +3225,7 @@ Co-authored-by: factory-droid[bot] <...>
 **4. Documentation Style Guide**
 
 **Markdown Standard:**
+
 - Headers: ATX-style (##)
 - Code blocks: Fenced with language tags
 - Lists: Dash (-) for unordered, numbers for ordered
@@ -3006,27 +3240,32 @@ Co-authored-by: factory-droid[bot] <...>
 **Day 1: Environment Setup**
 
 - [ ] **1.1** Install Xcode Command Line Tools
+
   ```bash
   xcode-select --install
   ```
 
 - [ ] **1.2** Install Homebrew
+
   ```bash
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   ```
 
 - [ ] **1.3** Clone dotfiles repository
+
   ```bash
   git clone https://github.com/brunogama/dotfiles.git ~/.config/dotfiles
   cd ~/.config/dotfiles
   ```
 
 - [ ] **1.4** Install Prezto framework
+
   ```bash
   make setup-prezto
   ```
 
 - [ ] **1.5** Install development tools
+
   ```bash
   brew install shellcheck uv gh jq bat exa fd ripgrep fzf
   ```
@@ -3034,36 +3273,41 @@ Co-authored-by: factory-droid[bot] <...>
 **Day 1: Run Project Locally**
 
 - [ ] **2.1** Run test installation (dry-run)
+
   ```bash
   make test
   ```
 
 - [ ] **2.2** Backup existing configs
+
   ```bash
   make backup
   # Note: Backup location displayed
   ```
 
 - [ ] **2.3** Install all dotfiles
+
   ```bash
   make install
   ```
 
 - [ ] **2.4** Reload shell
+
   ```bash
   exec zsh
   ```
 
 - [ ] **2.5** Verify installation
+
   ```bash
   # Check symlinks
   ls -la ~/.config/zsh  # Should be symlink
   ls -la ~/.zshrc       # Should be symlink
-  
+
   # Check scripts
   which work-mode       # Should be ~/.local/bin/work-mode
   work-mode --help      # Should show help
-  
+
   # Check prompt
   # Visual: Should see prompt theme loaded
   ```
@@ -3071,22 +3315,26 @@ Co-authored-by: factory-droid[bot] <...>
 **Day 1: Make a Test Change**
 
 - [ ] **3.1** Create test branch
+
   ```bash
   git checkout -b test/my-first-change
   ```
 
 - [ ] **3.2** Add test alias
+
   ```bash
   echo 'alias hello="echo Hello from dotfiles!"' >> config/zsh/.zshrc
   ```
 
 - [ ] **3.3** Test change
+
   ```bash
   source ~/.zshrc
   hello  # Should print: Hello from dotfiles!
   ```
 
 - [ ] **3.4** Revert test change
+
   ```bash
   git checkout config/zsh/.zshrc
   git checkout main
@@ -3096,40 +3344,44 @@ Co-authored-by: factory-droid[bot] <...>
 **Day 2: Run Full Test Suite**
 
 - [ ] **4.1** Test shellcheck on all scripts
+
   ```bash
   find scripts -type f ! -name "*.md" -exec shellcheck {} \;
   ```
 
 - [ ] **4.2** Test environment switching
+
   ```bash
   # Test work mode
   work-mode work
   source ~/.zshrc
   # Check prompt shows WORK
-  
+
   # Test personal mode
   work-mode personal
   source ~/.zshrc
   # Check prompt shows HOME:PERSONAL
-  
+
   # Check status
   work-mode status
   ```
 
 - [ ] **4.3** Test sync (if multi-machine)
+
   ```bash
   home-sync status
   home-sync sync --dry-run  # If supported
   ```
 
 - [ ] **4.4** Test credential management
+
   ```bash
   # Store test secret
   ws-store TEST_KEY "test_value"
-  
+
   # Retrieve test secret
   [[ "$(ws-get TEST_KEY)" == "test_value" ]] && echo "✓ Credentials work"
-  
+
   # Clean up
   security delete-generic-password -s "dotfiles.TEST_KEY" 2>/dev/null || true
   ```
@@ -3137,28 +3389,31 @@ Co-authored-by: factory-droid[bot] <...>
 **Day 2: Walk Through Main User Flow**
 
 - [ ] **5.1** Complete environment setup
+
   ```bash
   # Set environment preference
   work-mode [work|personal]
-  
+
   # Configure secrets (if work)
   ws-store "COMPANY_API_KEY" "your-key"
-  
+
   # Enable sync service (optional)
   home-sync setup
   sync-start
   ```
 
 - [ ] **5.2** Customize configuration
+
   ```bash
   # Add personal aliases
   # Edit config/zsh/personal-config.zsh or work-config.zsh
-  
+
   # Test changes
   source ~/.zshrc
   ```
 
 - [ ] **5.3** Sync to remote (if multi-machine)
+
   ```bash
   cd ~/.config/dotfiles
   git add .
@@ -3169,27 +3424,30 @@ Co-authored-by: factory-droid[bot] <...>
 **Day 3: Select First Contribution Area**
 
 - [ ] **6.1** Review recent changes
+
   ```bash
   git log --oneline -20
   ```
 
 - [ ] **6.2** Explore codebase structure
+
   ```bash
   # Review key components
   cat AGENTS.md
   cat ONBOARDING.md
-  
+
   # Explore scripts
   ls -la scripts/core/
   ls -la scripts/git/
   ls -la scripts/credentials/
-  
+
   # Review configs
   ls -la config/zsh/
   cat config/zsh/.zshrc
   ```
 
 - [ ] **6.3** Identify improvement area
+
   ```markdown
   Ideas for first contribution:
   - [ ] Fix shellcheck warnings in a script
@@ -3200,32 +3458,34 @@ Co-authored-by: factory-droid[bot] <...>
   ```
 
 - [ ] **6.4** Read OpenSpec workflow
+
   ```bash
   cat openspec/AGENTS.md
   openspec list --specs
   ```
 
 - [ ] **6.5** Make first contribution
+
   ```bash
   # Create branch
   git checkout -b [fix|feat|docs]/my-first-contribution
-  
+
   # Make changes
   # (edit files)
-  
+
   # Test
   shellcheck scripts/...  # If shell script
   source ~/.zshrc         # If config change
-  
+
   # Commit
   git add .
   git commit -m "type: description
 
   Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>"
-  
+
   # Push
   git push origin [branch]
-  
+
   # Create PR
   gh pr create --title "type: description" --body "..."
   ```
@@ -3314,26 +3574,29 @@ man [credfile|work-mode|...]      # Man pages
 ## Appendix D: External Resources
 
 **Official Documentation:**
-- Prezto: https://github.com/sorin-ionescu/prezto
-- Powerlevel10k: https://github.com/romkatv/powerlevel10k
-- Homebrew: https://docs.brew.sh
-- shellcheck: https://www.shellcheck.net
-- uv: https://github.com/astral-sh/uv
+
+- Prezto: <https://github.com/sorin-ionescu/prezto>
+- Powerlevel10k: <https://github.com/romkatv/powerlevel10k>
+- Homebrew: <https://docs.brew.sh>
+- shellcheck: <https://www.shellcheck.net>
+- uv: <https://github.com/astral-sh/uv>
 
 **Community Resources:**
-- Dotfiles Guide: https://dotfiles.github.io
-- GitHub Flow: https://guides.github.com/introduction/flow/
-- Conventional Commits: https://www.conventionalcommits.org
+
+- Dotfiles Guide: <https://dotfiles.github.io>
+- GitHub Flow: <https://guides.github.com/introduction/flow/>
+- Conventional Commits: <https://www.conventionalcommits.org>
 
 **Internal Resources:**
-- Repository: https://github.com/brunogama/dotfiles
-- Issues: https://github.com/brunogama/dotfiles/issues
-- Pull Requests: https://github.com/brunogama/dotfiles/pulls
+
+- Repository: <https://github.com/brunogama/dotfiles>
+- Issues: <https://github.com/brunogama/dotfiles/issues>
+- Pull Requests: <https://github.com/brunogama/dotfiles/pulls>
 
 ---
 
-**Onboarding Document Version:** 1.0  
-**Last Updated:** 2025-10-23  
+**Onboarding Document Version:** 1.0
+**Last Updated:** 2025-10-23
 **Maintained By:** Bruno Gama
 
 **Questions?** Create an issue on GitHub or check the documentation in `docs/`.

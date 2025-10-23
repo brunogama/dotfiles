@@ -1,0 +1,76 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # General file fixes
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: check-yaml
+        name: Check YAML syntax
+      - id: check-json
+        name: Check JSON syntax
+      - id: check-added-large-files
+        name: Check for large files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-case-conflict
+        name: Check for case conflicts
+      - id: mixed-line-ending
+        name: Fix mixed line endings
+        args: ['--fix=lf']
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        name: Shellcheck
+        args: ['-x', '--severity=warning']
+        exclude: ^(install|\.git/)
+
+  # Python code formatting and linting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        name: Black (Python formatter)
+        language_version: python3.13
+        files: \.py$
+        exclude: ^(\.git/|venv/|\.venv/)
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (Python import sorter)
+        args: ['--profile', 'black']
+        files: \.py$
+        exclude: ^(\.git/|venv/|\.venv/)
+
+  # Markdown linting (disabled for existing docs with issues)
+  # - repo: https://github.com/igorshubovych/markdownlint-cli
+  #   rev: v0.38.0
+  #   hooks:
+  #     - id: markdownlint
+  #       name: Markdown lint
+  #       args: ['--fix']
+  #       exclude: ^(CHANGELOG\.md|ONBOARDING\.md|README\.md|\.git/)
+
+  # Local hooks
+  - repo: local
+    hooks:
+      # CHANGELOG validation
+      - id: validate-changelog
+        name: Validate CHANGELOG update
+        entry: scripts/validate-changelog.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

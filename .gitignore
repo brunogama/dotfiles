@@ -227,6 +227,9 @@ venv/
 *.temp
 .cache/
 
+# Pre-commit
+.pre-commit-cache/
+
 # New structure - ignore backups
 .dotfiles-backup-*/
 

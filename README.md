@@ -23,6 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/brunogama/dotfiles/main/install | b
 ```
 
 This automatically:
+
 - Installs prerequisites (Homebrew, Git, Xcode tools)
 - Clones this repository to `~/.config/dotfiles`
 - Creates symlinks for all configurations
@@ -123,12 +124,14 @@ ls ~/.local/bin
 Modern ZSH setup with Prezto framework integration.
 
 **Features:**
+
 - Powerlevel10k prompt
 - Machine-specific configs (work vs personal)
 - Custom aliases and functions
 - Intelligent command completion
 
 **Files:**
+
 - `.zshrc` - Main configuration
 - `work-config.zsh` - Work machine settings
 - `personal-config.zsh` - Personal settings
@@ -139,6 +142,7 @@ Modern ZSH setup with Prezto framework integration.
 Streamlined GitHub Flow workflow with conventional commits.
 
 **Key Aliases:**
+
 ```bash
 git up              # Pull, rebase, update submodules
 git cob <branch>    # Create and switch to branch
@@ -148,6 +152,7 @@ git undo            # Undo last commit (keep changes)
 ```
 
 **Features:**
+
 - Conventional commit helpers
 - GitHub Flow aliases
 - Custom hooks (Swift lint, format, etc.)
@@ -158,22 +163,26 @@ git undo            # Undo last commit (keep changes)
 Organized by category for easy discovery:
 
 **Core Utilities:**
+
 - `dotfiles-help` - Interactive documentation
 - `work-mode` - Toggle work/personal configuration
 - `reload-shell` - Restart shell with new config
 - `update-dotfiles` - Pull latest changes
 
 **Git Tools:**
+
 - `git-browse.sh` - Open repo in browser
 - `git-wip.sh` - Quick work-in-progress commits
 - `conventional-commit` - Guided commit messages
 
 **Credentials:**
+
 - `credmatch` - Encrypted credential storage
 - `credfile` - Secure file storage
 - `store-api-key` / `get-api-key` - Keychain management
 
 **macOS Tools:**
+
 - `macos-prefs` - System preferences management
 - `brew-sync` - Homebrew synchronization
 - `dump-macos-settings` - Export macOS defaults
@@ -271,7 +280,7 @@ Add linking target:
 
 ```makefile
 link-myapp:
-	@ln -sfn $(CONFIG_DIR)/myapp $(HOME_DIR)/.config/myapp
+ @ln -sfn $(CONFIG_DIR)/myapp $(HOME_DIR)/.config/myapp
 ```
 
 ### 3. Install
@@ -300,6 +309,7 @@ dotfiles-help      # Browse all documentation
 ### Guides
 
 All guides are in `docs/guides/`:
+
 - `HOMEBREW_MANAGEMENT_GUIDE.md`
 - `HOME_SYNC_SERVICE_GUIDE.md`
 - `WORK_SECRETS_GUIDE.md`
@@ -336,6 +346,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ## Why This Structure?
 
 **Unix-Native Organization:**
+
 ```
 config/zsh/.zshrc                      # Clear, direct path
 scripts/core/work-mode                 # Easy to find
@@ -344,11 +355,11 @@ docs/guides/HOMEBREW_MANAGEMENT_GUIDE.md  # Self-documenting
 
 ### Advantages
 
-✅ **Instant Understanding** - Structure is self-documenting  
-✅ **Fast Navigation** - No mental mapping required  
-✅ **Standard Tools** - Makefile, not custom abstractions  
-✅ **Easy Debugging** - Direct paths, no indirection  
-✅ **Git-Friendly** - Clear diffs, obvious locations  
+✅ **Instant Understanding** - Structure is self-documenting
+✅ **Fast Navigation** - No mental mapping required
+✅ **Standard Tools** - Makefile, not custom abstractions
+✅ **Easy Debugging** - Direct paths, no indirection
+✅ **Git-Friendly** - Clear diffs, obvious locations
 ✅ **Beginner-Friendly** - Unix conventions, clear organization
 
 ## Upgrading from Previous Versions
@@ -368,26 +379,81 @@ make install
 
 Your configurations are preserved in the backup (timestamped in `~/.dotfiles-backup-*/`).
 
+## Development Setup
+
+### Prerequisites
+
+```bash
+# Install pre-commit
+brew install pre-commit  # macOS
+# or
+pip install pre-commit   # via pip
+
+# Install hooks
+cd ~/.config/dotfiles
+pre-commit install
+```
+
+### Pre-Commit Hooks
+
+The project uses pre-commit hooks to ensure code quality:
+
+- **shellcheck** - Shell script linting
+- **trailing-whitespace** - Remove trailing whitespace
+- **check-yaml** - Validate YAML syntax
+- **check-json** - Validate JSON syntax
+- **black** - Python code formatting
+- **isort** - Python import sorting
+- **CHANGELOG validation** - Ensure user-facing changes are documented
+
+Hooks run automatically on commit. To run manually:
+
+```bash
+pre-commit run --all-files
+```
+
+To bypass hooks (not recommended):
+
+```bash
+git commit --no-verify
+```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes. We follow [Keep a Changelog](https://keepachangelog.com/) format.
+
+User-facing changes (feat, fix, perf, refactor) must update the [Unreleased] section in CHANGELOG.md.
+
 ## Contributing
 
 ### Making Changes
 
-1. Edit files in `config/` or `scripts/`
-2. Test: `make test`
-3. Commit: `git commit -m "type: description"`
-4. Push: `git push`
+1. Set up development environment (see Development Setup)
+2. Edit files in `config/` or `scripts/`
+3. Update CHANGELOG.md for user-facing changes:
+   - `feat:` → Added
+   - `fix:` → Fixed
+   - `perf:` → Changed
+   - `refactor:` → Changed (if user-visible)
+4. Test: `make test`
+5. Commit: `git commit -m "type: description"`
+6. Push: `git push`
 
 ### Adding Scripts
 
 1. Add to appropriate `scripts/` subdirectory
 2. Make executable: `chmod +x scripts/category/myscript`
-3. Reinstall: `make install-scripts`
+3. Pass shellcheck: `shellcheck scripts/category/myscript`
+4. Update CHANGELOG.md under "### Added"
+5. Reinstall: `make install-scripts`
 
 ## Resources
 
 - [GNU Make Manual](https://www.gnu.org/software/make/manual/)
 - [Dotfiles Best Practices](https://dotfiles.github.io/)
 - [GitHub Flow](https://guides.github.com/introduction/flow/)
+- [Keep a Changelog](https://keepachangelog.com/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
 
 ## License
 
