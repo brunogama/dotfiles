@@ -1,6 +1,33 @@
 # ~/.config/zsh/personal-config.zsh
 # Personal machine configuration and aliases
 
+# Auto-install/update scripts if dotfiles repo is available
+if [[ -d "$HOME/.config-fixing-dot-files-bugs" ]]; then
+    DOTFILES_REPO="$HOME/.config-fixing-dot-files-bugs"
+    LOCAL_BIN="$HOME/.local/bin"
+    SCRIPTS_UPDATED_MARKER="$LOCAL_BIN/.scripts-updated"
+
+    # Check if scripts need update (comparing timestamps)
+    if [[ -d "$DOTFILES_REPO/scripts" ]] && [[ -d "$LOCAL_BIN" ]]; then
+        # Find newest file in scripts directory
+        NEWEST_SCRIPT=$(find "$DOTFILES_REPO/scripts" -type f -not -name "*.md" -print0 2>/dev/null | xargs -0 stat -f "%m %N" 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+
+        if [[ -n "$NEWEST_SCRIPT" ]]; then
+            SCRIPTS_MTIME=$(stat -f "%m" "$NEWEST_SCRIPT" 2>/dev/null || echo "0")
+            MARKER_MTIME=$(stat -f "%m" "$SCRIPTS_UPDATED_MARKER" 2>/dev/null || echo "0")
+
+            if [[ "$SCRIPTS_MTIME" -gt "$MARKER_MTIME" ]]; then
+                (cd "$DOTFILES_REPO" && make install-scripts >/dev/null 2>&1)
+                touch "$SCRIPTS_UPDATED_MARKER"
+            fi
+        elif [[ ! -f "$SCRIPTS_UPDATED_MARKER" ]]; then
+            # First time setup
+            (cd "$DOTFILES_REPO" && make install-scripts >/dev/null 2>&1)
+            touch "$SCRIPTS_UPDATED_MARKER"
+        fi
+    fi
+fi
+
 # Display available commands
 echo "🏠 Personal environment loaded (prompt shows: HOME:PERSONAL). Available commands:"
 echo "  home-sync / home-sync-up  - Sync home environment"

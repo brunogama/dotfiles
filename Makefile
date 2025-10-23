@@ -16,7 +16,7 @@ YELLOW := $(shell printf '\033[1;33m')
 RED := $(shell printf '\033[0;31m')
 NC := $(shell printf '\033[0m')
 
-.PHONY: help install uninstall link unlink backup clean test setup-prezto check-prezto dump-macos
+.PHONY: help install uninstall link unlink backup clean test setup-prezto check-prezto dump-macos check-installation
 
 help:
 	@echo "$(BLUE)Bruno's Dotfiles - Makefile$(NC)"
@@ -27,6 +27,7 @@ help:
 	@echo "  $(GREEN)install-zsh$(NC)    - Install ZSH configuration only"
 	@echo "  $(GREEN)install-git$(NC)    - Install Git configuration only"
 	@echo "  $(GREEN)install-scripts$(NC) - Install scripts to ~/.local/bin"
+	@echo "  $(GREEN)check-installation$(NC) - Check installation status"
 	@echo "  $(GREEN)setup-prezto$(NC)   - Install Prezto framework (one-time setup)"
 	@echo "  $(GREEN)check-prezto$(NC)   - Check if Prezto is installed"
 	@echo "  $(GREEN)dump-macos$(NC)     - Export current macOS preferences"
@@ -198,3 +199,28 @@ dump-macos:
 	@"$(SCRIPTS_DIR)/macos/dump-macos-settings" "$(CONFIG_DIR)/macos-preferences/system-preferences.sh"
 	@echo "$(GREEN)✓ Preferences dumped to: $(CONFIG_DIR)/macos-preferences/system-preferences.sh$(NC)"
 	@echo "$(YELLOW)Note: Review the file before committing or restoring$(NC)"
+
+# Check installation status
+check-installation:
+	@echo "$(BLUE)Checking installation status...$(NC)"
+	@echo ""
+	@echo "=== Scripts ==="
+	@command -v store-api-key >/dev/null 2>&1 && echo "$(GREEN)✓ store-api-key installed$(NC)" || echo "$(RED)✗ store-api-key not installed - run: make install-scripts$(NC)"
+	@command -v dump-api-keys >/dev/null 2>&1 && echo "$(GREEN)✓ dump-api-keys installed$(NC)" || echo "$(RED)✗ dump-api-keys not installed - run: make install-scripts$(NC)"
+	@command -v credmatch >/dev/null 2>&1 && echo "$(GREEN)✓ credmatch installed$(NC)" || echo "$(RED)✗ credmatch not installed - run: make install-scripts$(NC)"
+	@command -v home-sync >/dev/null 2>&1 && echo "$(GREEN)✓ home-sync installed$(NC)" || echo "$(RED)✗ home-sync not installed - run: make install-scripts$(NC)"
+	@echo ""
+	@echo "=== ZSH Configuration ==="
+	@test -L $(HOME_DIR)/.zshrc && echo "$(GREEN)✓ .zshrc linked$(NC)" || echo "$(YELLOW)⚠ .zshrc not linked - run: make install-zsh$(NC)"
+	@test -L $(HOME_DIR)/.zpreztorc && echo "$(GREEN)✓ .zpreztorc linked$(NC)" || echo "$(YELLOW)⚠ .zpreztorc not linked - run: make install-zsh$(NC)"
+	@test -d $(HOME_DIR)/.zprezto && echo "$(GREEN)✓ Prezto installed$(NC)" || echo "$(YELLOW)⚠ Prezto not installed - run: make setup-prezto$(NC)"
+	@echo ""
+	@echo "=== Git Configuration ==="
+	@test -L $(HOME_DIR)/.config/git && echo "$(GREEN)✓ Git config linked$(NC)" || echo "$(YELLOW)⚠ Git config not linked - run: make install-git$(NC)"
+	@echo ""
+	@echo "=== Overall Status ==="
+	@if command -v store-api-key >/dev/null 2>&1 && test -L $(HOME_DIR)/.zshrc && test -d $(HOME_DIR)/.zprezto; then \
+		echo "$(GREEN)✓ Installation complete and functional$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Some components missing - review above and run suggested commands$(NC)"; \
+	fi

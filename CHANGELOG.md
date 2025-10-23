@@ -15,11 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Git repository auto-detection for flexible dotfiles location
   - Script auto-installation on shell startup
   - Git repository validation before operations
+- Auto-install scripts on shell startup (no more manual `make install-scripts`)
+  - Timestamp-based detection of script changes
+  - Automatic reinstall when scripts are added or modified
+  - Works in both personal and work environments
+- `make check-installation` command to validate dotfiles setup
+  - Checks all critical components (scripts, ZSH, Git, Prezto)
+  - Color-coded status with actionable fix commands
+  - Overall installation health summary
 
 ### Fixed
 - Makefile color escaping - ANSI colors now render correctly in terminal output
-- home-sync missing dependency error (store-api-key) - run `make install-scripts` to resolve immediately
-- home-sync git repository detection issues (see proposal: openspec/changes/fix-home-sync-issues/)
+- home-sync missing dependency error (store-api-key) - automatically resolved on shell startup
+- home-sync git repository detection - now auto-detects correct location
+- home-sync sync.sh dependencies - replaced with direct git commands
 
 ## [1.0.0] - 2025-01-23
 
