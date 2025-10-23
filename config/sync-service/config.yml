@@ -1,0 +1,29 @@
+# Home Environment Sync Configuration
+# YAML format (simplified parsing)
+
+# Sync interval in seconds (default: 3600 = 1 hour)
+sync_interval: 3600
+
+# Backup retention in days (default: 30)
+backup_retention: 30
+
+# Credential master password (set this!)
+# credential_master_password: "your-secure-master-password"
+
+# Enable remote backup of credentials
+remote_backup_enabled: true
+
+# Auto-push changes after sync
+auto_push_enabled: true
+
+# Notification settings
+notifications_enabled: true
+
+# Sync filters (what to sync)
+sync_dotfiles: true
+sync_credentials: true
+sync_homebrew: true
+
+# Machine-specific settings
+machine_profile: "default"  # default, work, personal, server
+

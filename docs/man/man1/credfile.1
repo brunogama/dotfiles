@@ -1,0 +1,218 @@
+.TH CREDFILE 1 "September 2025" "CredFile 2.0" "User Commands"
+.SH NAME
+credfile \- secure file storage for CredMatch with base64 encoding
+.SH SYNOPSIS
+.B credfile
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B credfile
+is a secure file storage system that extends CredMatch to handle any type of file. It uses base64 encoding to store both the original filename and file content as separate encrypted parts in CredMatch, allowing you to securely store and synchronize files across multiple machines.
+.PP
+Files are stored in a special format that preserves the original filename and handles both text and binary files through base64 encoding. Each file is stored with a FILE_ prefix in CredMatch and uses a separator to distinguish between the filename and content.
+.SH COMMANDS
+.TP
+.BI "put " "key file"
+Store a file in CredMatch with the given key. The original filename and content are preserved.
+.TP
+.BI "get " "key [output]"
+Retrieve a file from CredMatch. If output path is provided, save to that location. Otherwise, output to stdout.
+.TP
+.BR list ", " ls
+List all stored files with their original filenames and approximate sizes.
+.TP
+.BI "info " key
+Show detailed information about a stored file including original filename, size, and storage format.
+.TP
+.BR rm ", " remove ", " delete " " key
+Remove a stored file from CredMatch.
+.TP
+.B help
+Show help message with usage information.
+.SH STORAGE FORMAT
+.PP
+CredFile uses an enhanced storage format that preserves file metadata:
+.PP
+.RS
+[base64(filename)]|||CREDFILE_SEPARATOR|||[base64(file_content)]
+.RE
+.PP
+This format allows:
+.IP \[bu] 2
+.B Original filename preservation
+.IP \[bu] 2
+.B Binary file support
+through base64 encoding
+.IP \[bu] 2
+.B Metadata retention
+for better file management
+.IP \[bu] 2
+.B Legacy compatibility
+with older storage formats
+.SH EXAMPLES
+.PP
+Store an SSH configuration file:
+.RS
+.B credfile put "ssh_config" ~/.ssh/config
+.RE
+.PP
+Retrieve a file to a specific location:
+.RS
+.B credfile get "ssh_config" ~/.ssh/config.backup
+.RE
+.PP
+Output file content to stdout:
+.RS
+.B credfile get "ssh_config"
+.RE
+.PP
+List all stored files:
+.RS
+.B credfile list
+.RE
+.PP
+Show file information:
+.RS
+.B credfile info "ssh_config"
+.RE
+.PP
+Remove a stored file:
+.RS
+.B credfile rm "ssh_config"
+.RE
+.SH FILE TYPES
+.PP
+CredFile supports all file types:
+.TP
+.B Text files
+Configuration files, scripts, documents, source code
+.TP
+.B Binary files
+Images, executables, archives, certificates
+.TP
+.B Special files
+SSH keys, certificates, encrypted files
+.SH SECURITY
+.PP
+File security is provided through CredMatch's encryption:
+.IP \[bu] 2
+.B Encryption:
+AES-256-CBC via CredMatch
+.IP \[bu] 2
+.B Master password:
+Single password protects all files
+.IP \[bu] 2
+.B Base64 encoding:
+Safe storage of binary content
+.IP \[bu] 2
+.B Git synchronization:
+Version controlled and distributed
+.SH INTEGRATION
+.PP
+CredFile integrates seamlessly with your dotfiles system:
+.IP \[bu] 2
+.B CredMatch:
+Uses existing credential storage
+.IP \[bu] 2
+.B Keychain:
+Master password stored in macOS Keychain
+.IP \[bu] 2
+.B Home Sync:
+Files synchronized via home-sync service
+.IP \[bu] 2
+.B Git:
+Files backed up in your dotfiles repository
+.SH WORKFLOW
+.SS Storing Files
+.RS
+.B credfile put "backup_key" ~/important/file.txt
+.br
+.B credfile put "ssh_key" ~/.ssh/id_rsa
+.br
+.B credfile put "config" ~/.config/app/settings.json
+.RE
+.SS Retrieving Files
+.RS
+.B credfile get "backup_key" ~/restored/file.txt
+.br
+.B credfile get "ssh_key" | ssh-add -
+.br
+.B credfile list
+.RE
+.SS Multi-Machine Sync
+.RS
+# On machine A
+.br
+.B credfile put "shared_config" ~/config.json
+.br
+.B home-push
+.br
+.br
+# On machine B
+.br
+.B home-pull
+.br
+.B credfile get "shared_config" ~/config.json
+.RE
+.SH FILES
+.TP
+.I credentials.enc
+Encrypted storage file in dotfiles repository
+.TP
+.I ~/.config/sync-service/
+Home sync service configuration and logs
+.SH LIMITATIONS
+.PP
+File size limitations depend on:
+.IP \[bu] 2
+.B Base64 overhead:
+~33% size increase during encoding
+.IP \[bu] 2
+.B Git repository size:
+Large files increase repository size
+.IP \[bu] 2
+.B Memory usage:
+Entire file content loaded into memory
+.PP
+Recommended for files under 10MB. For larger files, consider alternative storage solutions.
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+Error (file not found, encryption failure, etc.)
+.SH EXAMPLES OF USE CASES
+.SS Configuration Management
+.RS
+.B credfile put "nginx_conf" /etc/nginx/nginx.conf
+.br
+.B credfile put "app_config" ~/.config/myapp/config.yaml
+.RE
+.SS SSH Key Management
+.RS
+.B credfile put "work_ssh_key" ~/.ssh/work_id_rsa
+.br
+.B credfile put "personal_ssh_key" ~/.ssh/personal_id_rsa
+.RE
+.SS Certificate Storage
+.RS
+.B credfile put "ssl_cert" /path/to/certificate.pem
+.br
+.B credfile put "ca_bundle" /path/to/ca-bundle.crt
+.RE
+.SS Script and Tool Storage
+.RS
+.B credfile put "deploy_script" ~/scripts/deploy.sh
+.br
+.B credfile put "utility_binary" ~/tools/custom-tool
+.RE
+.SH SEE ALSO
+.BR credmatch (1),
+.BR home-sync (1),
+.BR base64 (1),
+.BR git (1)
+.SH AUTHOR
+Bruno Gama (dotfiles system)
+.SH COPYRIGHT
+This is free software; you are free to change and redistribute it.

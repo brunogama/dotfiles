@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+import curses
+import subprocess
+import sys
+
+def get_git_log():
+    """Get git log and return list of (sha, message) tuples."""
+    try:
+        output = subprocess.check_output(
+            ['git', 'log', '--oneline'],
+            universal_newlines=True
+        )
+        commits = []
+        for line in output.strip().split('\n'):
+            sha, message = line.split(' ', 1)
+            commits.append((sha, message))
+        return commits
+    except subprocess.CalledProcessError:
+        print("Error: Not a git repository or git log failed")
+        sys.exit(1)
+
+def cherry_pick_commits(selected_shas):
+    """Execute git cherry-pick for selected commits in order."""
+    if not selected_shas:
+        return
+    
+    shas_str = ' '.join(selected_shas)
+    try:
+        subprocess.check_call(['git', 'cherry-pick'] + selected_shas)
+        print(f"Successfully cherry-picked commits: {shas_str}")
+    except subprocess.CalledProcessError:
+        print(f"Error cherry-picking commits: {shas_str}")
+        print("Please resolve conflicts and continue manually")
+
+def main(stdscr):
+    # Initialize curses
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_GREEN, -1)
+    curses.init_pair(2, curses.COLOR_YELLOW, -1)
+    
+    # Hide cursor
+    curses.curs_set(0)
+    
+    # Get git log
+    commits = get_git_log()
+    
+    # Initialize variables
+    current_pos = 0
+    selected_commits = []
+    
+    while True:
+        # Clear screen
+        stdscr.clear()
+        
+        # Display instructions
+        stdscr.addstr(0, 0, "Use ↑/↓ to navigate, Enter to select, Q to finish", curses.A_BOLD)
+        stdscr.addstr(1, 0, "Selected commits:", curses.A_BOLD)
+        
+        # Display selected commits
+        for i, sha in enumerate(selected_commits):
+            stdscr.addstr(2 + i, 2, f"{i + 1}. {sha}", curses.color_pair(1))
+        
+        # Display commit list
+        start_y = 2 + len(selected_commits) + 1
+        for i, (sha, msg) in enumerate(commits):
+            if i == current_pos:
+                attr = curses.A_REVERSE
+            else:
+                attr = curses.A_NORMAL
+                
+            if sha in selected_commits:
+                attr |= curses.color_pair(1)
+            
+            stdscr.addstr(start_y + i, 0, f"{sha} {msg}"[:curses.COLS-1], attr)
+        
+        # Refresh screen
+        stdscr.refresh()
+        
+        # Handle input
+        key = stdscr.getch()
+        
+        if key == ord('q') or key == ord('Q'):
+            break
+        elif key == curses.KEY_UP and current_pos > 0:
+            current_pos -= 1
+        elif key == curses.KEY_DOWN and current_pos < len(commits) - 1:
+            current_pos += 1
+        elif key == ord('\n'):  # Enter key
+            sha = commits[current_pos][0]
+            if sha not in selected_commits:
+                selected_commits.append(sha)
+    
+    # Clean up screen
+    curses.endwin()
+    
+    # Execute cherry-pick
+    if selected_commits:
+        print("Cherry-picking selected commits...")
+        cherry_pick_commits(selected_commits)
+
+if __name__ == '__main__':
+    try:
+        curses.wrapper(main)
+    except KeyboardInterrupt:
+        print("\nScript terminated by user")
+        sys.exit(0)

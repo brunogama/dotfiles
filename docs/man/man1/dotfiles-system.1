@@ -1,0 +1,255 @@
+.TH DOTFILES-SYSTEM 1 "September 2025" "Dotfiles System 1.0" "User Commands"
+.SH NAME
+dotfiles-system \- comprehensive dotfiles and credential management system overview
+.SH DESCRIPTION
+This manual page provides an overview of Bruno's comprehensive dotfiles and credential management system. The system integrates multiple tools to provide secure, automated, and synchronized environment management across multiple machines.
+.SH SYSTEM COMPONENTS
+.SS Core Management
+.TP
+.BR credmatch (1)
+Secure credential storage with AES-256 encryption and Git synchronization
+.TP
+.BR home-sync (1)
+Comprehensive environment synchronization service
+.TP
+.BR home-sync-service (1)
+Background daemon for automatic synchronization
+.SS Machine Configuration
+.TP
+.BR work-mode (1)
+Toggle between work and personal machine configurations
+.TP
+.BR work-secrets (1)
+Work-specific credential management functions
+.TP
+.BR reload-shell (1)
+Utility to restart shell with updated configuration
+.SS Package Management
+.TP
+.B install.sh
+GNU Stow-based package installation system
+.TP
+.B sync.sh
+Dotfiles synchronization and package management
+.TP
+.BR brew-sync (1)
+Homebrew package management integration
+.SH QUICK START
+.SS New Machine Setup
+.RS
+.B git clone <your-repo> ~/.config
+.br
+.B cd ~/.config
+.br
+.B ./install.sh
+.br
+.B home-sync setup
+.br
+.B # Edit ~/.config/sync-service/config.yml
+.br
+.B home-sync sync
+.br
+.B home-sync-service install
+.RE
+.SS Daily Workflow
+.PP
+.B Automatic synchronization:
+.RS
+The background service handles synchronization automatically every hour.
+.RE
+.PP
+.B Manual operations:
+.RS
+.B home-sync-up
+# Sync everything
+.br
+.B home-push
+# Push local changes
+.br
+.B ws-backup
+# Backup work secrets
+.RE
+.SH CREDENTIAL MANAGEMENT
+.SS Storage Hierarchy
+.IP 1. 4
+.B macOS Keychain
+- Local secure storage
+.br
+- Accessed via store-api-key, get-api-key, dump-api-keys
+.IP 2. 4
+.B CredMatch
+- Encrypted Git storage
+.br
+- AES-256-CBC encryption with master password
+.IP 3. 4
+.B Environment Variables
+- Loaded into shell session
+.br
+- Via load-work-secrets function
+.SS Workflow
+.IP 1. 4
+Store secrets in Keychain:
+.B store-api-key "API_KEY" "secret-value"
+.IP 2. 4
+Backup to CredMatch:
+.B backup-work-secrets
+.IP 3. 4
+Sync across machines:
+.B home-sync credentials
+.IP 4. 4
+Load into environment:
+.B load-work-secrets
+.SH MACHINE PROFILES
+.SS Work Machine
+.RS
+.B work-mode on
+.br
+.B reload-shell
+.RE
+.PP
+Features:
+.IP \[bu] 2
+Work-specific secrets and aliases
+.IP \[bu] 2
+Company environment variables
+.IP \[bu] 2
+Development/staging/production profiles
+.SS Personal Machine
+.RS
+.B work-mode off
+.br
+.B reload-shell
+.RE
+.PP
+Features:
+.IP \[bu] 2
+Personal aliases and shortcuts
+.IP \[bu] 2
+Home sync integration
+.IP \[bu] 2
+Personal development tools
+.SH PACKAGE SYSTEM
+.SS Available Packages
+.TP
+.B zsh
+ZSH shell configuration with Prezto
+.TP
+.B git
+Git configuration and GitHub Flow aliases
+.TP
+.B bin
+Custom scripts and utilities
+.TP
+.B homebrew
+Homebrew package management with Brewfile
+.TP
+.B sync-service
+Home environment synchronization service
+.TP
+.B shell-tools
+Shell tools (mise, fish, etc.)
+.TP
+.B development
+Development tools (cursor, copilot, etc.)
+.TP
+.B macos
+macOS-specific applications
+.SS Package Management
+.PP
+Install packages:
+.RS
+.B ./install.sh [package1] [package2] ...
+.RE
+.PP
+List available packages:
+.RS
+.B ./install.sh --list
+.RE
+.PP
+Sync packages:
+.RS
+.B ./sync.sh --status
+.RE
+.SH SECURITY FEATURES
+.SS Encryption
+.IP \[bu] 2
+AES-256-CBC for credential storage
+.IP \[bu] 2
+PBKDF2 key derivation
+.IP \[bu] 2
+Master password protection
+.IP \[bu] 2
+macOS Keychain integration
+.SS Access Control
+.IP \[bu] 2
+Machine-specific configuration
+.IP \[bu] 2
+Process locking for sync operations
+.IP \[bu] 2
+Audit logging
+.IP \[bu] 2
+Secure defaults
+.SH TROUBLESHOOTING
+.SS Common Issues
+.TP
+.B Functions not available
+Check work mode status and reload shell:
+.br
+.B work-mode status && reload-shell
+.TP
+.B Credential sync fails
+Verify master password in Keychain:
+.br
+.B get-api-key "CREDMATCH_MASTER_PASSWORD"
+.TP
+.B Service won't start
+Check service status and logs:
+.br
+.B home-sync-service status
+.br
+.B home-sync-service logs
+.SS Recovery
+.TP
+.B Lost master password
+Credentials cannot be recovered without master password due to strong encryption.
+.TP
+.B Corrupted credentials
+Restore from Git history:
+.br
+.B cd ~/.config && git log credentials.enc
+.br
+.B git checkout HEAD~1 credentials.enc
+.SH FILES
+.TP
+.I ~/.config/
+Main dotfiles repository
+.TP
+.I ~/.config/sync-service/config.yml
+Home sync configuration
+.TP
+.I ~/.config/credentials.enc
+Encrypted credentials storage
+.TP
+.I ~/.work-machine
+Work mode marker file
+.TP
+.I ~/.local/share/man/man1/
+Manual pages location
+.SH ENVIRONMENT
+.TP
+.B MANPATH
+Should include ~/.local/share/man for manual pages
+.TP
+.B PATH
+Should include ~/.local/bin and ~/.config/bin
+.SH SEE ALSO
+.BR credmatch (1),
+.BR home-sync (1),
+.BR work-secrets (1),
+.BR work-mode (1),
+.BR stow (8),
+.BR git (1)
+.SH AUTHOR
+Bruno Gama
+.SH COPYRIGHT
+This is free software; you are free to change and redistribute it.

@@ -1,0 +1,28 @@
+title: "Tool Prompts and Templates"
+version: "1.0.0"
+last_updated: "2025-10-12T22:00:00Z"
+
+sources: []
+
+files:
+  - path: "smart-commit.md"
+    title: "Smart Commit Tool"
+    topics: ["git", "commit", "automation", "workflow"]
+    agent_relevance: ["all"]
+
+  - path: "code.md"
+    title: "Code Generation Tool"
+    topics: ["code", "generation", "automation"]
+    agent_relevance: ["all"]
+
+  - path: "onboarding.md"
+    title: "Onboarding Tool"
+    topics: ["onboarding", "documentation", "setup"]
+    agent_relevance: ["all"]
+
+domains: ["tools", "prompts", "automation", "templates"]
+
+ide_integration:
+  xcode:
+    indexable: true
+    autocomplete_prefix: "prompt_"

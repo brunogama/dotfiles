@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Function to get branch info
+get_branch_info() {
+  local repo_path="$1"
+  local branch_info
+  local dirty_state
+
+  branch_info=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null || git -C "$repo_path" describe --tags --exact-match 2>/dev/null || git -C "$repo_path" rev-parse --short HEAD)
+  dirty_state=$(git -C "$repo_path" status --porcelain | grep -q . && echo "dirty" || echo "clean")
+
+  echo "$branch_info" "$dirty_state"
+}
+
+# Function to print info
+print_info() {
+  local name="$1"
+  local path="$2"
+  local branch_info="$3"
+  local dirty_state="$4"
+
+  if [[ "$dirty_state" == "dirty" ]]; then
+    printf "%-25s %-50s %-20s %-10s\n" "$name" "$path" "$branch_info" "DIRTY"
+  else
+    printf "%-25s %-50s %-20s %-10s\n" "$name" "$path" "$branch_info" "CLEAN"
+  fi
+}
+
+# Get the root of the git repository
+git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+if [[ -z "$git_root" ]]; then
+  echo "The current directory is not a Git repository."
+  exit 1
+fi
+
+# Print root repository information
+root_branch_info=$(get_branch_info "$git_root")
+root_branch=$(echo "$root_branch_info" | awk '{print $1}')
+root_dirty=$(echo "$root_branch_info" | awk '{print $2}')
+print_info "root" "$git_root" "$root_branch" "$root_dirty"
+
+# Get the list of submodules
+submodules=$(git config --file "$git_root/.gitmodules" --name-only --get-regexp path | sed 's/\.path$//')
+
+if [[ -n "$submodules" ]]; then
+  while IFS= read -r submodule; do
+    sub_name=$(basename "$submodule")
+    sub_path=$(git config --file "$git_root/.gitmodules" --get "$submodule.path")
+    submodule_abs_path="$git_root/$sub_path"
+
+    if git -C "$submodule_abs_path" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+      # Get branch info for submodule
+      branch_info=$(get_branch_info "$submodule_abs_path")
+      sub_branch_info=$(echo "$branch_info" | awk '{print $1}')
+      sub_dirty=$(echo "$branch_info" | awk '{print $2}')
+      # Print submodule information
+      print_info "$sub_name" "$sub_path" "$sub_branch_info" "$sub_dirty"
+    else
+      # Submodule not initialized or cloned
+      printf "%-25s %-50s %-20s %-10s\n" "$sub_name" "$sub_path" "missing" "unknown"
+    fi
+  done <<< "$submodules"
+else
+  echo "No submodules found."
+fi
+
+exit 0

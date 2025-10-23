@@ -1,0 +1,14 @@
+title: "Test Documentation"
+version: "1.0.0"
+last_updated: "2025-10-12T22:00:00Z"
+
+sources: []
+
+files: []
+
+domains: ["test", "temporary", "sandbox"]
+
+ide_integration:
+  xcode:
+    indexable: false
+    autocomplete_prefix: "test_"

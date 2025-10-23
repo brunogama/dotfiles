@@ -1,0 +1,193 @@
+.TH HOME-SYNC 1 "September 2025" "Home Sync 1.0" "User Commands"
+.SH NAME
+home-sync \- comprehensive home environment and credentials synchronization
+.SH SYNOPSIS
+.B home-sync
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B home-sync
+is a comprehensive synchronization service for your home environment, including dotfiles, credentials, and system configurations. It integrates with Git, GNU Stow, CredMatch, and macOS Keychain to provide seamless multi-machine synchronization.
+.SH COMMANDS
+.TP
+.BR sync ", " s
+Perform full synchronization (dotfiles + credentials)
+.TP
+.BR dotfiles ", " d
+Sync only dotfiles using Git and Stow
+.TP
+.BR credentials ", " c
+Sync only credentials using CredMatch
+.TP
+.BR push ", " p
+Push local changes to remote repositories
+.TP
+.BR pull ", " l
+Pull remote changes (same as sync)
+.TP
+.BR status ", " st
+Show synchronization status and service information
+.TP
+.B daemon
+Run as background daemon with automatic syncing
+.TP
+.B stop-daemon
+Stop the background daemon
+.TP
+.B config
+Show current configuration
+.TP
+.B logs
+Show synchronization logs
+.TP
+.B setup
+Initialize configuration and create necessary directories
+.TP
+.BR help ", " h
+Show help message
+.SH OPTIONS
+.TP
+.B \-\-dry-run
+Show what would be synchronized without actually doing it
+.TP
+.B \-\-force
+Force synchronization even if conflicts exist
+.TP
+.BR \-q ", " \-\-quiet
+Suppress output (except errors)
+.TP
+.BR \-v ", " \-\-verbose
+Enable verbose output
+.SH EXAMPLES
+.PP
+Perform full synchronization:
+.RS
+.B home-sync sync
+.RE
+.PP
+Preview what would be synced:
+.RS
+.B home-sync sync --dry-run
+.RE
+.PP
+Push local changes:
+.RS
+.B home-sync push
+.RE
+.PP
+Show status:
+.RS
+.B home-sync status
+.RE
+.PP
+Run as background daemon:
+.RS
+.B home-sync daemon
+.RE
+.SH CONFIGURATION
+.PP
+Configuration is stored in
+.IR ~/.config/sync-service/config.yml .
+Key settings include:
+.TP
+.B sync_interval
+Sync interval in seconds for daemon mode (default: 3600)
+.TP
+.B credential_master_password
+Master password for CredMatch encryption (required for credential sync)
+.TP
+.B auto_push_enabled
+Whether to automatically push changes after sync (default: true)
+.TP
+.B machine_profile
+Machine-specific profile: default, work, personal, server
+.SH ALIASES
+.PP
+Convenient aliases are available when the zsh package is installed:
+.TP
+.B home-sync-up
+Same as: home-sync sync
+.TP
+.B home-push
+Same as: home-sync push
+.TP
+.B home-pull
+Same as: home-sync pull
+.TP
+.B home-status
+Same as: home-sync status
+.SH SERVICE MANAGEMENT
+.PP
+Use
+.BR home-sync-service (1)
+to manage the background service:
+.RS
+.B home-sync-service install
+.br
+.B home-sync-service start
+.br
+.B home-sync-service status
+.RE
+.SH FILES
+.TP
+.I ~/.config/sync-service/config.yml
+Main configuration file
+.TP
+.I ~/.config/sync-service/logs/
+Log directory
+.TP
+.I ~/.config/
+Dotfiles repository root
+.TP
+.I credentials.enc
+Encrypted credentials file
+.SH INTEGRATION
+.PP
+Home Sync integrates with:
+.IP \[bu] 2
+.B GNU Stow: 
+For dotfiles management
+.IP \[bu] 2
+.B CredMatch: 
+For credential encryption and storage
+.IP \[bu] 2
+.B Git: 
+For version control and synchronization
+.IP \[bu] 2
+.B macOS Keychain: 
+For secure local credential storage
+.IP \[bu] 2
+.B Homebrew: 
+For package synchronization
+.SH MULTI-MACHINE SETUP
+.PP
+To set up on a new machine:
+.RS
+.B git clone <your-repo> ~/.config
+.br
+.B cd ~/.config && ./install.sh sync-service
+.br
+.B home-sync setup
+.br
+.B # Edit ~/.config/sync-service/config.yml
+.br
+.B home-sync sync
+.br
+.B home-sync-service install
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+Error (sync failure, configuration error, etc.)
+.SH SEE ALSO
+.BR credmatch (1),
+.BR home-sync-service (1),
+.BR stow (8),
+.BR git (1)
+.SH AUTHOR
+Bruno Gama (dotfiles system)
+.SH COPYRIGHT
+This is free software; you are free to change and redistribute it.
