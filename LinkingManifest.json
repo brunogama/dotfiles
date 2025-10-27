@@ -114,13 +114,60 @@
       ]
     },
     "binaries": {
-      "bin": [
+      "core": [
         {
-          "source": "bin/",
+          "source": "bin/core/",
           "target": "~/.local/bin",
           "description": "Core utility scripts",
           "type": "directory-contents",
           "executable": true
+        }
+      ],
+      "credentials": [
+        {
+          "source": "bin/credentials/",
+          "target": "~/.local/bin",
+          "description": "Credential management scripts",
+          "type": "directory-contents",
+          "executable": true
+        }
+      ],
+      "git": [
+        {
+          "source": "bin/git/",
+          "target": "~/.local/bin",
+          "description": "Git utility scripts",
+          "type": "directory-contents",
+          "executable": true
+        }
+      ],
+      "ide": [
+        {
+          "source": "bin/ide/",
+          "target": "~/.local/bin",
+          "description": "IDE integration scripts",
+          "type": "directory-contents",
+          "executable": true
+        }
+      ],
+      "ios": [
+        {
+          "source": "bin/ios/",
+          "target": "~/.local/bin",
+          "description": "iOS development scripts",
+          "type": "directory-contents",
+          "executable": true,
+          "platforms": ["darwin"]
+        }
+      ],
+      "macos": [
+        {
+          "source": "bin/macos/",
+          "target": "~/.local/bin",
+          "description": "macOS-specific utility scripts",
+          "type": "directory-contents",
+          "executable": true,
+          "platforms": ["darwin"]
         }
       ]
     }
