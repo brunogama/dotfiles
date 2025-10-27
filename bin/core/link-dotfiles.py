@@ -84,8 +84,7 @@ class LinkManager:
         self.log_verbose("Checking prerequisites...")
 
         if not self.manifest_file.exists():
-            self.log_error(f"LinkingManifest.json not found at: {self.manifest_file}")
-            self.log_info("Make sure you're running from the dotfiles repository")
+            print("LinkingManifest.json not found", file=sys.stderr)
             return False
 
         try:
@@ -93,7 +92,7 @@ class LinkManager:
                 json.load(f)
             self.log_verbose("Manifest JSON is valid")
         except json.JSONDecodeError:
-            self.log_error("LinkingManifest.json contains invalid JSON")
+            print("invalid JSON", file=sys.stderr)
             return False
 
         return True
