@@ -78,10 +78,12 @@ p95="${sorted[p95_idx]}"
 p99="${sorted[p99_idx]}"
 
 # Display results
+# Calculate last index (bash 3.2 doesn't support negative indices)
+last_idx=$((NUM_RUNS - 1))
 echo -e "  Mean:     ${mean}ms"
 echo -e "  Median:   ${median}ms"
 echo -e "  Min:      ${sorted[0]}ms"
-echo -e "  Max:      ${sorted[-1]}ms"
+echo -e "  Max:      ${sorted[last_idx]}ms"
 echo -e "  P95:      ${p95}ms"
 echo -e "  P99:      ${p99}ms"
 
