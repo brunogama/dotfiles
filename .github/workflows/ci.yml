@@ -122,10 +122,103 @@ jobs:
         run: |
           bin/core/link-dotfiles --dry-run
 
+  test-python:
+    name: Test Python Packages
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Test home-sync package
+        run: |
+          cd bin/core/home_sync
+          uv pip install -e ".[dev]"
+
+          # Run all tests with coverage
+          uv run pytest tests/ -v --cov=home_sync --cov-report=term-missing --cov-report=xml
+
+          # Verify minimum coverage (91%)
+          uv run coverage report --fail-under=91
+
+      - name: Run mypy strict type checking
+        run: |
+          cd bin/core/home_sync
+          uv run mypy home_sync --strict
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./bin/core/home_sync/coverage.xml
+          flags: home-sync
+          name: home-sync-coverage
+
+  mutation-testing:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    needs: test-python
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Run mutation tests on home-sync
+        run: |
+          cd bin/core/home_sync
+          uv pip install -e ".[dev]"
+          uv pip install mutmut
+
+          # Run mutmut on core modules
+          uv run mutmut run --paths-to-mutate=home_sync/ --tests-dir=tests/ || true
+
+          # Show results
+          uv run mutmut results
+          uv run mutmut html
+
+          # Verify minimum mutation score (80%)
+          score=$(uv run mutmut results | grep -oP 'survived: \K\d+' || echo "0")
+          total=$(uv run mutmut results | grep -oP 'total: \K\d+' || echo "1")
+          mutation_score=$((100 - (score * 100 / total)))
+
+          echo "Mutation score: ${mutation_score}%"
+
+          if [[ $mutation_score -lt 80 ]]; then
+            echo "ERROR: Mutation score below 80% threshold"
+            exit 1
+          fi
+
+      - name: Upload mutation test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: mutation-test-results
+          path: bin/core/home_sync/html/
+
   documentation:
     name: Check Documentation
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -145,14 +238,14 @@ jobs:
             "AGENTS.md"
             "ONBOARDING.md"
           )
-          
+
           for doc in "${required_docs[@]}"; do
             if [[ ! -f "$doc" ]]; then
               echo "ERROR: Missing required documentation: $doc"
               exit 1
             fi
           done
-          
+
           echo "All required documentation present"
 
       - name: Check for TODO/FIXME comments

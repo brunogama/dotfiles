@@ -1,0 +1,5 @@
+[mutmut]
+paths_to_mutate=home_sync/
+tests_dir=tests/
+runner=pytest
+dict_synonyms=Struct, NamedStruct
