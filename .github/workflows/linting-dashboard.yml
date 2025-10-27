@@ -9,6 +9,9 @@ on:
 jobs:
   lint-dashboard:
     runs-on: macos-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout code
