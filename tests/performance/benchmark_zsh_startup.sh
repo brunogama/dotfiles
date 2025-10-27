@@ -51,8 +51,11 @@ done
 # Calculate statistics
 echo -e "\n${BLUE}Statistical Analysis:${NC}"
 
-# Sort results
-mapfile -t sorted < <(printf '%s\n' "${results[@]}" | sort -n)
+# Sort results (bash 3.2 compatible)
+IFS=$'\n'
+# shellcheck disable=SC2207  # Intentional word splitting for sorting
+sorted=($(printf '%s\n' "${results[@]}" | sort -n))
+unset IFS
 
 # Calculate mean
 sum=0
