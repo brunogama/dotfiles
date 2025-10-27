@@ -1,0 +1,13 @@
+# Development dependencies for home-sync
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+
+# Type checking
+mypy>=1.5.0
+types-PyYAML>=6.0.0
+
+# Runtime dependencies (also in pyproject.toml)
+PyYAML>=6.0
