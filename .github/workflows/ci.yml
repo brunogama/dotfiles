@@ -89,7 +89,7 @@ jobs:
 
       - name: Test link-dotfiles
         run: |
-          bin/core/link-dotfiles --dry-run
+          bin/core/link-dotfiles.py --dry-run
 
       - name: Test script help messages
         run: |
@@ -120,7 +120,7 @@ jobs:
 
       - name: Test link-dotfiles
         run: |
-          bin/core/link-dotfiles --dry-run
+          bin/core/link-dotfiles.py --dry-run
 
   test-python:
     name: Test Python Packages
@@ -144,6 +144,7 @@ jobs:
       - name: Test home-sync package
         run: |
           cd bin/core/home_sync
+          uv venv
           uv pip install -e ".[dev]"
 
           # Run all tests with coverage
@@ -155,6 +156,7 @@ jobs:
       - name: Run mypy strict type checking
         run: |
           cd bin/core/home_sync
+          source .venv/bin/activate
           uv run mypy home_sync --strict
 
       - name: Upload coverage to Codecov
@@ -186,6 +188,7 @@ jobs:
       - name: Run mutation tests on home-sync
         run: |
           cd bin/core/home_sync
+          uv venv
           uv pip install -e ".[dev]"
           uv pip install mutmut
 
@@ -209,7 +212,7 @@ jobs:
           fi
 
       - name: Upload mutation test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mutation-test-results
@@ -242,7 +245,7 @@ jobs:
           ./bin/test/run-tests --tap
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: integration-test-results-macos
@@ -276,7 +279,7 @@ jobs:
           ./bin/test/run-tests --tap
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: integration-test-results-linux
