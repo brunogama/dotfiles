@@ -13,7 +13,7 @@ setup() {
     git_test_setup
 
     # Create initial commits
-    create_test_file "README.md" "# Test repo"
+    create_file_with_content "README.md" "# Test repo"
     git add README.md
     git commit -m "Initial commit"
 
@@ -45,7 +45,7 @@ teardown() {
 @test "git-smart-merge: handles clean fast-forward merge" {
     # Create feature branch
     git checkout -b feature/test
-    create_test_file "feature.txt" "new feature"
+    create_file_with_content "feature.txt" "new feature"
     git add feature.txt
     git commit -m "Add feature"
 
@@ -61,7 +61,7 @@ teardown() {
 
 @test "git-smart-merge: supports --dry-run" {
     git checkout -b feature/dryrun
-    create_test_file "dry.txt" "content"
+    create_file_with_content "dry.txt" "content"
     git add dry.txt
     git commit -m "Dry run test"
 
@@ -133,7 +133,7 @@ teardown() {
 
 @test "smart-merge: detects conflicts" {
     # Create conflicting changes
-    create_test_file "conflict.txt" "original"
+    create_file_with_content "conflict.txt" "original"
     git add conflict.txt
     git commit -m "Add file"
 
@@ -159,7 +159,7 @@ teardown() {
 
 @test "git-smart-merge: exits 0 on successful merge" {
     git checkout -b feature/success
-    create_test_file "success.txt" "content"
+    create_file_with_content "success.txt" "content"
     git add success.txt
     git commit -m "Success test"
 

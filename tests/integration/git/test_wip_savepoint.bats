@@ -13,7 +13,7 @@ setup() {
     git_test_setup
 
     # Create initial commit
-    create_test_file "README.md" "# Test repo"
+    create_file_with_content "README.md" "# Test repo"
     git add README.md
     git commit -m "Initial commit"
 }
@@ -31,7 +31,7 @@ teardown() {
 
 @test "git-wip: creates WIP commit when changes exist" {
     # Create changes
-    create_test_file "test.txt" "new content"
+    create_file_with_content "test.txt" "new content"
 
     run_git_script "git-wip.sh"
     assert_success
@@ -42,10 +42,10 @@ teardown() {
 
 @test "git-wip: stages all changes" {
     # Create multiple changes
-    create_test_file "file1.txt" "content 1"
-    create_test_file "file2.txt" "content 2"
+    create_file_with_content "file1.txt" "content 1"
+    create_file_with_content "file2.txt" "content 2"
     mkdir -p subdir
-    create_test_file "subdir/file3.txt" "content 3"
+    create_file_with_content "subdir/file3.txt" "content 3"
 
     run_git_script "git-wip.sh"
     assert_success
@@ -58,7 +58,7 @@ teardown() {
 }
 
 @test "git-wip: resets HEAD after commit" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     # Get initial commit count
     local initial_commits
@@ -75,7 +75,7 @@ teardown() {
 }
 
 @test "git-wip: keeps changes staged after reset" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     run_git_script "git-wip.sh"
     assert_success
@@ -92,7 +92,7 @@ teardown() {
 }
 
 @test "git-wip: bypasses pre-commit hooks" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     # Create pre-commit hook that would fail
     mkdir -p .git/hooks
@@ -111,7 +111,7 @@ EOF
 
 @test "git-wip: includes untracked files" {
     # Create untracked file
-    create_test_file "untracked.txt" "new file"
+    create_file_with_content "untracked.txt" "new file"
 
     run_git_script "git-wip.sh"
     assert_success
@@ -122,7 +122,7 @@ EOF
 }
 
 @test "git-wip: handles modified files" {
-    create_test_file "existing.txt" "original"
+    create_file_with_content "existing.txt" "original"
     git add existing.txt
     git commit -m "Add existing file"
 
@@ -138,7 +138,7 @@ EOF
 }
 
 @test "git-wip: handles deleted files" {
-    create_test_file "to-delete.txt" "content"
+    create_file_with_content "to-delete.txt" "content"
     git add to-delete.txt
     git commit -m "Add file to delete"
 
@@ -163,7 +163,7 @@ EOF
 
 @test "git-restore-wip: restores last WIP commit" {
     # Create and WIP changes
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
     run_git_script "git-wip.sh"
     assert_success
 
@@ -177,7 +177,7 @@ EOF
 }
 
 @test "git-restore-wip: applies WIP changes" {
-    create_test_file "test.txt" "WIP content"
+    create_file_with_content "test.txt" "WIP content"
     run_git_script "git-wip.sh"
 
     # Clear working tree
@@ -195,11 +195,11 @@ EOF
 
 @test "git-restore-wip: finds most recent WIP" {
     # Create first WIP
-    create_test_file "first.txt" "first"
+    create_file_with_content "first.txt" "first"
     run_git_script "git-wip.sh"
 
     # Create second WIP
-    create_test_file "second.txt" "second"
+    create_file_with_content "second.txt" "second"
     run_git_script "git-wip.sh"
 
     # Clear
@@ -215,7 +215,7 @@ EOF
 }
 
 @test "git-restore-wip: uses cherry-pick" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
     run_git_script "git-wip.sh"
 
     git reset HEAD
@@ -238,7 +238,7 @@ EOF
 # Git-save-all Tests
 
 @test "git-save-all: creates savepoint" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     run_git_script "git-save-all.sh"
     assert_success
@@ -248,7 +248,7 @@ EOF
 }
 
 @test "git-save-all: stages changes before savepoint" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     run_git_script "git-save-all.sh"
     assert_success
@@ -258,7 +258,7 @@ EOF
 }
 
 @test "git-save-all: uses specific commit message format" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     run_git_script "git-save-all.sh"
     assert_success
@@ -277,7 +277,7 @@ EOF
 
 @test "git-restore-last-savepoint: restores savepoint" {
     # Create savepoint
-    create_test_file "saved.txt" "saved content"
+    create_file_with_content "saved.txt" "saved content"
     run_git_script "git-save-all.sh"
     assert_success
 
@@ -293,7 +293,7 @@ EOF
 }
 
 @test "git-restore-last-savepoint: removes savepoint after restore" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
     run_git_script "git-save-all.sh"
 
     run_git_script "git-restore-last-savepoint.sh"
@@ -307,11 +307,11 @@ EOF
 
 @test "git-restore-last-savepoint: finds most recent savepoint" {
     # Create first savepoint
-    create_test_file "first.txt" "first"
+    create_file_with_content "first.txt" "first"
     run_git_script "git-save-all.sh"
 
     # Create second savepoint
-    create_test_file "second.txt" "second"
+    create_file_with_content "second.txt" "second"
     run_git_script "git-save-all.sh"
 
     # Remove both
@@ -331,11 +331,11 @@ EOF
 
 @test "WIP and savepoint: different reflog patterns" {
     # Create WIP
-    create_test_file "wip.txt" "wip"
+    create_file_with_content "wip.txt" "wip"
     run_git_script "git-wip.sh"
 
     # Create savepoint
-    create_test_file "save.txt" "save"
+    create_file_with_content "save.txt" "save"
     run_git_script "git-save-all.sh"
 
     # Verify different patterns in reflog
@@ -344,7 +344,7 @@ EOF
 }
 
 @test "WIP: preserves uncommitted state" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     # Get status before WIP
     run git status --porcelain
@@ -359,7 +359,7 @@ EOF
 }
 
 @test "savepoint: creates persistent commit" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     local before_commits
     before_commits=$(git rev-list --count HEAD)
@@ -378,14 +378,14 @@ EOF
 
 @test "git-restore-wip: searches reflog correctly" {
     # Create multiple commits
-    create_test_file "regular.txt" "regular commit"
+    create_file_with_content "regular.txt" "regular commit"
     git add regular.txt
     git commit -m "Regular commit"
 
-    create_test_file "wip.txt" "wip commit"
+    create_file_with_content "wip.txt" "wip commit"
     run_git_script "git-wip.sh"
 
-    create_test_file "another.txt" "another commit"
+    create_file_with_content "another.txt" "another commit"
     git add another.txt
     git commit -m "Another commit"
 
@@ -400,14 +400,14 @@ EOF
 
 @test "git-restore-last-savepoint: searches reflog correctly" {
     # Create regular commits around savepoint
-    create_test_file "before.txt" "before"
+    create_file_with_content "before.txt" "before"
     git add before.txt
     git commit -m "Before savepoint"
 
-    create_test_file "saved.txt" "saved"
+    create_file_with_content "saved.txt" "saved"
     run_git_script "git-save-all.sh"
 
-    create_test_file "after.txt" "after"
+    create_file_with_content "after.txt" "after"
     git add after.txt
     git commit -m "After savepoint"
 
@@ -419,7 +419,7 @@ EOF
 # Error Handling Tests
 
 @test "git-wip: handles git errors gracefully" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     # Corrupt git directory
     echo "corrupt" > .git/HEAD
@@ -436,7 +436,7 @@ EOF
 # Exit Code Tests
 
 @test "git-wip: exits 0 with changes" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     run_git_script "git-wip.sh"
     assert_equal "$status" 0
@@ -448,7 +448,7 @@ EOF
 }
 
 @test "git-restore-wip: exits 0 on success" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
     run_git_script "git-wip.sh"
     git reset HEAD
     rm test.txt
@@ -463,7 +463,7 @@ EOF
 }
 
 @test "git-save-all: exits 0 on success" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     run_git_script "git-save-all.sh"
     assert_equal "$status" 0
@@ -479,9 +479,9 @@ EOF
 @test "WIP workflow: create and restore" {
     # Simulate developer workflow
     # 1. Make changes
-    create_test_file "feature.txt" "work in progress"
+    create_file_with_content "feature.txt" "work in progress"
     mkdir -p src
-    create_test_file "src/code.txt" "new code"
+    create_file_with_content "src/code.txt" "new code"
 
     # 2. WIP to save state
     run_git_script "git-wip.sh"
@@ -503,18 +503,18 @@ EOF
 
 @test "savepoint workflow: create and restore" {
     # 1. Reach a good state
-    create_test_file "stable.txt" "stable version"
+    create_file_with_content "stable.txt" "stable version"
 
     # 2. Create savepoint
     run_git_script "git-save-all.sh"
     assert_success
 
     # 3. Make experimental changes
-    create_test_file "experiment.txt" "experimental code"
+    create_file_with_content "experiment.txt" "experimental code"
     git add -A
     git commit -m "Experimental changes"
 
-    create_test_file "more-experiments.txt" "more experiments"
+    create_file_with_content "more-experiments.txt" "more experiments"
     git add -A
     git commit -m "More experiments"
 
@@ -528,11 +528,11 @@ EOF
 
 @test "WIP and savepoint: can coexist" {
     # Create savepoint
-    create_test_file "saved.txt" "saved"
+    create_file_with_content "saved.txt" "saved"
     run_git_script "git-save-all.sh"
 
     # Create WIP
-    create_test_file "wip.txt" "wip"
+    create_file_with_content "wip.txt" "wip"
     run_git_script "git-wip.sh"
 
     # Both should be in reflog
@@ -551,7 +551,7 @@ EOF
 @test "multiple WIPs: can create many" {
     # Create multiple WIP sessions
     for i in {1..5}; do
-        create_test_file "wip$i.txt" "wip $i"
+        create_file_with_content "wip$i.txt" "wip $i"
         run_git_script "git-wip.sh"
         assert_success
         git reset HEAD
@@ -567,7 +567,7 @@ EOF
 @test "multiple savepoints: can create many" {
     # Create multiple savepoints
     for i in {1..3}; do
-        create_test_file "save$i.txt" "save $i"
+        create_file_with_content "save$i.txt" "save $i"
         run_git_script "git-save-all.sh"
         assert_success
     done
@@ -582,7 +582,7 @@ EOF
 # Cleanup Behavior Tests
 
 @test "git-wip: preserves working directory state" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     # Record file state
     local file_hash
@@ -599,7 +599,7 @@ EOF
 }
 
 @test "git-restore-wip: adds commit to history" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
     run_git_script "git-wip.sh"
 
     git reset HEAD
@@ -618,7 +618,7 @@ EOF
 }
 
 @test "git-restore-last-savepoint: removes savepoint from HEAD" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
     run_git_script "git-save-all.sh"
 
     # Verify savepoint is at HEAD
