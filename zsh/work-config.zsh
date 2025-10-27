@@ -30,13 +30,13 @@ fi
 # ============================================================================
 # PATH SETUP
 # ============================================================================
-# Ensure ~/bin and ~/.local/bin in PATH
+# Ensure ~/bin and ~/.local/bin in PATH (at end for lower priority)
 if [[ -d "$HOME/bin" && ":$PATH:" != *":$HOME/bin:"* ]]; then
-    export PATH="$HOME/bin:$PATH"
+    export PATH="$PATH:$HOME/bin"
 fi
 
 if [[ -d "$HOME/.local/bin" && ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-    export PATH="$HOME/.local/bin:$PATH"
+    export PATH="$PATH:$HOME/.local/bin"
 fi
 
 # ============================================================================
