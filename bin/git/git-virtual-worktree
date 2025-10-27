@@ -14,7 +14,13 @@ Uses shallow clones (--depth 1) for isolated feature branches, providing:
 - 10-50x faster setup than worktrees for large repos
 - Minimal disk usage (only latest commit vs full history)
 - Independent .git directory (no I/O contention)
-- Same workflow as git-worktree-feature-py
+- Same workflow as git-worktree
+
+This script uses shared library modules from bin/lib/ and bin/git/lib/ for:
+- Error handling and exit codes (lib.git_common)
+- Git command wrapper (lib.git_operations)
+- Repository validation (lib.git_validation)
+- Metadata serialization (lib.git_metadata)
 
 Dependencies:
   - git-smart-merge: Intelligent branch merge script (in bin/ or PATH)
@@ -28,18 +34,25 @@ Examples:
 
 from __future__ import annotations
 
-import json
 import shutil
-import subprocess
+import sys
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
-from typing import NoReturn, Optional
+from typing import Optional
+
+# Add lib/ directories to path for imports
+sys.path.insert(0, str(Path(__file__).parent / "lib"))  # For git/lib/
+sys.path.insert(0, str(Path(__file__).parent.parent))  # For bin/lib/
+
+# Import from shared libraries
+from git_common import CLONE_TIMEOUT, ExitCode, console, error_exit
+from git_metadata import BaseMetadata
+from git_operations import Git, run_git_smart_merge
+from git_validation import check_clean_working_tree, check_git_repo, check_not_detached_head
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.table import Table
@@ -48,241 +61,54 @@ app = typer.Typer(
     help="Git Virtual Worktree Manager for Large Monorepos",
     add_completion=False,
 )
-console = Console()
-
-# Git command timeout in seconds
-GIT_TIMEOUT = 300
-CLONE_TIMEOUT = 600  # Longer for initial clone
-
-
-class ExitCode(Enum):
-    """Exit codes for the application."""
-
-    SUCCESS = 0
-    ERROR = 1
-    NOT_GIT_REPO = 2
-    DETACHED_HEAD = 3
-    DIRTY_WORKING_TREE = 4
-    WORKTREE_EXISTS = 5
-    BRANCH_EXISTS = 6
-    BRANCH_IN_USE = 7
-    INVALID_PATH = 8
 
 
 @dataclass
-class VirtualWorktreeMetadata:
-    """Metadata for a virtual worktree (shallow clone)."""
+class VirtualWorktreeMetadata(BaseMetadata):
+    """Metadata for a virtual worktree (shallow clone).
 
-    base_branch: str
-    created_at: str
-    created_by: str
-    slug: str
+    Inherits from BaseMetadata with additional fields for virtual worktrees.
+    """
+
     remote_url: str
     depth: int
-
-    def to_json(self) -> str:
-        """Serialize metadata to JSON."""
-        return json.dumps(asdict(self), indent=2)
-
-    @classmethod
-    def from_json(cls, data: str) -> VirtualWorktreeMetadata:
-        """Deserialize metadata from JSON."""
-        try:
-            parsed = json.loads(data)
-            return cls(**parsed)
-        except (json.JSONDecodeError, TypeError, KeyError) as e:
-            raise ValueError(f"Invalid metadata format: {e}") from e
-
-
-class GitError(Exception):
-    """Base exception for git-related errors."""
-
-    pass
-
-
-class Git:
-    """Git command wrapper with error handling."""
-
-    @staticmethod
-    def run(
-        *args: str,
-        check: bool = True,
-        capture_output: bool = True,
-        cwd: Optional[Path] = None,
-        timeout: int = GIT_TIMEOUT,
-    ) -> subprocess.CompletedProcess:
-        """Run a git command with proper error handling."""
-        try:
-            result = subprocess.run(
-                ["git", *args],
-                capture_output=capture_output,
-                text=True,
-                check=check,
-                cwd=cwd,
-                timeout=timeout,
-            )
-            return result
-        except subprocess.TimeoutExpired as e:
-            raise GitError(f"Git command timed out after {timeout}s: git {' '.join(args)}") from e
-        except subprocess.CalledProcessError as e:
-            if capture_output:
-                error_msg = e.stderr.strip() if e.stderr else str(e)
-                raise GitError(f"Git command failed: {error_msg}") from e
-            raise GitError(f"Git command failed: {e}") from e
-
-    @staticmethod
-    def is_repo() -> bool:
-        """Check if current directory is a git repository."""
-        try:
-            Git.run("rev-parse", "--git-dir")
-            return True
-        except (GitError, subprocess.TimeoutExpired):
-            return False
-
-    @staticmethod
-    def get_git_dir() -> Path:
-        """Get the git directory path."""
-        result = Git.run("rev-parse", "--git-dir")
-        return Path(result.stdout.strip()).resolve()
-
-    @staticmethod
-    def is_detached_head() -> bool:
-        """Check if in detached HEAD state."""
-        try:
-            Git.run("symbolic-ref", "-q", "HEAD")
-            return False
-        except GitError:
-            return True
-
-    @staticmethod
-    def get_current_branch() -> str:
-        """Get the current branch name."""
-        result = Git.run("rev-parse", "--abbrev-ref", "HEAD")
-        return result.stdout.strip()
-
-    @staticmethod
-    def has_uncommitted_changes(cwd: Optional[Path] = None) -> bool:
-        """Check if there are uncommitted changes."""
-        try:
-            Git.run("diff-index", "--quiet", "HEAD", "--", cwd=cwd)
-            return False
-        except GitError:
-            return True
-
-    @staticmethod
-    def branch_exists(branch: str) -> bool:
-        """Check if a branch exists."""
-        try:
-            Git.run("show-ref", "--verify", "--quiet", f"refs/heads/{branch}")
-            return True
-        except GitError:
-            return False
-
-    @staticmethod
-    def remote_branch_exists(branch: str, remote: str = "origin") -> bool:
-        """Check if a remote branch exists."""
-        try:
-            Git.run("rev-parse", "--verify", f"{remote}/{branch}")
-            return True
-        except GitError:
-            return False
-
-    @staticmethod
-    def get_remote_url(remote: str = "origin") -> Optional[str]:
-        """Get remote URL."""
-        try:
-            result = Git.run("config", "--get", f"remote.{remote}.url")
-            return result.stdout.strip()
-        except GitError:
-            return None
-
-    @staticmethod
-    def get_user_name() -> str:
-        """Get git user name."""
-        try:
-            result = Git.run("config", "user.name")
-            return result.stdout.strip()
-        except GitError:
-            return "unknown"
-
-
-def find_git_smart_merge() -> Optional[Path]:
-    """Find git-smart-merge script."""
-    import shutil as sh
-
-    path_result = sh.which("git-smart-merge")
-    if path_result:
-        return Path(path_result)
-
-    script_dir = Path(__file__).parent
-    same_dir = script_dir / "git-smart-merge"
-    if same_dir.exists():
-        return same_dir
-
-    parent_bin = script_dir.parent / "git-smart-merge"
-    if parent_bin.exists():
-        return parent_bin
-
-    return None
-
-
-def run_git_smart_merge(
-    feature_branch: str,
-    force_rebase: bool = False,
-    force_merge: bool = False,
-    dry_run: bool = False,
-) -> int:
-    """Run git-smart-merge to integrate feature branch."""
-    smart_merge_path = find_git_smart_merge()
-
-    if not smart_merge_path:
-        console.print(
-            "[red]Error:[/red] git-smart-merge not found\n\n"
-            "Install git-smart-merge or add bin/ directory to PATH"
-        )
-        return 1
-
-    console.print(f"[dim]Using git-smart-merge from:[/dim] {smart_merge_path}")
-
-    cmd = [str(smart_merge_path), feature_branch]
-
-    if dry_run:
-        cmd.append("--dry-run")
-    elif force_rebase:
-        cmd.append("--force-rebase")
-    elif force_merge:
-        cmd.append("--force-merge")
-
-    try:
-        result = subprocess.run(cmd, capture_output=False, text=True)
-        return result.returncode
-    except FileNotFoundError:
-        console.print("[red]Error:[/red] Failed to execute git-smart-merge")
-        return 1
-    except Exception as e:
-        console.print(f"[red]Error:[/red] Unexpected error: {e}")
-        return 1
 
 
 class VirtualWorktreeManager:
     """Manager for virtual worktree (shallow clone) operations."""
 
     def __init__(self, slug: str) -> None:
-        """Initialize virtual worktree manager."""
+        """Initialize virtual worktree manager.
+
+        Args:
+            slug: Feature slug identifier
+        """
         self.slug = self._validate_slug(slug)
         self.parent_dir = Path.cwd().name
-        self.clone_dir = self._get_clone_dir()
+        self.virtual_worktree_dir = self._get_virtual_worktree_dir()
         self.feature_branch = f"feature/{slug}"
         self.metadata_file = self._get_metadata_file()
 
     @staticmethod
     def _validate_slug(slug: str) -> str:
-        """Validate and return slug."""
+        """Validate and return slug.
+
+        Args:
+            slug: Feature slug to validate
+
+        Returns:
+            Validated slug (normalized to lowercase)
+
+        Raises:
+            typer.BadParameter: If slug is invalid
+        """
         if not slug:
             raise typer.BadParameter("Feature slug cannot be empty")
 
+        # Normalize to lowercase for consistency
         slug = slug.lower()
 
+        # Check for path traversal
         if ".." in slug or "/" in slug or "\\" in slug:
             raise typer.BadParameter(
                 "Slug cannot contain path traversal characters (/, \\, ..)"
@@ -298,31 +124,48 @@ class VirtualWorktreeManager:
 
         return slug
 
-    def _get_clone_dir(self) -> Path:
-        """Get clone directory path."""
+    def _get_virtual_worktree_dir(self) -> Path:
+        """Get virtual worktree directory path.
+
+        Returns:
+            Path to virtual worktree directory
+
+        Raises:
+            typer.BadParameter: If parent directory name is invalid
+        """
         if " " in self.parent_dir:
             raise typer.BadParameter(
                 f"Parent directory '{self.parent_dir}' contains spaces. "
                 "Please rename or use a different location."
             )
 
-        clone_path = (Path("..") / f"{self.parent_dir}-{self.slug}").resolve()
+        # Construct path and validate it stays within parent
+        vw_path = (Path("..") / f"{self.parent_dir}-{self.slug}").resolve()
         expected_parent = Path.cwd().parent.resolve()
 
-        if not clone_path.parent == expected_parent:
+        if not vw_path.parent == expected_parent:
             raise typer.BadParameter(
-                f"Invalid clone path: {clone_path} - Path traversal detected."
+                f"Invalid virtual worktree path: {vw_path} "
+                "Path traversal detected."
             )
 
-        return clone_path
+        return vw_path
 
     def _get_metadata_file(self) -> Path:
         """Get metadata file path."""
         git_dir = Git.get_git_dir()
         return git_dir / f"virtual-worktree-{self.slug}.json"
 
-    def save_metadata(self, base_branch: str, remote_url: str, depth: int) -> None:
-        """Save virtual worktree metadata atomically."""
+    def save_metadata(
+        self, base_branch: str, remote_url: str, depth: int
+    ) -> None:
+        """Save virtual worktree metadata atomically.
+
+        Args:
+            base_branch: Base branch name
+            remote_url: Remote repository URL
+            depth: Clone depth
+        """
         metadata = VirtualWorktreeMetadata(
             base_branch=base_branch,
             created_at=datetime.now().isoformat(),
@@ -332,6 +175,7 @@ class VirtualWorktreeManager:
             depth=depth,
         )
 
+        # Write atomically using temp file + rename
         with tempfile.NamedTemporaryFile(
             mode="w",
             dir=self.metadata_file.parent,
@@ -348,14 +192,20 @@ class VirtualWorktreeManager:
             raise
 
     def load_metadata(self) -> Optional[VirtualWorktreeMetadata]:
-        """Load virtual worktree metadata."""
+        """Load virtual worktree metadata.
+
+        Returns:
+            Metadata if exists, None otherwise
+        """
         if not self.metadata_file.exists():
             return None
 
         try:
             return VirtualWorktreeMetadata.from_json(self.metadata_file.read_text())
         except (ValueError, OSError) as e:
-            console.print(f"[yellow]Warning: Failed to load metadata: {e}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Failed to load metadata: {e}[/yellow]"
+            )
             return None
 
     def remove_metadata(self) -> None:
@@ -363,58 +213,15 @@ class VirtualWorktreeManager:
         self.metadata_file.unlink(missing_ok=True)
 
 
-def error_exit(message: str, exit_code: ExitCode = ExitCode.ERROR) -> NoReturn:
-    """Print error message and exit."""
-    console.print(f"[red]Error:[/red] {message}")
-    raise typer.Exit(code=exit_code.value)
-
-
-def check_git_repo() -> None:
-    """Verify we're in a git repository."""
-    if not Git.is_repo():
-        error_exit("Not a git repository", ExitCode.NOT_GIT_REPO)
-
-
-def check_not_detached_head() -> None:
-    """Verify we're not in detached HEAD state."""
-    if Git.is_detached_head():
-        error_exit(
-            "You are in detached HEAD state. "
-            "Please checkout a branch first:\n  git checkout main",
-            ExitCode.DETACHED_HEAD,
-        )
-
-
-def check_clean_working_tree() -> None:
-    """Verify working tree is clean."""
-    if Git.has_uncommitted_changes():
-        error_exit(
-            "Working directory has uncommitted changes.\n"
-            "Please commit or stash your changes first:\n"
-            "  git stash push -m 'WIP before feature merge'",
-            ExitCode.DIRTY_WORKING_TREE,
-        )
-
-
 @app.command()
 def create(
     slug: str = typer.Argument(..., help="Feature slug identifier"),
-    depth: int = typer.Option(
-        1,
-        "--depth",
-        help="Clone depth (1=shallow, higher=more history)",
-        min=1,
-    ),
-    url: Optional[str] = typer.Option(
-        None,
-        "--url",
-        help="Override remote URL (default: origin)",
-    ),
+    depth: int = typer.Option(1, "--depth", help="Clone depth (default: 1 for shallow)"),
 ) -> None:
     """Create a new virtual worktree with shallow clone.
 
     Creates a shallow clone at ../<parent>-<slug> with branch feature/<slug>
-    based on the current branch. Optimized for large repositories.
+    based on the current branch. Much faster than git worktree for large repos.
     """
     check_git_repo()
     check_not_detached_head()
@@ -422,239 +229,124 @@ def create(
     manager = VirtualWorktreeManager(slug)
     base_branch = Git.get_current_branch()
 
-    # Get remote URL
-    remote_url = url if url else Git.get_remote_url()
-    if not remote_url:
+    # Check if virtual worktree path already exists
+    if manager.virtual_worktree_dir.exists():
         error_exit(
-            "Could not detect remote URL.\n"
-            "Specify with: --url <git-url>"
-        )
-
-    console.print(Panel.fit(
-        f"[bold]Creating virtual worktree for feature:[/bold] {slug}\n"
-        f"[dim]Parent directory:[/dim] {manager.parent_dir}\n"
-        f"[dim]Base branch:[/dim] {base_branch}\n"
-        f"[dim]Feature branch:[/dim] {manager.feature_branch}\n"
-        f"[dim]Clone directory:[/dim] {manager.clone_dir}\n"
-        f"[dim]Remote URL:[/dim] {remote_url}\n"
-        f"[dim]Clone depth:[/dim] {depth}",
-        title="Virtual Worktree Creation",
-        border_style="blue",
-    ))
-
-    if manager.clone_dir.exists():
-        error_exit(
-            f"Directory already exists: {manager.clone_dir}",
+            f"Virtual worktree directory already exists: {manager.virtual_worktree_dir}",
             ExitCode.WORKTREE_EXISTS,
         )
 
-    if Git.branch_exists(manager.feature_branch):
-        error_exit(
-            f"Branch already exists: {manager.feature_branch}\n"
-            "Use a different slug or delete the existing branch",
-            ExitCode.BRANCH_EXISTS,
+    # Get remote URL
+    try:
+        result = Git.run("config", "--get", "remote.origin.url")
+        remote_url = result.stdout.strip()
+    except Exception as e:
+        error_exit(f"Failed to get remote URL: {e}", ExitCode.ERROR)
+
+    console.print(
+        Panel(
+            f"[cyan]Creating virtual worktree (shallow clone)[/cyan]\n\n"
+            f"  Base: [green]{base_branch}[/green]\n"
+            f"  Branch: [green]{manager.feature_branch}[/green]\n"
+            f"  Path: [dim]{manager.virtual_worktree_dir}[/dim]\n"
+            f"  Depth: [yellow]{depth}[/yellow] (shallow clone)",
+            title="Git Virtual Worktree",
+            border_style="cyan",
         )
+    )
 
-    # Check for submodules and warn user
-    has_submodules = False
+    # Clone repository with depth
     try:
-        git_modules = Path(".gitmodules")
-        if git_modules.exists():
-            has_submodules = True
-            console.print(
-                "[yellow]Note:[/yellow] Skipping submodules for fast clone\n"
-                "[dim]To initialize submodules later:[/dim] cd {0} && git submodule update --init".format(
-                    manager.clone_dir
-                )
-            )
-    except Exception:
-        pass
+        Git.run(
+            "clone",
+            "--depth",
+            str(depth),
+            "--branch",
+            base_branch,
+            remote_url,
+            str(manager.virtual_worktree_dir),
+            timeout=CLONE_TIMEOUT,
+        )
+    except Exception as e:
+        error_exit(f"Failed to clone repository: {e}", ExitCode.ERROR)
 
+    # Create and checkout feature branch in the clone
     try:
-        # Perform shallow clone
-        with console.status("[bold blue]Cloning repository (shallow clone)..."):
-            Git.run(
-                "clone",
-                "--depth", str(depth),
-                "--single-branch",
-                "--branch", base_branch,
-                remote_url,
-                str(manager.clone_dir),
-                timeout=CLONE_TIMEOUT,
-            )
-
-        # Create and checkout feature branch in clone
-        with console.status("[bold blue]Creating feature branch..."):
-            Git.run(
-                "checkout",
-                "-b",
-                manager.feature_branch,
-                cwd=manager.clone_dir,
-            )
-
-        # Save metadata
-        manager.save_metadata(base_branch, remote_url, depth)
-
-        console.print("[green]✓[/green] Virtual worktree created successfully!")
-        console.print(f"[dim]Clone size: ~{depth} commit(s) of history[/dim]")
-        console.print("\n[bold]Next steps:[/bold]")
-        console.print(f"  cd {manager.clone_dir}")
-        console.print("  # Make your changes and commits")
-        console.print("  cd -")
-        console.print(f"  git-virtual-worktree merge {slug}")
-
-    except GitError as e:
+        Git.run(
+            "checkout",
+            "-b",
+            manager.feature_branch,
+            cwd=manager.virtual_worktree_dir,
+        )
+    except Exception as e:
         # Cleanup on failure
-        if manager.clone_dir.exists():
-            shutil.rmtree(manager.clone_dir, ignore_errors=True)
+        shutil.rmtree(manager.virtual_worktree_dir, ignore_errors=True)
+        error_exit(f"Failed to create feature branch: {e}", ExitCode.ERROR)
 
-        error_msg = str(e)
+    # Save metadata
+    manager.save_metadata(base_branch, remote_url, depth)
 
-        # Provide specific guidance for common errors
-        if "authentication" in error_msg.lower() or "auth" in error_msg.lower():
-            error_exit(
-                f"Authentication failed while cloning repository.\n\n"
-                f"Error: {e}\n\n"
-                "Resolution steps:\n"
-                "  - For SSH: Check SSH keys with 'ssh -T git@github.com'\n"
-                "  - For HTTPS: Verify credentials are cached\n"
-                f"  - Test manually: git clone {remote_url}"
-            )
-        elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
-            error_exit(
-                f"Clone operation timed out.\n\n"
-                f"Error: {e}\n\n"
-                "Resolution steps:\n"
-                "  - Check network connection\n"
-                "  - Try with smaller depth: --depth 1\n"
-                f"  - Test manually: git clone --depth 1 {remote_url}"
-            )
-        elif "not found" in error_msg.lower() or "does not exist" in error_msg.lower():
-            error_exit(
-                f"Repository or branch not found.\n\n"
-                f"Error: {e}\n\n"
-                "Resolution steps:\n"
-                f"  - Verify remote URL: {remote_url}\n"
-                f"  - Verify branch exists: {base_branch}\n"
-                "  - Check repository access permissions"
-            )
-        else:
-            error_exit(f"Failed to create virtual worktree: {e}")
+    console.print(
+        f"\n[green]Success![/green] Created virtual worktree at: [bold]{manager.virtual_worktree_dir}[/bold]\n"
+        f"  cd {manager.virtual_worktree_dir}"
+    )
 
 
 @app.command()
 def merge(
     slug: str = typer.Argument(..., help="Feature slug identifier"),
-    force_rebase: bool = typer.Option(
-        False,
-        "--force-rebase",
-        help="Force rebase without conflict detection",
-    ),
-    force_merge: bool = typer.Option(
-        False,
-        "--force-merge",
-        help="Force merge strategy, skip rebase attempt",
-    ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview merge strategy without executing",
-    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview merge strategy without executing"),
+    force_rebase: bool = typer.Option(False, "--force-rebase", help="Force rebase without conflict detection"),
+    force_merge: bool = typer.Option(False, "--force-merge", help="Force merge without trying rebase"),
 ) -> None:
-    """Merge feature branch back using git-smart-merge.
+    """Merge virtual worktree feature branch using git-smart-merge.
 
-    Fetches feature branch from virtual worktree and uses git-smart-merge
-    for intelligent integration with automatic conflict detection.
+    Returns to base branch and uses git-smart-merge to integrate the feature
+    branch with intelligent rebase/merge strategy selection.
     """
     check_git_repo()
     check_not_detached_head()
     check_clean_working_tree()
 
-    if force_rebase and force_merge:
+    manager = VirtualWorktreeManager(slug)
+
+    # Verify feature branch exists
+    if not Git.branch_exists(manager.feature_branch):
         error_exit(
-            "Cannot use --force-rebase and --force-merge together\n"
-            "Choose one strategy or omit both for automatic detection",
+            f"Feature branch does not exist: {manager.feature_branch}",
             ExitCode.ERROR,
         )
 
-    manager = VirtualWorktreeManager(slug)
+    # Load metadata
     metadata = manager.load_metadata()
-
-    if metadata:
-        base_branch = metadata.base_branch
-        console.print(f"[dim]Using base branch from metadata:[/dim] {base_branch}")
-
-        if not Git.branch_exists(base_branch):
-            console.print(
-                f"[yellow]Warning: Base branch '{base_branch}' no longer exists[/yellow]"
-            )
-            base_branch = Git.get_current_branch()
-            console.print(f"[yellow]Falling back to current branch:[/yellow] {base_branch}")
-    else:
-        base_branch = Git.get_current_branch()
+    if not metadata:
         console.print(
-            f"[yellow]No metadata found, using current branch:[/yellow] {base_branch}"
+            f"[yellow]Warning:[/yellow] No metadata found for {slug}. "
+            "Proceeding with merge..."
         )
-
-    console.print(Panel.fit(
-        f"[bold]Merging feature:[/bold] {slug}\n"
-        f"[dim]Feature branch:[/dim] {manager.feature_branch}\n"
-        f"[dim]Base branch:[/dim] {base_branch}\n"
-        f"[dim]Virtual worktree:[/dim] {manager.clone_dir}",
-        title="Feature Merge",
-        border_style="blue",
-    ))
-
-    if not manager.clone_dir.exists():
-        error_exit(
-            f"Virtual worktree not found: {manager.clone_dir}\n"
-            f"Check status with: git-virtual-worktree status {slug}"
-        )
+        base_branch = Git.get_current_branch()
+    else:
+        base_branch = metadata.base_branch
 
     current_branch = Git.get_current_branch()
+
+    # Checkout base branch if needed
     if current_branch != base_branch:
-        console.print(
-            f"[yellow]Switching from '{current_branch}' to '{base_branch}'[/yellow]"
+        console.print(f"[dim]Switching to base branch: {base_branch}[/dim]")
+        Git.run("checkout", base_branch)
+
+    console.print(
+        Panel(
+            f"[cyan]Merging feature branch[/cyan]\n\n"
+            f"  Feature: [green]{manager.feature_branch}[/green]\n"
+            f"  Into: [green]{base_branch}[/green]\n"
+            f"  Strategy: [yellow]auto-detect (git-smart-merge)[/yellow]",
+            title="Git Smart Merge",
+            border_style="cyan",
         )
-        try:
-            Git.run("checkout", base_branch)
-        except GitError as e:
-            error_exit(f"Failed to checkout base branch: {e}")
+    )
 
-    try:
-        with console.status("[bold blue]Fetching latest changes..."):
-            Git.run("fetch", "origin", timeout=60)
-    except GitError:
-        console.print("[yellow]Warning: Failed to fetch from origin[/yellow]")
-
-    if Git.remote_branch_exists(base_branch):
-        try:
-            with console.status(f"[bold blue]Updating base branch from origin/{base_branch}..."):
-                Git.run("rebase", f"origin/{base_branch}")
-        except GitError as e:
-            error_exit(
-                f"Failed to rebase base branch onto origin/{base_branch}\n"
-                f"{e}\n\n"
-                "Resolve conflicts and run: git rebase --continue"
-            )
-    else:
-        console.print(f"[yellow]No remote branch found for: {base_branch}[/yellow]")
-
-    # Fetch feature branch from virtual worktree
-    console.print("[bold]Fetching feature branch from virtual worktree...[/bold]")
-    try:
-        Git.run(
-            "fetch",
-            str(manager.clone_dir),
-            f"{manager.feature_branch}:{manager.feature_branch}",
-            timeout=120,
-        )
-        console.print(f"[green]✓[/green] Feature branch imported to parent repo")
-    except GitError as e:
-        error_exit(f"Failed to fetch feature branch: {e}")
-
-    # Use git-smart-merge for integration
-    console.print("\n[bold]Integrating feature branch using git-smart-merge...[/bold]")
+    # Run git-smart-merge
     exit_code = run_git_smart_merge(
         manager.feature_branch,
         force_rebase=force_rebase,
@@ -663,171 +355,139 @@ def merge(
     )
 
     if exit_code != 0:
-        error_exit(
-            "git-smart-merge failed\n\n"
-            "See error messages above for resolution steps.\n"
-            f"After resolving: git-virtual-worktree cleanup {slug}",
-            ExitCode.ERROR,
+        console.print(
+            f"\n[red]Merge failed with exit code {exit_code}[/red]\n"
+            "The feature branch has NOT been deleted or cleaned up."
         )
+        raise typer.Exit(code=exit_code)
 
-    if dry_run:
-        console.print("\n[blue]Dry-run complete. No changes made.[/blue]")
-        return
-
-    console.print(f"\n[green]✓[/green] Feature successfully integrated into {base_branch}")
-    console.print("\n[bold]Next steps:[/bold]")
-    console.print(f"  git push origin {base_branch}  # Push merged changes")
-    console.print(f"  git-virtual-worktree cleanup {slug}  # Clean up virtual worktree")
+    if not dry_run:
+        console.print(
+            f"\n[green]Success![/green] Feature branch merged: {manager.feature_branch}"
+        )
 
 
 @app.command()
 def cleanup(slug: str = typer.Argument(..., help="Feature slug identifier")) -> None:
-    """Remove virtual worktree and delete feature branch.
+    """Clean up virtual worktree and feature branch.
 
-    Cleans up the cloned directory and removes the feature branch.
+    Removes the virtual worktree directory, deletes the feature branch,
+    and cleans up metadata. Use after successfully merging the feature.
     """
     check_git_repo()
 
     manager = VirtualWorktreeManager(slug)
 
-    console.print(Panel.fit(
-        f"[bold]Cleaning up feature:[/bold] {slug}",
-        title="Cleanup",
-        border_style="blue",
-    ))
-
-    # Track cleanup operations for summary
-    operations = []
-    dir_removed = False
-    branch_deleted = False
-    metadata_removed = False
-
-    # Check if virtual worktree directory exists
-    if manager.clone_dir.exists():
-        try:
-            # Warn if uncommitted changes in virtual worktree
-            if Git.has_uncommitted_changes(cwd=manager.clone_dir):
-                console.print("[yellow]⚠ Virtual worktree has uncommitted changes![/yellow]")
-                if not Confirm.ask(
-                    "Continue with removal? This will lose uncommitted work!",
-                    default=False,
-                ):
-                    console.print("[blue]Cleanup cancelled[/blue]")
-                    return
-        except GitError:
-            pass
-
-        # Remove virtual worktree directory (shutil.rmtree)
-        try:
-            shutil.rmtree(manager.clone_dir)
-            console.print(f"[green]✓[/green] Virtual worktree removed: {manager.clone_dir}")
-            operations.append(f"Removed directory: {manager.clone_dir}")
-            dir_removed = True
-        except Exception as e:
-            console.print(f"[yellow]Warning: Failed to remove directory: {e}[/yellow]")
-            operations.append(f"Failed to remove directory: {e}")
+    # Check if feature branch exists
+    if not Git.branch_exists(manager.feature_branch):
+        console.print(
+            f"[yellow]Warning:[/yellow] Feature branch does not exist: {manager.feature_branch}"
+        )
+        branch_exists = False
     else:
-        console.print(f"[yellow]Virtual worktree not found:[/yellow] {manager.clone_dir}")
-        operations.append("Directory not found (already removed)")
+        branch_exists = True
 
-    # Delete feature branch from parent repo
-    if Git.branch_exists(manager.feature_branch):
-        try:
-            Git.run("branch", "-d", manager.feature_branch)
-            console.print(f"[green]✓[/green] Branch deleted: {manager.feature_branch}")
-            operations.append(f"Deleted branch: {manager.feature_branch}")
-            branch_deleted = True
-        except GitError:
-            console.print("[yellow]Failed to delete branch (might have unmerged commits)[/yellow]")
-            # Add confirmation prompt for destructive operation
-            if Confirm.ask("Force delete branch?", default=False):
-                try:
-                    Git.run("branch", "-D", manager.feature_branch)
-                    console.print(f"[green]✓[/green] Branch force deleted: {manager.feature_branch}")
-                    operations.append(f"Force deleted branch: {manager.feature_branch}")
-                    branch_deleted = True
-                except GitError as e:
-                    console.print(f"[red]Error force deleting branch: {e}[/red]")
-                    operations.append(f"Failed to force delete branch: {e}")
-            else:
-                console.print(f"[blue]Keeping branch:[/blue] {manager.feature_branch}")
-                operations.append(f"Kept branch: {manager.feature_branch}")
+    # Check if virtual worktree exists
+    if not manager.virtual_worktree_dir.exists():
+        console.print(
+            f"[yellow]Warning:[/yellow] Virtual worktree directory does not exist: {manager.virtual_worktree_dir}"
+        )
+        vw_exists = False
     else:
-        console.print(f"[yellow]Feature branch not found:[/yellow] {manager.feature_branch}")
-        operations.append("Branch not found (already deleted)")
+        vw_exists = True
 
-    # Remove metadata file
-    try:
+    if not branch_exists and not vw_exists:
+        console.print(
+            "[yellow]Nothing to clean up. Branch and virtual worktree already removed.[/yellow]"
+        )
         manager.remove_metadata()
-        console.print("[green]✓[/green] Metadata removed")
-        operations.append("Removed metadata file")
-        metadata_removed = True
-    except Exception as e:
-        console.print(f"[yellow]Warning: Failed to remove metadata: {e}[/yellow]")
-        operations.append(f"Failed to remove metadata: {e}")
+        return
 
-    # Display Rich panel with cleanup summary
-    console.print()
-    summary_lines = [f"[bold]Feature:[/bold] {slug}", ""]
-    summary_lines.append("[bold]Cleanup Operations:[/bold]")
-    for op in operations:
-        summary_lines.append(f"  • {op}")
+    # Show what will be cleaned up
+    console.print(
+        Panel(
+            f"[yellow]The following will be removed:[/yellow]\n\n"
+            f"  {'Branch:           [green]' + manager.feature_branch + '[/green]' if branch_exists else '[dim]Branch: (already removed)[/dim]'}\n"
+            f"  {'Virtual Worktree: [green]' + str(manager.virtual_worktree_dir) + '[/green]' if vw_exists else '[dim]Virtual Worktree: (already removed)[/dim]'}",
+            title="Cleanup Virtual Worktree",
+            border_style="yellow",
+        )
+    )
 
-    summary_lines.append("")
-    if dir_removed and branch_deleted and metadata_removed:
-        summary_lines.append("[green]All cleanup operations completed successfully[/green]")
-        border_style = "green"
-    elif dir_removed or branch_deleted or metadata_removed:
-        summary_lines.append("[yellow]Cleanup partially completed - some operations were skipped or failed[/yellow]")
-        border_style = "yellow"
-    else:
-        summary_lines.append("[yellow]No cleanup operations performed - resources already removed[/yellow]")
-        border_style = "yellow"
+    if not Confirm.ask("Proceed with cleanup?", default=False):
+        console.print("[dim]Cleanup cancelled.[/dim]")
+        return
 
-    console.print(Panel.fit(
-        "\n".join(summary_lines),
-        title="Cleanup Summary",
-        border_style=border_style,
-    ))
+    # Remove virtual worktree directory
+    if vw_exists:
+        try:
+            shutil.rmtree(manager.virtual_worktree_dir)
+            console.print(
+                f"[green]Removed virtual worktree:[/green] {manager.virtual_worktree_dir}"
+            )
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Failed to remove virtual worktree: {e}[/yellow]\n"
+                "You may need to remove it manually."
+            )
+
+    # Delete branch
+    if branch_exists:
+        try:
+            Git.run("branch", "-D", manager.feature_branch)
+            console.print(f"[green]Deleted branch:[/green] {manager.feature_branch}")
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Failed to delete branch: {e}[/yellow]\n"
+                "You may need to delete it manually."
+            )
+
+    # Remove metadata
+    manager.remove_metadata()
+
+    console.print("\n[green]Cleanup complete![/green]")
 
 
-@app.command(name="list")
+@app.command()
 def list_virtual_worktrees() -> None:
-    """List all virtual worktrees."""
+    """List all virtual worktrees with metadata."""
     check_git_repo()
 
     git_dir = Git.get_git_dir()
+
+    # Find all virtual worktree metadata files
     metadata_files = list(git_dir.glob("virtual-worktree-*.json"))
 
     if not metadata_files:
-        console.print("[yellow]No virtual worktrees found[/yellow]")
+        console.print("[dim]No virtual worktrees found.[/dim]")
         return
 
-    table = Table(title="Virtual Worktrees", show_header=True)
-    table.add_column("Slug", style="cyan")
+    table = Table(
+        title="Git Virtual Worktrees", show_header=True, header_style="bold cyan"
+    )
+    table.add_column("Slug", style="yellow")
     table.add_column("Base Branch", style="green")
-    table.add_column("Directory")
-    table.add_column("Status")
+    table.add_column("Path", style="dim")
+    table.add_column("Status", style="cyan")
 
     for metadata_file in sorted(metadata_files):
         try:
             metadata = VirtualWorktreeMetadata.from_json(metadata_file.read_text())
             manager = VirtualWorktreeManager(metadata.slug)
 
-            status = "[green]Active[/green]" if manager.clone_dir.exists() else "[yellow]Missing[/yellow]"
+            # Check status
+            exists = manager.virtual_worktree_dir.exists()
+            status = "[green]Active[/green]" if exists else "[red]Missing[/red]"
 
             table.add_row(
                 metadata.slug,
                 metadata.base_branch,
-                str(manager.clone_dir),
+                str(manager.virtual_worktree_dir),
                 status,
             )
         except Exception as e:
-            table.add_row(
-                metadata_file.stem.replace("virtual-worktree-", ""),
-                "[red]Error[/red]",
-                "-",
-                f"[red]{e}[/red]",
+            console.print(
+                f"[yellow]Warning: Failed to load metadata from {metadata_file}: {e}[/yellow]"
             )
 
     console.print(table)
@@ -835,76 +495,41 @@ def list_virtual_worktrees() -> None:
 
 @app.command()
 def status(slug: str = typer.Argument(..., help="Feature slug identifier")) -> None:
-    """Show status of a virtual worktree."""
+    """Show status of a virtual worktree feature."""
     check_git_repo()
 
     manager = VirtualWorktreeManager(slug)
     metadata = manager.load_metadata()
 
-    table = Table(title=f"Virtual Worktree Status: {slug}", show_header=False)
-    table.add_column("Property", style="cyan")
-    table.add_column("Value")
+    if not metadata:
+        console.print(
+            f"[yellow]No metadata found for feature: {slug}[/yellow]\n"
+            "The feature may not have been created with this tool."
+        )
+        return
 
-    if metadata:
-        table.add_row("Base Branch", metadata.base_branch)
-        table.add_row("Created At", metadata.created_at)
-        table.add_row("Created By", metadata.created_by)
-        table.add_row("Remote URL", metadata.remote_url)
-        table.add_row("Clone Depth", str(metadata.depth))
-    else:
-        table.add_row("Metadata", "[yellow]Not found[/yellow]")
+    # Check current state
+    branch_exists = Git.branch_exists(manager.feature_branch)
+    vw_exists = manager.virtual_worktree_dir.exists()
 
-    table.add_row("Feature Branch", manager.feature_branch)
-    table.add_row("Clone Path", str(manager.clone_dir))
+    status_icon = (
+        "[green]●[/green]" if branch_exists and vw_exists else "[red]●[/red]"
+    )
 
-    console.print(table)
-    console.print()
-
-    if manager.clone_dir.exists():
-        console.print("[green]✓[/green] Virtual worktree exists")
-        if (manager.clone_dir / ".git").exists():
-            console.print("\n[bold]Virtual worktree status:[/bold]")
-            try:
-                Git.run("status", "--short", capture_output=False, cwd=manager.clone_dir)
-            except GitError:
-                console.print("[yellow]Could not get status[/yellow]")
-    else:
-        console.print("[yellow]✗[/yellow] Virtual worktree not found")
-        console.print("[dim]Run cleanup to remove orphaned metadata[/dim]")
-
-    console.print()
-
-    if Git.branch_exists(manager.feature_branch):
-        console.print("[green]✓[/green] Feature branch exists in parent repo")
-
-        if metadata:
-            base = metadata.base_branch
-
-            # Show commits ahead of base branch
-            console.print(f"\n[bold]Commits ahead of {base}:[/bold]")
-            try:
-                result = Git.run(
-                    "log",
-                    f"{base}..{manager.feature_branch}",
-                    "--oneline",
-                    capture_output=False,
-                )
-            except GitError:
-                console.print("  (none or branches diverged)")
-
-            # Show commits behind base branch
-            console.print(f"\n[bold]Commits behind {base}:[/bold]")
-            try:
-                result = Git.run(
-                    "log",
-                    f"{manager.feature_branch}..{base}",
-                    "--oneline",
-                    capture_output=False,
-                )
-            except GitError:
-                console.print("  (none or branches diverged)")
-    else:
-        console.print("[yellow]✗[/yellow] Feature branch not found in parent repo")
+    console.print(
+        Panel(
+            f"{status_icon} [bold]{slug}[/bold]\n\n"
+            f"  Base: [green]{metadata.base_branch}[/green]\n"
+            f"  Branch: {'[green]' + manager.feature_branch + '[/green]' if branch_exists else '[red]' + manager.feature_branch + ' (missing)[/red]'}\n"
+            f"  Path: {'[green]' + str(manager.virtual_worktree_dir) + '[/green]' if vw_exists else '[red]' + str(manager.virtual_worktree_dir) + ' (missing)[/red]'}\n"
+            f"  Remote: [dim]{metadata.remote_url}[/dim]\n"
+            f"  Depth: [dim]{metadata.depth}[/dim]\n"
+            f"  Created: [dim]{metadata.created_at}[/dim]\n"
+            f"  By: [dim]{metadata.created_by}[/dim]",
+            title="Virtual Worktree Status",
+            border_style="cyan",
+        )
+    )
 
 
 if __name__ == "__main__":
