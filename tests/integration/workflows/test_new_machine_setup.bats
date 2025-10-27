@@ -40,7 +40,7 @@ teardown() {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_exists "$dotfiles_root/bin/core/link-dotfiles"
+    assert_file_exists "$dotfiles_root/bin/core/link-dotfiles.py"
 }
 
 @test "new machine: work-mode available" {
@@ -302,7 +302,7 @@ teardown() {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    run "$dotfiles_root/bin/core/link-dotfiles" --dry-run
+    run python3 "$dotfiles_root/bin/core/link-dotfiles.py" --dry-run
     # May succeed depending on environment
 }
 
