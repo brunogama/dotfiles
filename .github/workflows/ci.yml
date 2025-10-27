@@ -240,6 +240,11 @@ jobs:
           git clone https://github.com/bats-core/bats-assert.git tests/helpers/bats-assert || true
           git clone https://github.com/bats-core/bats-file.git tests/helpers/bats-file || true
 
+      - name: Set execute permissions on scripts
+        run: |
+          find bin/ -type f -exec chmod +x {} \;
+          chmod +x tests/helpers/*.bash
+
       - name: Run integration tests
         run: |
           ./bin/test/run-tests --tap
@@ -273,6 +278,11 @@ jobs:
           git clone https://github.com/bats-core/bats-support.git tests/helpers/bats-support || true
           git clone https://github.com/bats-core/bats-assert.git tests/helpers/bats-assert || true
           git clone https://github.com/bats-core/bats-file.git tests/helpers/bats-file || true
+
+      - name: Set execute permissions on scripts
+        run: |
+          find bin/ -type f -exec chmod +x {} \;
+          chmod +x tests/helpers/*.bash
 
       - name: Run integration tests
         run: |
