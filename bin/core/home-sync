@@ -14,24 +14,18 @@ NC='\033[0m' # No Color
 
 # Function to auto-detect dotfiles directory
 detect_dotfiles_dir() {
-    # Check common locations for dotfiles repository
-    local candidates=(
-        "$HOME/.config-fixing-dot-files-bugs"
-        "$HOME/.config"
-        "$HOME/.dotfiles"
-        "$HOME/dotfiles"
-    )
+    # Determine dotfiles root from script location
+    # Resolve symlinks first, then go up two levels from bin/core/
+    local script_real="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+    local script_path="$(cd "$(dirname "$script_real")/../.." && pwd)"
 
-    for dir in "${candidates[@]}"; do
-        if [[ -d "$dir/.git" ]]; then
-            echo "$dir"
-            return 0
-        fi
-    done
+    if [[ -d "$script_path/.git" ]]; then
+        echo "$script_path"
+        return 0
+    fi
 
-    log "ERROR" "Could not find dotfiles git repository"
-    log "INFO" "Checked locations: ${candidates[*]}"
-    log "INFO" "Initialize a repository with: cd <dotfiles-dir> && git init"
+    log "ERROR" "Could not find dotfiles git repository at: $script_path"
+    log "INFO" "This script should be located at <dotfiles>/bin/core/home-sync"
     return 1
 }
 
