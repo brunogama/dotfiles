@@ -169,7 +169,7 @@ command_exists() {
 phase_preflight() {
     log_phase "Phase 1: Pre-flight Checks"
 
-    if [[ ! -d "$DOTFILES_ROOT/.git" ]]; then
+    if [[ ! -d "$DOTFILES_ROOT/.git" ]] && [[ ! -f "$DOTFILES_ROOT/.git" ]]; then
         log_error "Not in a git repository"
         log_info "Run this from your dotfiles repository"
         exit 2
@@ -296,9 +296,180 @@ phase_bundle() {
     fi
 }
 
-# Phase 5: Prezto and Powerlevel10k setup
+# Phase 5: Version Manager Setup (pyenv, rbenv, nvm)
+phase_version_managers() {
+    log_phase "Phase 5: Version Manager Setup"
+
+    phase_pyenv
+    phase_rbenv
+    phase_nvm
+}
+
+# Phase 5a: pyenv (Python version manager)
+phase_pyenv() {
+    log_info "Setting up pyenv (Python version manager)..."
+
+    local pyenv_root="$HOME/.pyenv"
+
+    if [[ -d "$pyenv_root" ]]; then
+        log_success "pyenv is already installed"
+        return 0
+    fi
+
+    log_warning "pyenv is not installed"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would install pyenv from https://pyenv.run"
+        log_info "Would install latest stable Python version"
+        return 0
+    fi
+
+    if ! confirm "Install pyenv (Python version manager)?"; then
+        log_warning "Skipped pyenv installation"
+        return 0
+    fi
+
+    log_info "Installing pyenv..."
+    if curl -fsSL https://pyenv.run | bash; then
+        log_success "pyenv installed to $pyenv_root"
+    else
+        log_error "Failed to install pyenv"
+        return 1
+    fi
+
+    # Add pyenv to PATH for this session
+    export PYENV_ROOT="$pyenv_root"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+
+    log_info "Installing latest stable Python version..."
+    local latest_python
+    latest_python=$(pyenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
+
+    if [[ -z "$latest_python" ]]; then
+        log_warning "Could not determine latest Python version"
+        return 0
+    fi
+
+    log_info "Installing Python $latest_python (this may take a few minutes)..."
+    if pyenv install "$latest_python" && pyenv global "$latest_python"; then
+        log_success "Python $latest_python installed and set as global default"
+        python --version 2>/dev/null && log_info "Verified: $(python --version)"
+    else
+        log_warning "Failed to install Python version"
+    fi
+}
+
+# Phase 5b: rbenv (Ruby version manager)
+phase_rbenv() {
+    log_info "Setting up rbenv (Ruby version manager)..."
+
+    local rbenv_root="$HOME/.rbenv"
+
+    if [[ -d "$rbenv_root" ]]; then
+        log_success "rbenv is already installed"
+        return 0
+    fi
+
+    log_warning "rbenv is not installed"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would install rbenv via official rbenv-installer"
+        log_info "Would install latest stable Ruby version"
+        return 0
+    fi
+
+    if ! confirm "Install rbenv (Ruby version manager)?"; then
+        log_warning "Skipped rbenv installation"
+        return 0
+    fi
+
+    log_info "Installing rbenv..."
+    if curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer | bash; then
+        log_success "rbenv installed to $rbenv_root"
+    else
+        log_error "Failed to install rbenv"
+        return 1
+    fi
+
+    # Add rbenv to PATH for this session
+    export PATH="$rbenv_root/bin:$PATH"
+    eval "$(rbenv init - bash)"
+
+    log_info "Installing latest stable Ruby version..."
+    local latest_ruby
+    latest_ruby=$(rbenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
+
+    if [[ -z "$latest_ruby" ]]; then
+        log_warning "Could not determine latest Ruby version"
+        return 0
+    fi
+
+    log_info "Installing Ruby $latest_ruby (this may take a few minutes)..."
+    if rbenv install "$latest_ruby" && rbenv global "$latest_ruby"; then
+        log_success "Ruby $latest_ruby installed and set as global default"
+
+        log_info "Installing bundler gem..."
+        gem install bundler && rbenv rehash
+        log_success "bundler installed"
+
+        ruby --version 2>/dev/null && log_info "Verified: $(ruby --version)"
+    else
+        log_warning "Failed to install Ruby version"
+    fi
+}
+
+# Phase 5c: nvm (Node.js version manager)
+phase_nvm() {
+    log_info "Setting up nvm (Node.js version manager)..."
+
+    local nvm_dir="$HOME/.nvm"
+
+    if [[ -d "$nvm_dir" ]]; then
+        log_success "nvm is already installed"
+        return 0
+    fi
+
+    log_warning "nvm is not installed"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would install nvm from official installer"
+        log_info "Would install latest LTS Node.js version"
+        return 0
+    fi
+
+    if ! confirm "Install nvm (Node.js version manager)?"; then
+        log_warning "Skipped nvm installation"
+        return 0
+    fi
+
+    log_info "Installing nvm..."
+    if curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash; then
+        log_success "nvm installed to $nvm_dir"
+    else
+        log_error "Failed to install nvm"
+        return 1
+    fi
+
+    # Source nvm for this session
+    export NVM_DIR="$nvm_dir"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+    log_info "Installing latest LTS Node.js version..."
+    if nvm install --lts && nvm alias default 'lts/*'; then
+        local node_version
+        node_version=$(nvm current)
+        log_success "Node.js $node_version installed and set as default"
+        node --version 2>/dev/null && log_info "Verified: node $(node --version)"
+        npm --version 2>/dev/null && log_info "Verified: npm $(npm --version)"
+    else
+        log_warning "Failed to install Node.js LTS version"
+    fi
+}
+
+# Phase 6: Prezto and Powerlevel10k setup
 phase_prezto() {
-    log_phase "Phase 5: Prezto & Powerlevel10k Setup"
+    log_phase "Phase 6: Prezto & Powerlevel10k Setup"
 
     local prezto_dir="$HOME/.zprezto"
     local p10k_module="$prezto_dir/modules/prompt/external/powerlevel10k"
@@ -379,14 +550,14 @@ phase_prezto() {
     fi
 }
 
-# Phase 6: Symlink creation
+# Phase 7: Symlink creation
 phase_symlinks() {
     if [[ "$SKIP_LINKS" == "true" ]]; then
         log_info "Skipping symlink creation (--skip-links flag)"
         return 0
     fi
 
-    log_phase "Phase 6: Symlink Creation"
+    log_phase "Phase 7: Symlink Creation"
 
     local linker="$DOTFILES_ROOT/bin/core/link-dotfiles.py"
 
@@ -417,9 +588,9 @@ phase_symlinks() {
     fi
 }
 
-# Phase 7: Shell configuration
+# Phase 8: Shell configuration
 phase_shell() {
-    log_phase "Phase 7: Shell Configuration"
+    log_phase "Phase 8: Shell Configuration"
 
     local current_shell="${SHELL##*/}"
     log_info "Current shell: $current_shell"
@@ -465,7 +636,7 @@ phase_shell() {
     esac
 }
 
-# Phase 8: Performance optimization (zsh)
+# Phase 9: Performance optimization (zsh)
 phase_performance() {
     local current_shell="${SHELL##*/}"
 
@@ -474,7 +645,7 @@ phase_performance() {
         return 0
     fi
 
-    log_phase "Phase 8: Performance Optimization"
+    log_phase "Phase 9: Performance Optimization"
 
     local compile_script="$DOTFILES_ROOT/bin/core/zsh-compile"
 
@@ -526,6 +697,27 @@ show_summary() {
     echo "  1. Restart your terminal or run: exec ${SHELL##*/}"
     echo "  2. Check environment: work-mode status"
     echo "  3. Verify git config: git config --list"
+    echo ""
+
+    # Check for Homebrew-installed language runtimes
+    local has_brew_langs=false
+    if command_exists brew; then
+        if brew list python &>/dev/null || brew list node &>/dev/null || brew list rbenv &>/dev/null; then
+            has_brew_langs=true
+        fi
+    fi
+
+    if [[ "$has_brew_langs" == "true" ]]; then
+        echo "Migration Note:"
+        echo "  Homebrew-installed language runtimes detected."
+        echo "  To complete migration to pyenv/rbenv/nvm, run:"
+        echo "    brew uninstall python python@3.9 node rbenv 2>/dev/null"
+        echo "  Then verify version managers:"
+        echo "    which python  # Should point to ~/.pyenv/shims/python"
+        echo "    which ruby    # Should point to ~/.rbenv/shims/ruby"
+        echo "    which node    # Should point to ~/.nvm/versions/node/..."
+        echo ""
+    fi
 
     # Zsh-specific tips
     if [[ "${SHELL##*/}" == "zsh" ]]; then
@@ -564,6 +756,7 @@ main() {
     phase_homebrew
     phase_dependencies
     phase_bundle
+    phase_version_managers
     phase_prezto
     phase_symlinks
     phase_shell

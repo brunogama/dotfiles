@@ -1,0 +1,178 @@
+# https://docs.z.ai/api-reference/video/get-video-status
+
+Source: [https://docs.z.ai/api-reference/video/get-video-status](https://docs.z.ai/api-reference/video/get-video-status)
+
+---
+
+[Skip to main content](https://docs.z.ai/api-reference/video/get-video-status#content-area)
+🚀 **GLM Coding Plan — built for devs: 3× usage, 1/7 cost** • [Limited-Time Offer ➞](https://z.ai/subscribe?utm_campaign=Platform_Ops&_channel_track_key=DaprgHIc)
+[Z.AI DEVELOPER DOCUMENT home page![light logo](https://mintcdn.com/zhipu-32152247/B_E8wI-eiNa1QlPV/logo/dark.svg?fit=max&auto=format&n=B_E8wI-eiNa1QlPV&q=85&s=75deefa9dea5bdbc84d4da68885c267f)![dark logo](https://mintcdn.com/zhipu-32152247/B_E8wI-eiNa1QlPV/logo/light.svg?fit=max&auto=format&n=B_E8wI-eiNa1QlPV&q=85&s=c1ecf1af358fa8eeab8c06052337f8f6)](https://z.ai/model-api)
+English
+Search...
+⌘K
+  * [API Keys](https://z.ai/manage-apikey/apikey-list)
+  * [Payment Method](https://z.ai/manage-apikey/billing)
+
+
+Search...
+Navigation
+Video API
+Retrieve Result
+[Guides](https://docs.z.ai/guides/overview/quick-start)[API Reference](https://docs.z.ai/api-reference/introduction)[Scenario Example](https://docs.z.ai/scenario-example/develop-tools/claude)[Coding Plan](https://docs.z.ai/devpack/overview)[Released Notes](https://docs.z.ai/release-notes/new-released)[Terms and Policy](https://docs.z.ai/legal-agreement/privacy-policy)[Help Center](https://docs.z.ai/help/faq)
+##### Using the APIs
+  * [Introduction](https://docs.z.ai/api-reference/introduction)
+  * [Errors](https://docs.z.ai/api-reference/api-code)
+  * [Rate Limits](https://z.ai/manage-apikey/rate-limits)
+
+
+##### Model API
+  * [POSTChat Completion](https://docs.z.ai/api-reference/llm/chat-completion)
+
+
+##### Image API
+  * [POSTGenerate Image](https://docs.z.ai/api-reference/image/generate-image)
+
+
+##### Video API
+  * [POSTGenerate Video(Async)](https://docs.z.ai/api-reference/video/generate-video)
+  * [GETRetrieve Result](https://docs.z.ai/api-reference/video/get-video-status)
+
+
+##### Tool API
+  * [POSTWeb Search](https://docs.z.ai/api-reference/tools/web-search)
+
+
+##### Agent API
+  * [POSTAgent Chat](https://docs.z.ai/api-reference/agents/agent)
+  * [POSTFile Upload](https://docs.z.ai/api-reference/agents/file-upload)
+  * [POSTRetrieve Result](https://docs.z.ai/api-reference/agents/get-async-result)
+  * [POSTConversation History](https://docs.z.ai/api-reference/agents/agent-conversation)
+
+
+cURL
+cURL
+Copy
+```
+curl --request GET \
+ --url https://api.z.ai/api/paas/v4/async-result/{id} \
+ --header 'Authorization: Bearer <token>'
+```
+
+200
+default
+Copy
+```
+{
+ "model": "<string>",
+ "video_result": [
+  {
+   "url": "<string>",
+   "cover_image_url": "<string>"
+  }
+ ],
+ "task_status": "<string>",
+ "request_id": "<string>"
+}
+```
+
+Video API
+# Retrieve Result
+Copy page
+This endpoint is used to query the result of an asynchronous request.
+Copy page
+GET
+/
+paas
+/
+v4
+/
+async-result
+/
+{id}
+Try it
+cURL
+cURL
+Copy
+```
+curl --request GET \
+ --url https://api.z.ai/api/paas/v4/async-result/{id} \
+ --header 'Authorization: Bearer <token>'
+```
+
+200
+default
+Copy
+```
+{
+ "model": "<string>",
+ "video_result": [
+  {
+   "url": "<string>",
+   "cover_image_url": "<string>"
+  }
+ ],
+ "task_status": "<string>",
+ "request_id": "<string>"
+}
+```
+
+#### Authorizations
+[​](https://docs.z.ai/api-reference/video/get-video-status#authorization-authorization)
+Authorization
+string
+header
+required
+Use the following format for authentication: Bearer [<your api key>](https://z.ai/manage-apikey/apikey-list)
+#### Headers
+[​](https://docs.z.ai/api-reference/video/get-video-status#parameter-accept-language)
+Accept-Language
+enum<string>
+default:en-US,en
+Config desired response language for HTTP requests.
+Available options:
+`en-US,en`
+Example:
+`"en-US,en"`
+#### Path Parameters
+[​](https://docs.z.ai/api-reference/video/get-video-status#parameter-id)
+id
+string
+required
+Task id.
+#### Response
+200
+application/json
+Processing successful
+[​](https://docs.z.ai/api-reference/video/get-video-status#response-model)
+model
+string
+Model name.
+[​](https://docs.z.ai/api-reference/video/get-video-status#response-video-result)
+video_result
+object[]
+Video generation results.
+Hide child attributes
+[​](https://docs.z.ai/api-reference/video/get-video-status#response-video-result-url)
+url
+string
+Video url.
+[​](https://docs.z.ai/api-reference/video/get-video-status#response-video-result-cover-image-url)
+cover_image_url
+string
+Video cover url.
+[​](https://docs.z.ai/api-reference/video/get-video-status#response-task-status)
+task_status
+string
+Processing status, `PROCESSING (processing)`, `SUCCESS (success)`, `FAIL (failure)`. Note: Processing status needs to be obtained via query.
+[​](https://docs.z.ai/api-reference/video/get-video-status#response-request-id)
+request_id
+string
+Task number submitted by the user during the client request or generated by the platform.
+Was this page helpful?
+YesNo
+[Generate Video(Async)](https://docs.z.ai/api-reference/video/generate-video)[Web Search](https://docs.z.ai/api-reference/tools/web-search)
+⌘I
+[x](https://x.com/Zai_org)[github](https://github.com/zai-org)[discord](https://discord.gg/QR7SARHRxK)[linkedin](https://www.linkedin.com/company/zdotai/)
+[Powered by Mintlify](https://mintlify.com?utm_campaign=poweredBy&utm_medium=referral&utm_source=zhipu-32152247)
+Assistant
+Responses are generated using AI and may contain mistakes.

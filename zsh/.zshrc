@@ -216,8 +216,16 @@ typeset -U path
 # ============================================================================
 # 14. ENVIRONMENT VARIABLES (Non-blocking)
 # ============================================================================
+export PYENV_ROOT="$HOME/.pyenv"
 export NVM_DIR="$HOME/.nvm"
 export SDKMAN_DIR="$HOME/.sdkman"
+
+# Add version manager bin paths to PATH (for lazy-loading detection)
+path=(
+    $PYENV_ROOT/bin(N)
+    $HOME/.rbenv/bin(N)
+    $path
+)
 
 # ============================================================================
 # END OF OPTIMIZED .zshrc

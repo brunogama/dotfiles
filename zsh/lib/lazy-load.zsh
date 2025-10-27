@@ -16,6 +16,30 @@ if command -v mise &>/dev/null; then
 fi
 
 # ============================================================================
+# Lazy Load: pyenv
+# ============================================================================
+if command -v pyenv &>/dev/null; then
+    pyenv() {
+        unfunction pyenv
+        eval "$(command pyenv init -)"
+        pyenv "$@"
+    }
+
+    # Also intercept python/pip commands
+    python() {
+        unfunction python pyenv 2>/dev/null
+        eval "$(command pyenv init -)"
+        python "$@"
+    }
+
+    pip() {
+        unfunction pip pyenv 2>/dev/null
+        eval "$(command pyenv init -)"
+        pip "$@"
+    }
+fi
+
+# ============================================================================
 # Lazy Load: rbenv
 # ============================================================================
 if command -v rbenv &>/dev/null; then
