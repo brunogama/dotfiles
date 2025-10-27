@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "links": [
+    {
+      "source": "zsh/.zshrc",
+      "target": "~/.zshrc",
+      "platform": "all",
+      "optional": false
+    },
+    {
+      "source": "git/.gitconfig",
+      "target": "~/.gitconfig",
+      "platform": "all",
+      "optional": false
+    },
+    {
+      "source": "git/.gitignore_global",
+      "target": "~/.gitignore_global",
+      "platform": "all",
+      "optional": false
+    },
+    {
+      "source": "vim/.vimrc",
+      "target": "~/.vimrc",
+      "platform": "all",
+      "optional": true
+    },
+    {
+      "source": "macos/Brewfile",
+      "target": "~/.Brewfile",
+      "platform": "darwin",
+      "optional": false
+    },
+    {
+      "source": "linux/.bash_profile",
+      "target": "~/.bash_profile",
+      "platform": "linux",
+      "optional": true
+    }
+  ],
+  "metadata": {
+    "created": "2025-01-01T00:00:00Z",
+    "description": "Test linking manifest for integration tests"
+  }
+}

@@ -22,6 +22,7 @@ Dependencies:
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -30,8 +31,10 @@ from pathlib import Path
 from typing import Optional
 
 # Add lib/ directories to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "lib"))  # For git/lib/
-sys.path.insert(0, str(Path(__file__).parent.parent))  # For bin/lib/
+# Resolve symlink to find actual source directory
+script_path = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+sys.path.insert(0, os.path.join(script_path, "lib"))  # For git/lib/
+sys.path.insert(0, os.path.dirname(script_path))  # For bin/lib/
 
 # Import from shared libraries
 from git_common import ExitCode, console, error_exit

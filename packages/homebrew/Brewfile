@@ -30,6 +30,10 @@ brew "tldr"
 brew "httpie"
 brew "tree"
 
+# Testing Tools
+brew "bats-core"  # Bash Automated Testing System
+brew "kcov"       # Code coverage for shell scripts
+
 # Git Tools
 brew "git-lfs"
 brew "git-secrets"
