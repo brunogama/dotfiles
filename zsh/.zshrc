@@ -47,7 +47,7 @@ unalias e 2>/dev/null
 # ============================================================================
 
 # Shell & Config
-alias zs='source ~/.zshrc'
+alias zs='source ~/.config/zsh/.zshrc'
 alias config='code $(realpath .)'
 alias gitconfig='code ~/.gitconfig'
 
