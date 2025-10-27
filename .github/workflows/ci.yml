@@ -240,14 +240,15 @@ jobs:
           git clone https://github.com/bats-core/bats-assert.git tests/helpers/bats-assert || true
           git clone https://github.com/bats-core/bats-file.git tests/helpers/bats-file || true
 
-      - name: Set execute permissions on scripts
+      - name: Set execute permissions
         run: |
-          find bin/ -type f -exec chmod +x {} \;
-          chmod +x tests/helpers/*.bash
+          # Set permissions for all scripts in bin/ subdirectories
+          find bin/core bin/credentials bin/git bin/ide bin/macos bin/test -type f 2>/dev/null | xargs chmod +x
+          chmod +x tests/helpers/*.bash install
 
       - name: Run integration tests
         run: |
-          ./bin/test/run-tests --tap
+          bash bin/test/run-tests --tap
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -279,14 +280,15 @@ jobs:
           git clone https://github.com/bats-core/bats-assert.git tests/helpers/bats-assert || true
           git clone https://github.com/bats-core/bats-file.git tests/helpers/bats-file || true
 
-      - name: Set execute permissions on scripts
+      - name: Set execute permissions
         run: |
-          find bin/ -type f -exec chmod +x {} \;
-          chmod +x tests/helpers/*.bash
+          # Set permissions for all scripts in bin/ subdirectories
+          find bin/core bin/credentials bin/git bin/ide bin/macos bin/test -type f 2>/dev/null | xargs chmod +x
+          chmod +x tests/helpers/*.bash install
 
       - name: Run integration tests
         run: |
-          ./bin/test/run-tests --tap
+          bash bin/test/run-tests --tap
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
