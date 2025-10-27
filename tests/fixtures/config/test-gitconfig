@@ -1,0 +1,24 @@
+[user]
+	name = Test User
+	email = test@example.com
+
+[core]
+	editor = vim
+	autocrlf = input
+	excludesfile = ~/.gitignore_global
+
+[init]
+	defaultBranch = main
+
+[alias]
+	st = status
+	ci = commit
+	co = checkout
+	br = branch
+	lg = log --oneline --graph --decorate --all
+
+[color]
+	ui = auto
+
+[push]
+	default = simple

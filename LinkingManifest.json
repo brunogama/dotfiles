@@ -140,6 +140,20 @@
           "description": "Git utility scripts",
           "type": "directory-contents",
           "executable": true
+        },
+        {
+          "source": "bin/git/lib/",
+          "target": "~/.local/bin/git/lib",
+          "description": "Git library modules",
+          "type": "directory"
+        }
+      ],
+      "lib": [
+        {
+          "source": "bin/lib/",
+          "target": "~/.local/bin/lib",
+          "description": "Shared library modules",
+          "type": "directory"
         }
       ],
       "ide": [

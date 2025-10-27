@@ -1,0 +1,25 @@
+# Test artifacts and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+
+# Coverage reports
+coverage/
+kcov-output/
+*.coverage
+htmlcov/
+
+# Test output
+test-results/
+*.xml
+*.html
+
+# Temporary test directories
+tmp/
+temp/
+test-temp-*/
+
+# OS files
+.DS_Store
+Thumbs.db

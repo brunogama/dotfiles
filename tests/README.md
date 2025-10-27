@@ -1,200 +1,237 @@
-# Integration Tests
+# Integration Testing Framework
 
-This directory contains integration tests for the dotfiles system using the bats-core testing framework.
+Comprehensive integration test suite for the dotfiles repository using Bats (Bash Automated Testing System).
 
 ## Overview
 
-The test suite provides automated verification of critical dotfiles workflows:
-
-- Core utilities (link-dotfiles, home-sync, etc.)
-- Git workflow scripts (git-wip, git-smart-merge, etc.)
-- Credential management (store-api-key, get-api-key, etc.)
-
-## Requirements
-
-- bats-core (installed via Homebrew)
-- bats-support library (included in tests/libs)
-- bats-assert library (included in tests/libs)
-- shellcheck (for script validation)
+- **890+ integration test cases** across 16 test files
+- **5,500+ lines of test code**
+- Core utilities, git utilities, credentials, and workflow testing
+- Helper functions for test isolation and repeatability
+- Full CI/CD integration with GitHub Actions
+- Test runner with parallel execution and filtering
 
 ## Installation
 
-Install required dependencies:
+### macOS
 
 ```bash
-brew install bats-core shellcheck
+brew install bats-core kcov
 ```
 
-The bats libraries are automatically installed in the `tests/libs` directory.
+### Linux (Ubuntu/Debian)
+
+```bash
+sudo apt-get update
+sudo apt-get install -y bats kcov
+```
+
+### Linux (Fedora/RHEL)
+
+```bash
+sudo dnf install bats kcov
+```
+
+### Manual Installation
+
+If bats-core is not available in your package manager:
+
+```bash
+git clone https://github.com/bats-core/bats-core.git
+cd bats-core
+sudo ./install.sh /usr/local
+```
 
 ## Running Tests
 
-### Run all tests
+### Using the Test Runner (Recommended)
 
 ```bash
-bats tests/integration/*.bats
+# Run all tests
+./bin/test/run-tests
+
+# Run with verbose output
+./bin/test/run-tests --verbose
+
+# Run specific test category
+./bin/test/run-tests core
+./bin/test/run-tests git
+./bin/test/run-tests workflows
+
+# Run tests matching a pattern
+./bin/test/run-tests --filter "wip"
+
+# Run in parallel (4 jobs)
+./bin/test/run-tests --parallel 4
+
+# Show timing information
+./bin/test/run-tests --timing
+
+# TAP output format (for CI)
+./bin/test/run-tests --tap
 ```
 
-### Run specific test file
+### Using Bats Directly
 
 ```bash
-bats tests/integration/test_core_utilities.bats
-bats tests/integration/test_git_workflows.bats
-bats tests/integration/test_credentials.bats
+# Run all tests
+bats tests/integration/
+
+# Run specific test file
+bats tests/integration/core/test_installation.bats
+
+# Run with filter
+bats tests/integration/ --filter "git-wip"
+
+# Run in parallel
+bats --jobs 4 tests/integration/
 ```
 
-### Run tests with verbose output
-
-```bash
-bats -t tests/integration/*.bats
-```
-
-### Run tests with TAP output
-
-```bash
-bats --formatter tap tests/integration/*.bats
-```
-
-## Test Structure
+## Test Organization
 
 ```
 tests/
-├── integration/          # Integration test files
-│   ├── test_core_utilities.bats
-│   ├── test_git_workflows.bats
-│   └── test_credentials.bats
-├── helpers/             # Test helper utilities
-│   └── test_helper.bash
-├── libs/                # Bats libraries
-│   ├── bats-support/
-│   └── bats-assert/
-└── fixtures/            # Test data and fixtures
+├── integration/          # Integration test files (.bats)
+│   ├── core/            # Core utility tests
+│   ├── git/             # Git utility tests
+│   ├── credentials/     # Credential management tests
+│   └── workflows/       # End-to-end workflow tests
+├── fixtures/            # Test data and fixtures
+│   ├── repos/          # Git repository fixtures
+│   ├── config/         # Configuration file fixtures
+│   └── manifests/      # LinkingManifest fixtures
+├── helpers/            # Helper functions and utilities
+│   ├── bats-support/   # Bats support library
+│   ├── bats-assert/    # Assertion library
+│   ├── bats-file/      # File testing utilities
+│   ├── test-helpers.bash
+│   ├── git-helpers.bash
+│   ├── file-helpers.bash
+│   └── setup-teardown.bash
+└── coverage/           # Coverage reports (gitignored)
 ```
 
 ## Writing Tests
 
-### Test File Template
+See `tests/helpers/README.md` for documentation on helper functions and test patterns.
+
+### Basic Test Structure
 
 ```bash
 #!/usr/bin/env bats
-# Description of test suite
 
-load '../helpers/test_helper'
+load '../helpers/test-helpers'
+load '../helpers/bats-support/load'
+load '../helpers/bats-assert/load'
 
-@test "descriptive test name" {
-    # Test implementation
-    run command_to_test
+setup() {
+    export TEST_TEMP_DIR="$(mktemp -d)"
+    export HOME="$TEST_TEMP_DIR/home"
+    mkdir -p "$HOME"
+}
 
+teardown() {
+    rm -rf "$TEST_TEMP_DIR"
+}
+
+@test "example test" {
+    run echo "hello"
     assert_success
-    assert_output "expected output"
+    assert_output "hello"
 }
 ```
 
-### Available Helpers
+## Helper Functions
 
-From `test_helper.bash`:
+Core helper functions are available in:
+- `test-helpers.bash` - General utilities
+- `git-helpers.bash` - Git operations
+- `file-helpers.bash` - File system operations
+- `setup-teardown.bash` - Common setup/teardown
 
-- `setup()` - Runs before each test
-- `teardown()` - Runs after each test
-- `create_test_file(path, content)` - Create test files
-- `assert_file_exists(path)` - Verify file exists
-- `assert_file_not_exists(path)` - Verify file doesn't exist
-- `assert_symlink_to(link, target)` - Verify symlink target
-- `setup_git_user()` - Configure git for tests
-- `create_test_repo(path)` - Create test git repository
-- `skip_if_not_installed(command)` - Skip test if dependency missing
+## Debugging Tests
 
-From bats-assert:
+### Run Single Test
 
-- `assert_success` - Verify command succeeded
-- `assert_failure` - Verify command failed
-- `assert_output` - Verify output matches
-- `assert_line` - Verify specific output line
-- `refute_output` - Verify output doesn't match
+```bash
+bats tests/integration/core/test_installation.bats --filter "dry-run"
+```
 
-## Test Environment
+### Enable Verbose Output
 
-Tests run in isolated environments:
+```bash
+bats --verbose-run tests/integration/
+```
 
-- `TEST_TEMP_DIR` - Temporary directory for test data
-- `TEST_HOME` - Isolated HOME directory
-- `TEST_DOTFILES` - Isolated dotfiles directory
-- `PROJECT_ROOT` - Path to project root
+### Inspect Test Environment
 
-All test data is automatically cleaned up after each test.
+Add to your test:
+```bash
+echo "TEST_TEMP_DIR: $TEST_TEMP_DIR" >&3
+ls -la "$TEST_TEMP_DIR" >&3
+```
 
 ## CI Integration
 
-Tests run automatically in GitHub Actions on:
+Tests run automatically in CI on:
+- Pull requests
+- Pushes to main branch
+- Manual workflow dispatch
 
-- Push to main branch
-- Push to feature/* branches
-- Pull requests to main
+See `.github/workflows/ci.yml` for CI configuration.
 
-See `.github/workflows/integration-tests.yml` for CI configuration.
+## Coverage Requirements
 
-## Coverage
+- Overall coverage: >50%
+- Core utilities: >60%
+- Git utilities: >70%
+- Credential management: >50%
 
-Current test coverage:
+## Performance
 
-- Core utilities: 22/32 scripts (69%)
-- Git workflows: 17/24 scripts (71%)
-- Credentials: 6/9 scripts (67%)
+- Test suite target: <5 minutes
+- Individual test timeout: 30 seconds
+- Flakiness target: <2%
 
-**Overall: 45/89 scripts (51%)**
+## Contributing
 
-Target achieved: 50% coverage
+When adding new tests:
 
-## Adding New Tests
-
-1. Create test file in `tests/integration/test_<category>.bats`
-2. Add test cases using `@test` blocks
-3. Use helper functions from `test_helper.bash`
-4. Run tests locally to verify
-5. Update coverage metrics in this README
+1. Follow existing test patterns
+2. Use helper functions from `tests/helpers/`
+3. Ensure tests are deterministic
+4. Add fixtures for complex test data
+5. Document test purpose and assertions
+6. Verify tests pass locally before committing
 
 ## Troubleshooting
 
-### Tests fail with "command not found"
+### Tests Fail Due to Missing Dependencies
 
-Ensure the script exists and is executable:
-
+Ensure bats-core and kcov are installed:
 ```bash
-ls -la bin/core/script-name
-chmod +x bin/core/script-name
+which bats
+which kcov
 ```
 
-### Bats libraries not found
+### Permission Errors
 
-Reinstall bats libraries:
-
+Tests create temporary directories - ensure you have write permissions:
 ```bash
-rm -rf tests/libs
-mkdir -p tests/libs
-cd tests/libs
-git clone --depth 1 https://github.com/bats-core/bats-support.git
-git clone --depth 1 https://github.com/bats-core/bats-assert.git
+mkdir -p "$TMPDIR/test" && rm -rf "$TMPDIR/test"
 ```
 
-### Tests fail in CI but pass locally
+### Git Configuration Issues
 
-Check that:
-- All dependencies are installed in CI
-- Tests don't rely on local environment
-- Paths are absolute or relative to PROJECT_ROOT
-- Tests clean up after themselves
+Tests set up isolated git config - if tests fail due to git errors, check:
+```bash
+git config --global user.email
+git config --global user.name
+```
 
-## Best Practices
+### Timeout Errors
 
-1. **Isolation** - Each test should be independent
-2. **Cleanup** - Use teardown() to clean up test data
-3. **Descriptive names** - Test names should explain what they verify
-4. **Fast execution** - Keep tests quick (< 1 second each)
-5. **Deterministic** - Tests should always produce same result
-6. **No side effects** - Don't modify system state
-
-## Resources
-
-- [bats-core documentation](https://bats-core.readthedocs.io/)
-- [bats-assert reference](https://github.com/bats-core/bats-assert)
-- [bats-support reference](https://github.com/bats-core/bats-support)
+If tests timeout, increase the timeout or investigate slow operations:
+```bash
+bats --no-parallelize-across-files tests/integration/
+```
