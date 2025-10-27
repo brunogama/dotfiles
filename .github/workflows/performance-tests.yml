@@ -25,7 +25,7 @@ jobs:
         id: zsh_benchmark
         run: |
           chmod +x tests/performance/benchmark_zsh_startup.sh
-          tests/performance/benchmark_zsh_startup.sh 10 550
+          tests/performance/benchmark_zsh_startup.sh 10 550 | tee benchmark_output.txt
 
       - name: Compare against baseline
         if: always()
@@ -33,13 +33,18 @@ jobs:
           if [[ -f .performance-baselines.json ]]; then
             chmod +x bin/core/performance-baseline
 
-            # Extract mean from last run (placeholder - would parse from actual output)
-            CURRENT_VALUE=450
+            # Extract mean from benchmark output
+            CURRENT_VALUE=$(grep "Mean:" benchmark_output.txt | grep -oE '[0-9]+' | head -1)
 
-            bin/core/performance-baseline compare \
-              --metric zsh-startup \
-              --value "${CURRENT_VALUE}" \
-              --threshold 10 || true
+            if [[ -n "${CURRENT_VALUE}" ]]; then
+              bin/core/performance-baseline compare \
+                --metric zsh-startup \
+                --value "${CURRENT_VALUE}" \
+                --threshold 10
+            else
+              echo "Could not extract mean value from benchmark output"
+              exit 1
+            fi
           else
             echo "No baseline file found. This is the first run."
           fi

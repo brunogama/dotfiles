@@ -9,6 +9,10 @@ on:
 jobs:
   check-dependencies:
     runs-on: macos-latest
+    outputs:
+      homebrew_updates: ${{ steps.check_deps.outputs.homebrew_updates }}
+      python_updates: ${{ steps.check_deps.outputs.python_updates }}
+      total_updates: ${{ steps.check_deps.outputs.total_updates }}
 
     steps:
       - name: Checkout code

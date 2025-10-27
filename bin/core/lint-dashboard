@@ -63,6 +63,11 @@ run_linting() {
         return 1
     fi
 
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}[ERROR]${NC} jq not installed"
+        return 1
+    fi
+
     local total_files=0
     local passed_files=0
     local failed_files=0
@@ -205,6 +210,16 @@ save_metrics_to_file() {
 # Show quality trends
 show_trends() {
     init_metrics
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}[ERROR]${NC} jq not installed"
+        return 1
+    fi
+
+    if ! command -v bc &> /dev/null; then
+        echo -e "${RED}[ERROR]${NC} bc not installed"
+        return 1
+    fi
 
     echo -e "${BLUE}Quality Trends${NC}\n"
 

@@ -51,7 +51,7 @@ jobs:
             const errors = '${{ steps.lint.outputs.errors }}';
             const warnings = '${{ steps.lint.outputs.warnings }}';
 
-            const scoreEmoji = parseFloat(score) >= 90 ? '🟢' : parseFloat(score) >= 70 ? '🟡' : '🔴';
+            const scoreEmoji = parseFloat(score) >= 90 ? '[PASS]' : parseFloat(score) >= 70 ? '[WARN]' : '[FAIL]';
 
             const body = `## ${scoreEmoji} Linting Dashboard Results
 
@@ -60,12 +60,12 @@ jobs:
             | Metric | Count |
             |--------|-------|
             | Total Files | ${total} |
-            | ✅ Passed | ${passed} |
-            | ❌ Failed | ${failed} |
-            | 🔴 Errors | ${errors} |
-            | ⚠️  Warnings | ${warnings} |
+            | Passed | ${passed} |
+            | Failed | ${failed} |
+            | Errors | ${errors} |
+            | Warnings | ${warnings} |
 
-            ${parseFloat(score) < 90 ? '⚠️ Quality score below 90%. Please address linting issues.' : '✅ All linting checks passed!'}
+            ${parseFloat(score) < 90 ? 'WARNING: Quality score below 90%. Please address linting issues.' : 'All linting checks passed!'}
             `;
 
             github.rest.issues.createComment({
@@ -103,7 +103,11 @@ jobs:
       - name: Quality gate check
         # TODO: Raise threshold incrementally as technical debt is reduced
         # Current baseline: 44.9% | Target: 80%
-        if: steps.lint.outputs.score < 40
         run: |
-          echo "Quality score (${{ steps.lint.outputs.score }}%) is below threshold (40%)"
-          exit 1
+          SCORE=${{ steps.lint.outputs.score }}
+          THRESHOLD=40
+          if (( $(echo "$SCORE < $THRESHOLD" | bc -l) )); then
+            echo "Quality score (${SCORE}%) is below threshold (${THRESHOLD}%)"
+            exit 1
+          fi
+          echo "Quality score (${SCORE}%) passed threshold check"
