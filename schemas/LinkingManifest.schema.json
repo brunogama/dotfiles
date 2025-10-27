@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://dotfiles.example.com/schemas/LinkingManifest.schema.json",
+  "title": "Linking Manifest",
+  "description": "Schema for declarative dotfiles symlink management",
+  "type": "object",
+  "required": ["version", "links"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "description": "Manifest version (semver)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Manifest description"
+    },
+    "links": {
+      "type": "object",
+      "description": "Symlink definitions organized by category",
+      "patternProperties": {
+        "^[a-z][a-z0-9-]*$": {
+          "type": "object",
+          "description": "Category of links",
+          "patternProperties": {
+            "^[a-z][a-z0-9-]*$": {
+              "type": "array",
+              "description": "Array of link definitions",
+              "items": {
+                "$ref": "#/definitions/link"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "link": {
+      "type": "object",
+      "required": ["source", "target"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source path relative to dotfiles root",
+          "minLength": 1
+        },
+        "target": {
+          "type": "string",
+          "description": "Target path (supports ~ expansion)",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this link"
+        },
+        "note": {
+          "type": "string",
+          "description": "Additional notes or warnings"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["file", "directory", "directory-contents"],
+          "default": "file",
+          "description": "Type of symlink to create"
+        },
+        "platform": {
+          "type": "array",
+          "description": "Platform-specific link (macos, linux)",
+          "items": {
+            "type": "string",
+            "enum": ["macos", "linux"]
+          }
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this link is optional (won't fail if source missing)"
+        },
+        "force": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force overwrite existing files"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
