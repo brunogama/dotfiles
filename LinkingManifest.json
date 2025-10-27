@@ -121,7 +121,7 @@
           "description": "Core utility scripts",
           "type": "directory-contents",
           "executable": true,
-          "note": "home-sync requires Python 3.11+ (bin/core/home_sync package). Bash backup: home-sync.bash"
+          "note": "home-sync requires Python 3.11+ (bin/core/home_sync package)"
         }
       ],
       "credentials": [

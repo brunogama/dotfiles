@@ -1,29 +1,31 @@
-#!/usr/bin/env python3
-"""Home Sync - Python wrapper entry point.
+#!/usr/bin/env bash
+# Home Sync - Python wrapper entry point
+# This script invokes the Python home_sync package using the venv
 
-This script invokes the Python home_sync package.
-Requires Python 3.11+ and the home_sync package to be installed.
-"""
+set -euo pipefail
 
-import sys
-import os
-from pathlib import Path
+# Get script directory (resolve symlinks)
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+# Resolve symlinks
+while [[ -L "$SCRIPT_PATH" ]]; do
+    SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+    SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+    [[ "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
-# Add the package directory to Python path for development
-SCRIPT_DIR = Path(__file__).parent.resolve()
-PACKAGE_DIR = SCRIPT_DIR / "home_sync"
+VENV_PYTHON="$SCRIPT_DIR/home_sync/.venv/bin/python"
+VENV_HOME_SYNC="$SCRIPT_DIR/home_sync/.venv/bin/home-sync"
 
-if PACKAGE_DIR.exists():
-    sys.path.insert(0, str(SCRIPT_DIR))
-
-try:
-    from home_sync.cli import main
-except ImportError as e:
-    print(f"Error: home_sync package not found: {e}", file=sys.stderr)
-    print("\nInstallation required:", file=sys.stderr)
-    print("  Development: cd bin/core/home_sync && pip install -e '.[dev]'", file=sys.stderr)
-    print("  User: uv tool install --from ./bin/core/home_sync home-sync", file=sys.stderr)
-    sys.exit(1)
-
-if __name__ == "__main__":
-    sys.exit(main())
+# Check if venv exists and has home-sync installed
+if [[ -x "$VENV_HOME_SYNC" ]]; then
+    exec "$VENV_HOME_SYNC" "$@"
+elif [[ -x "$VENV_PYTHON" ]]; then
+    exec "$VENV_PYTHON" -m home_sync.cli "$@"
+else
+    echo "Error: home-sync virtual environment not found" >&2
+    echo "" >&2
+    echo "Installation required:" >&2
+    echo "  cd $SCRIPT_DIR/home_sync && python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'" >&2
+    exit 1
+fi
