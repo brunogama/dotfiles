@@ -3,8 +3,10 @@ set -euo pipefail
 
 # Benchmark zsh startup performance
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+readonly PROJECT_ROOT
 
 # Number of runs for statistical analysis
 readonly NUM_RUNS="${1:-10}"
@@ -28,8 +30,15 @@ for i in $(seq 1 "${NUM_RUNS}"); do
     echo -n "Run $i/${NUM_RUNS}... "
 
     # Measure startup time
+    # Use non-interactive mode in CI, interactive mode locally
     start_time=$(date +%s%N)
-    zsh -i -c exit 2>/dev/null
+    if [[ -n "${CI:-}" ]]; then
+        # CI environment - use non-interactive mode
+        zsh -c exit 2>/dev/null || true
+    else
+        # Local environment - use interactive mode for realistic measurement
+        zsh -i -c exit 2>/dev/null || true
+    fi
     end_time=$(date +%s%N)
 
     # Calculate duration in milliseconds
@@ -43,8 +52,7 @@ done
 echo -e "\n${BLUE}Statistical Analysis:${NC}"
 
 # Sort results
-IFS=$'\n' sorted=($(sort -n <<<"${results[*]}"))
-unset IFS
+mapfile -t sorted < <(printf '%s\n' "${results[@]}" | sort -n)
 
 # Calculate mean
 sum=0

@@ -4,8 +4,10 @@ set -euo pipefail
 # Shell Script Linting Dashboard
 # Unified linting and quality metrics for all shell scripts
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+readonly PROJECT_ROOT
 readonly METRICS_FILE="${PROJECT_ROOT}/tests/quality-metrics.json"
 
 # Colors
@@ -68,7 +70,9 @@ run_linting() {
     local total_warnings=0
     local total_info=0
 
-    declare -A file_issues
+    # Store file issues as parallel arrays (bash 3.2 compatible)
+    local -a issue_files=()
+    local -a issue_counts=()
 
     # Lint all shell scripts
     while IFS= read -r -d '' script; do
@@ -79,7 +83,7 @@ run_linting() {
 
         ((total_files++))
 
-        local rel_path="${script#${PROJECT_ROOT}/}"
+        local rel_path="${script#"${PROJECT_ROOT}"/}"
         local output
         local exit_code=0
 
@@ -87,7 +91,8 @@ run_linting() {
 
         if (( exit_code == 0 )); then
             ((passed_files++))
-            file_issues["${rel_path}"]=0
+            issue_files+=("${rel_path}")
+            issue_counts+=(0)
         else
             ((failed_files++))
 
@@ -102,7 +107,8 @@ run_linting() {
             total_info=$((total_info + info))
 
             local issue_count=$((errors + warnings + info))
-            file_issues["${rel_path}"]=${issue_count}
+            issue_files+=("${rel_path}")
+            issue_counts+=("${issue_count}")
         fi
     done < <(find "${PROJECT_ROOT}/bin" -type f -print0 2>/dev/null || true)
 
@@ -131,9 +137,16 @@ run_linting() {
     if (( failed_files > 0 )); then
         echo -e "\n${YELLOW}Top 10 Problematic Files:${NC}\n"
 
-        for file in "${!file_issues[@]}"; do
-            echo "${file_issues[$file]} ${file}"
-        done | sort -rn | head -10 | while read -r count file; do
+        # Create temporary list of files with issues (bash 3.2 compatible)
+        local -a sorted_list=()
+        for i in "${!issue_files[@]}"; do
+            if (( issue_counts[i] > 0 )); then
+                sorted_list+=("${issue_counts[i]} ${issue_files[i]}")
+            fi
+        done
+
+        # Sort and display top 10
+        printf '%s\n' "${sorted_list[@]}" | sort -rn | head -10 | while read -r count file; do
             echo -e "  ${file} (${count} issues)"
         done
     fi
@@ -238,12 +251,11 @@ main() {
     local command="${1}"
     shift
 
-    local format="text"
     local save_metrics="false"
 
     while [[ $# -gt 0 ]]; do
         case "${1}" in
-            --format) format="${2}"; shift 2 ;;
+            --format) shift 2 ;;  # TODO: Implement format support
             --save-metrics) save_metrics="true"; shift ;;
             *) echo "Unknown option: ${1}"; usage; exit 1 ;;
         esac
