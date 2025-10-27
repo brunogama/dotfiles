@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: shellcheck
         args: ['--severity=error']
-        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|Bin/Core/zsh-)
+        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|Bin/Core/zsh-|tests/helpers/bats-|tests/fixtures/repos/)
 
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
