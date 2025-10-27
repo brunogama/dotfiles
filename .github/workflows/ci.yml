@@ -242,9 +242,21 @@ jobs:
 
       - name: Set execute permissions
         run: |
+          # Debug: list bin/core contents
+          echo "Files in bin/core:"
+          ls -la bin/core/ | head -20
+
           # Set permissions for all scripts in bin/ subdirectories
           find bin/ -type f ! -path '*/\.*' 2>/dev/null | xargs chmod +x 2>/dev/null || true
           chmod +x tests/helpers/*.bash install 2>/dev/null || true
+
+          # Debug: verify link-dotfiles.py exists
+          if [[ -f bin/core/link-dotfiles.py ]]; then
+            echo "link-dotfiles.py exists and has permissions: $(ls -la bin/core/link-dotfiles.py)"
+          else
+            echo "ERROR: link-dotfiles.py NOT FOUND"
+            ls -la bin/core/ | grep link
+          fi
 
       - name: Run integration tests
         run: |
@@ -282,9 +294,21 @@ jobs:
 
       - name: Set execute permissions
         run: |
+          # Debug: list bin/core contents
+          echo "Files in bin/core:"
+          ls -la bin/core/ | head -20
+
           # Set permissions for all scripts in bin/ subdirectories
           find bin/ -type f ! -path '*/\.*' 2>/dev/null | xargs chmod +x 2>/dev/null || true
           chmod +x tests/helpers/*.bash install 2>/dev/null || true
+
+          # Debug: verify link-dotfiles.py exists
+          if [[ -f bin/core/link-dotfiles.py ]]; then
+            echo "link-dotfiles.py exists and has permissions: $(ls -la bin/core/link-dotfiles.py)"
+          else
+            echo "ERROR: link-dotfiles.py NOT FOUND"
+            ls -la bin/core/ | grep link
+          fi
 
       - name: Run integration tests
         run: |
