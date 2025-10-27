@@ -1,0 +1,645 @@
+#!/usr/bin/env bash
+# git-vw-interactive - Interactive FZF/Tmux wrapper for git-virtual-worktree
+#
+# Dependencies:
+#   - fzf: fuzzy finder for interactive selection
+#   - tmux: terminal multiplexer for session management
+#   - git-virtual-worktree: core virtual worktree management script
+#
+# Usage:
+#   git-vw-interactive
+#   git vw  (when aliased in .gitconfig)
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# Color variables for output
+readonly COLOR_RESET='\033[0m'
+readonly COLOR_RED='\033[0;31m'
+readonly COLOR_GREEN='\033[0;32m'
+readonly COLOR_YELLOW='\033[0;33m'
+readonly COLOR_BLUE='\033[0;34m'
+readonly COLOR_CYAN='\033[0;36m'
+readonly COLOR_DIM='\033[2m'
+readonly COLOR_BOLD='\033[1m'
+
+# Paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VW_SCRIPT="${SCRIPT_DIR}/git-virtual-worktree"
+
+# Exit codes
+readonly EXIT_SUCCESS=0
+readonly EXIT_ERROR=1
+readonly EXIT_MISSING_DEPENDENCY=2
+readonly EXIT_USER_CANCELLED=130
+
+# Helper functions for logging
+log_error() {
+    echo -e "${COLOR_RED}error:${COLOR_RESET} $*" >&2
+}
+
+log_warning() {
+    echo -e "${COLOR_YELLOW}warning:${COLOR_RESET} $*" >&2
+}
+
+log_info() {
+    echo -e "${COLOR_BLUE}info:${COLOR_RESET} $*"
+}
+
+log_success() {
+    echo -e "${COLOR_GREEN}success:${COLOR_RESET} $*"
+}
+
+log_dim() {
+    echo -e "${COLOR_DIM}$*${COLOR_RESET}"
+}
+
+# Error handler: cleanup and exit
+cleanup() {
+    local exit_code=$?
+    exit "${exit_code}"
+}
+
+trap cleanup EXIT INT TERM
+
+# Check if command exists in PATH
+command_exists() {
+    command -v "$1" &>/dev/null
+}
+
+# Find git-virtual-worktree script
+find_git_virtual_worktree() {
+    local script_name="git-virtual-worktree"
+
+    if command_exists "${script_name}"; then
+        command -v "${script_name}"
+        return 0
+    fi
+
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local same_dir="${script_dir}/${script_name}"
+    if [[ -f "${same_dir}" && -x "${same_dir}" ]]; then
+        echo "${same_dir}"
+        return 0
+    fi
+
+    return 1
+}
+
+# Print dependency installation instructions
+print_dependency_help() {
+    local dep="$1"
+    case "${dep}" in
+        fzf)
+            echo "install fzf:"
+            echo "  brew install fzf          # macOS"
+            echo "  apt-get install fzf       # Debian/Ubuntu"
+            echo "  https://github.com/junegunn/fzf"
+            ;;
+        tmux)
+            echo "install tmux:"
+            echo "  brew install tmux         # macOS"
+            echo "  apt-get install tmux      # Debian/Ubuntu"
+            ;;
+        git-virtual-worktree)
+            echo "git-virtual-worktree not found"
+            echo "  ensure bin/git/git-virtual-worktree exists"
+            echo "  or add bin/ directory to PATH"
+            ;;
+    esac
+}
+
+# Check for required dependencies
+check_dependencies() {
+    local missing_deps=()
+
+    if ! command_exists fzf; then
+        missing_deps+=("fzf")
+    fi
+
+    if ! command_exists tmux; then
+        missing_deps+=("tmux")
+    fi
+
+    if ! find_git_virtual_worktree &>/dev/null; then
+        missing_deps+=("git-virtual-worktree")
+    fi
+
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        log_error "missing required dependencies: ${missing_deps[*]}"
+        echo ""
+        for dep in "${missing_deps[@]}"; do
+            print_dependency_help "${dep}"
+            echo ""
+        done
+        return "${EXIT_MISSING_DEPENDENCY}"
+    fi
+
+    return 0
+}
+
+# Check if inside tmux
+is_in_tmux() {
+    [[ -n "${TMUX:-}" ]]
+}
+
+# Sanitize tmux session name
+sanitize_tmux_name() {
+    local name="$1"
+    # Replace invalid characters with dash
+    echo "vw-${name}" | tr -c '[:alnum:]-_' '-'
+}
+
+# Check if tmux session exists
+tmux_session_exists() {
+    local session_name="$1"
+    tmux has-session -t "$session_name" 2>/dev/null
+}
+
+# Get list of virtual worktrees
+get_worktree_list() {
+    local git_dir
+    git_dir="$(git rev-parse --git-dir 2>/dev/null)" || return 1
+
+    local worktrees=()
+    while IFS= read -r metadata_file; do
+        if [[ -f "$metadata_file" ]]; then
+            local slug
+            slug="$(basename "$metadata_file" | sed 's/^virtual-worktree-//;s/.json$//')"
+
+            # Parse metadata
+            local base_branch status
+            base_branch="$(jq -r '.base_branch // "unknown"' "$metadata_file" 2>/dev/null)"
+
+            # Check if directory exists
+            local parent_dir="${PWD##*/}"
+            local clone_dir="../${parent_dir}-${slug}"
+            if [[ -d "$clone_dir" ]]; then
+                status="${COLOR_GREEN}Active${COLOR_RESET}"
+            else
+                status="${COLOR_YELLOW}Missing${COLOR_RESET}"
+            fi
+
+            worktrees+=("${slug}|${base_branch}|${status}|${metadata_file}")
+        fi
+    done < <(find "$git_dir" -maxdepth 1 -name "virtual-worktree-*.json" 2>/dev/null)
+
+    if [[ ${#worktrees[@]} -eq 0 ]]; then
+        return 1
+    fi
+
+    printf '%s\n' "${worktrees[@]}"
+}
+
+# Format worktree for fzf display
+format_worktree_line() {
+    local line="$1"
+    IFS='|' read -r slug base_branch status _ <<< "$line"
+    printf "%-30s %-20s %b\n" "$slug" "($base_branch)" "$status"
+}
+
+# Generate preview for fzf
+generate_preview() {
+    local line="$1"
+    IFS='|' read -r slug _ _ metadata_file <<< "$line"
+
+    if [[ ! -f "$metadata_file" ]]; then
+        echo "metadata not found"
+        return
+    fi
+
+    echo -e "${COLOR_CYAN}virtual worktree: ${slug}${COLOR_RESET}"
+    echo "----------------------------------------"
+
+    local base_branch created_at created_by remote_url depth
+    base_branch="$(jq -r '.base_branch // "unknown"' "$metadata_file")"
+    created_at="$(jq -r '.created_at // "unknown"' "$metadata_file")"
+    created_by="$(jq -r '.created_by // "unknown"' "$metadata_file")"
+    remote_url="$(jq -r '.remote_url // "unknown"' "$metadata_file")"
+    depth="$(jq -r '.depth // "1"' "$metadata_file")"
+
+    echo -e "${COLOR_BLUE}base branch:${COLOR_RESET} $base_branch"
+    echo -e "${COLOR_BLUE}created:${COLOR_RESET} $created_at"
+    echo -e "${COLOR_BLUE}by:${COLOR_RESET} $created_by"
+    echo -e "${COLOR_BLUE}remote:${COLOR_RESET} $remote_url"
+    echo -e "${COLOR_BLUE}depth:${COLOR_RESET} $depth"
+    echo ""
+
+    # Check directory status
+    local parent_dir="${PWD##*/}"
+    local clone_dir="../${parent_dir}-${slug}"
+
+    if [[ -d "$clone_dir" ]]; then
+        echo -e "${COLOR_GREEN}[active]${COLOR_RESET} directory exists: $clone_dir"
+
+        if [[ -d "${clone_dir}/.git" ]]; then
+            echo ""
+            echo -e "${COLOR_BLUE}git status:${COLOR_RESET}"
+            git -C "$clone_dir" status --short 2>/dev/null || echo "  (unable to get status)"
+        fi
+    else
+        echo -e "${COLOR_YELLOW}[missing]${COLOR_RESET} directory not found: $clone_dir"
+        echo -e "${COLOR_YELLOW}run cleanup to remove orphaned metadata${COLOR_RESET}"
+    fi
+
+    local tmux_name
+    tmux_name="$(sanitize_tmux_name "$slug")"
+    if tmux_session_exists "$tmux_name"; then
+        echo ""
+        echo -e "${COLOR_GREEN}[active]${COLOR_RESET} tmux session: $tmux_name"
+    fi
+}
+
+# Main menu: display fzf menu and get user selection
+show_main_menu() {
+    local selection
+
+    selection=$(cat <<EOF | fzf \
+        --height=40% \
+        --layout=reverse \
+        --border \
+        --prompt="virtual worktree > " \
+        --header="select action (ctrl-c to cancel)" \
+        --color="prompt:cyan,header:dim,pointer:green" \
+        --no-multi
+Create   - create new virtual worktree with shallow clone
+Merge    - merge feature branch back to base
+Cleanup  - remove virtual worktree and feature branch
+List     - list all virtual worktrees
+Status   - show detailed status of worktree
+Quit     - exit interactive mode
+EOF
+    ) || return "${EXIT_USER_CANCELLED}"
+
+    local action
+    action=$(echo "${selection}" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
+
+    echo "${action}"
+}
+
+# Action: Create
+action_create() {
+    echo ""
+    log_info "Create new virtual worktree"
+    echo ""
+
+    # Prompt for slug
+    local slug
+    while true; do
+        read -rp "Enter slug (letters, numbers, hyphens, underscores): " slug
+
+        if [[ -z "$slug" ]]; then
+            log_error "Slug cannot be empty"
+            continue
+        fi
+
+        if [[ ! "$slug" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            log_error "Invalid slug format"
+            continue
+        fi
+
+        # Check if exists
+        if git branch --list "feature/$slug" | grep -q .; then
+            log_error "Branch feature/$slug already exists"
+            continue
+        fi
+
+        break
+    done
+
+    # Optional parameters
+    read -rp "Clone depth [1]: " depth
+    depth="${depth:-1}"
+
+    read -rp "Remote URL [auto-detect]: " url
+
+    # Build command
+    local cmd=("$VW_SCRIPT" create "$slug" --depth "$depth")
+    if [[ -n "$url" ]]; then
+        cmd+=(--url "$url")
+    fi
+
+    # Execute create
+    echo ""
+    log_info "Creating virtual worktree..."
+    if "${cmd[@]}"; then
+        log_success "Virtual worktree created!"
+
+        # Create tmux session
+        local tmux_name
+        tmux_name="$(sanitize_tmux_name "$slug")"
+        local parent_dir="${PWD##*/}"
+        local clone_dir="../${parent_dir}-${slug}"
+
+        echo ""
+        if is_in_tmux; then
+            log_info "Creating new window in current tmux session..."
+            tmux new-window -n "$tmux_name" -c "$clone_dir"
+            log_success "Tmux window '$tmux_name' created"
+            log_info "Switch with: Ctrl-b + w"
+        else
+            log_info "Creating new tmux session..."
+            log_success "Tmux session '$tmux_name' ready"
+            log_info "Starting session..."
+            sleep 1
+            tmux new-session -s "$tmux_name" -c "$clone_dir"
+        fi
+    else
+        log_error "Failed to create virtual worktree"
+    fi
+
+    echo ""
+    read -rp "Press Enter to continue..."
+}
+
+# Action: Merge
+action_merge() {
+    local worktrees
+    if ! worktrees="$(get_worktree_list)"; then
+        log_warning "No virtual worktrees found"
+        echo ""
+        read -rp "Press Enter to continue..."
+        return
+    fi
+
+    # Select worktree
+    local selected
+    selected=$(while IFS= read -r line; do
+        format_worktree_line "$line"
+        echo -n "|"
+        echo "$line"
+    done <<< "$worktrees" | fzf \
+        --height=80% \
+        --reverse \
+        --border \
+        --ansi \
+        --delimiter="|" \
+        --with-nth=1 \
+        --prompt="Select worktree to merge > " \
+        --preview="bash -c 'source $(realpath "$0") && generate_preview \"\$(echo {} | cut -d\"|\" -f2-)\"'" \
+        --preview-window=right:50% \
+    | cut -d"|" -f2-)
+
+    if [[ -z "$selected" ]]; then
+        return
+    fi
+
+    local slug
+    slug="$(echo "$selected" | cut -d'|' -f1)"
+
+    # Select merge strategy
+    echo ""
+    local strategy
+    strategy=$(cat <<EOF | fzf --height=40% --reverse --border --prompt="Merge strategy > " --header="Select strategy for '$slug':"
+Auto (smart conflict detection)
+Force Rebase
+Force Merge
+Dry Run
+EOF
+)
+
+    local flags=()
+    case "$strategy" in
+        *"Force Rebase"*) flags+=(--force-rebase) ;;
+        *"Force Merge"*) flags+=(--force-merge) ;;
+        *"Dry Run"*) flags+=(--dry-run) ;;
+    esac
+
+    # Execute merge
+    echo ""
+    log_info "Merging virtual worktree: $slug"
+    if "$VW_SCRIPT" merge "$slug" "${flags[@]:-}"; then
+        log_success "Merge completed!"
+
+        # Ask about cleanup
+        echo ""
+        read -rp "Cleanup worktree now? (y/n): " cleanup
+        if [[ "$cleanup" =~ ^[Yy]$ ]]; then
+            action_cleanup_direct "$slug"
+        fi
+    else
+        log_error "Merge failed"
+    fi
+
+    echo ""
+    read -rp "Press Enter to continue..."
+}
+
+# Action: Cleanup
+action_cleanup() {
+    local worktrees
+    if ! worktrees="$(get_worktree_list)"; then
+        log_warning "No virtual worktrees found"
+        echo ""
+        read -rp "Press Enter to continue..."
+        return
+    fi
+
+    # Select worktree
+    local selected
+    selected=$(while IFS= read -r line; do
+        format_worktree_line "$line"
+        echo -n "|"
+        echo "$line"
+    done <<< "$worktrees" | fzf \
+        --height=80% \
+        --reverse \
+        --border \
+        --ansi \
+        --delimiter="|" \
+        --with-nth=1 \
+        --prompt="Select worktree to cleanup > " \
+        --preview="bash -c 'source $(realpath "$0") && generate_preview \"\$(echo {} | cut -d\"|\" -f2-)\"'" \
+        --preview-window=right:50% \
+    | cut -d"|" -f2-)
+
+    if [[ -z "$selected" ]]; then
+        return
+    fi
+
+    local slug
+    slug="$(echo "$selected" | cut -d'|' -f1)"
+
+    action_cleanup_direct "$slug"
+
+    echo ""
+    read -rp "Press Enter to continue..."
+}
+
+# Direct cleanup (used by merge and cleanup actions)
+action_cleanup_direct() {
+    local slug="$1"
+
+    # Check for tmux session
+    local tmux_name
+    tmux_name="$(sanitize_tmux_name "$slug")"
+
+    if tmux_session_exists "$tmux_name"; then
+        echo ""
+        log_warning "Tmux session '$tmux_name' is active"
+        read -rp "Kill tmux session? (y/n): " kill_tmux
+        if [[ "$kill_tmux" =~ ^[Yy]$ ]]; then
+            if is_in_tmux; then
+                # Kill window instead of session
+                if tmux list-windows -F "#{window_name}" | grep -q "^${tmux_name}$"; then
+                    tmux kill-window -t "$tmux_name" 2>/dev/null || true
+                    log_success "Tmux window killed"
+                fi
+            else
+                tmux kill-session -t "$tmux_name" 2>/dev/null || true
+                log_success "Tmux session killed"
+            fi
+        fi
+    fi
+
+    # Execute cleanup
+    echo ""
+    log_info "Cleaning up virtual worktree: $slug"
+    if "$VW_SCRIPT" cleanup "$slug"; then
+        log_success "Cleanup completed!"
+    else
+        log_error "Cleanup failed"
+    fi
+}
+
+# Action: List
+action_list() {
+    echo ""
+    "$VW_SCRIPT" list || log_warning "No virtual worktrees found"
+    echo ""
+    read -rp "Press Enter to continue..."
+}
+
+# Action: Status
+action_status() {
+    local worktrees
+    if ! worktrees="$(get_worktree_list)"; then
+        log_warning "No virtual worktrees found"
+        echo ""
+        read -rp "Press Enter to continue..."
+        return
+    fi
+
+    # Select worktree
+    local selected
+    selected=$(while IFS= read -r line; do
+        format_worktree_line "$line"
+        echo -n "|"
+        echo "$line"
+    done <<< "$worktrees" | fzf \
+        --height=80% \
+        --reverse \
+        --border \
+        --ansi \
+        --delimiter="|" \
+        --with-nth=1 \
+        --prompt="Select worktree for status > " \
+        --preview="bash -c 'source $(realpath "$0") && generate_preview \"\$(echo {} | cut -d\"|\" -f2-)\"'" \
+        --preview-window=right:50% \
+    | cut -d"|" -f2-)
+
+    if [[ -z "$selected" ]]; then
+        return
+    fi
+
+    local slug
+    slug="$(echo "$selected" | cut -d'|' -f1)"
+
+    # Show status
+    echo ""
+    "$VW_SCRIPT" status "$slug"
+
+    # Offer to open in tmux
+    local tmux_name
+    tmux_name="$(sanitize_tmux_name "$slug")"
+
+    if tmux_session_exists "$tmux_name"; then
+        echo ""
+        read -rp "Switch to tmux session? (y/n): " switch_tmux
+        if [[ "$switch_tmux" =~ ^[Yy]$ ]]; then
+            if is_in_tmux; then
+                tmux switch-client -t "$tmux_name"
+            else
+                tmux attach-session -t "$tmux_name"
+            fi
+        fi
+    fi
+
+    echo ""
+    read -rp "Press Enter to continue..."
+}
+
+# Main loop: show menu and dispatch actions
+main_loop() {
+    local action
+    local keep_running=true
+
+    while ${keep_running}; do
+        clear
+
+        echo -e "${COLOR_BOLD}git virtual worktree interactive manager${COLOR_RESET}"
+        echo -e "${COLOR_DIM}powered by fzf and tmux${COLOR_RESET}"
+        echo ""
+
+        if ! action=$(show_main_menu); then
+            log_dim "cancelled"
+            keep_running=false
+            continue
+        fi
+
+        if [[ -z "${action}" ]]; then
+            log_warning "no action selected"
+            sleep 1
+            continue
+        fi
+
+        case "${action}" in
+            create)
+                action_create
+                ;;
+            merge)
+                action_merge
+                ;;
+            cleanup)
+                action_cleanup
+                ;;
+            list)
+                action_list
+                ;;
+            status)
+                action_status
+                ;;
+            quit)
+                log_info "exiting interactive mode"
+                keep_running=false
+                ;;
+            *)
+                log_error "unknown action: ${action}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# Main entry point
+main() {
+    if ! check_dependencies; then
+        return "${EXIT_MISSING_DEPENDENCY}"
+    fi
+
+    if ! git rev-parse --git-dir &>/dev/null; then
+        log_error "not a git repository"
+        return "${EXIT_ERROR}"
+    fi
+
+    main_loop
+
+    return "${EXIT_SUCCESS}"
+}
+
+# Export functions for preview
+export -f generate_preview log_info log_success log_error log_warning sanitize_tmux_name tmux_session_exists
+
+# Run main function
+main "$@"

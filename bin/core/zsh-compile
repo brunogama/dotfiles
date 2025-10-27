@@ -1,0 +1,135 @@
+#!/usr/bin/env zsh
+#
+# zsh-compile - Compile zsh configuration files for faster loading
+# Version: 1.0
+#
+# Compiles .zsh files to .zwc bytecode for improved startup performance.
+# Run after modifying any zsh configuration files.
+#
+
+set -euo pipefail
+
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo -e "${BLUE}${BOLD}Compiling Zsh Configuration Files${NC}"
+echo ""
+
+compiled_count=0
+skipped_count=0
+error_count=0
+
+# Detect zsh config directory
+ZSH_CONFIG_DIR=""
+if [[ -f ~/.config/zsh/.zshrc ]]; then
+    ZSH_CONFIG_DIR=~/.config/zsh
+elif [[ -f ~/.config-fixing-dot-files-bugs/zsh/.zshrc ]]; then
+    ZSH_CONFIG_DIR=~/.config-fixing-dot-files-bugs/zsh
+elif [[ -f ~/.zshrc ]]; then
+    ZSH_CONFIG_DIR=~
+else
+    echo -e "${RED}Error: Could not find zsh configuration directory${NC}" >&2
+    exit 1
+fi
+
+echo -e "${BLUE}Config directory:${NC} $ZSH_CONFIG_DIR"
+echo ""
+
+# Function to compile a file
+compile_file() {
+    local file="$1"
+    local basename=$(basename "$file")
+
+    if [[ ! -f "$file" ]]; then
+        return
+    fi
+
+    # Check if source is newer than compiled version
+    if [[ -f "${file}.zwc" ]]; then
+        if [[ "$file" -ot "${file}.zwc" ]]; then
+            echo -e "  ${BLUE}⊙${NC} $basename (already up to date)"
+            ((skipped_count++))
+            return
+        fi
+    fi
+
+    if zcompile "$file" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} $basename"
+        ((compiled_count++))
+    else
+        echo -e "  ${YELLOW}✗${NC} $basename (compilation failed)"
+        ((error_count++))
+    fi
+}
+
+# Compile main config files
+echo -e "${BOLD}Main Configuration:${NC}"
+for file in ${ZSH_CONFIG_DIR}/{.zshrc,.zprofile,.zpreztorc}; do
+    compile_file "$file"
+done
+
+# Compile environment configs
+echo ""
+echo -e "${BOLD}Environment Configs:${NC}"
+for file in ${ZSH_CONFIG_DIR}/{personal-config.zsh,work-config.zsh}; do
+    compile_file "$file"
+done
+
+# Compile library files
+if [[ -d ${ZSH_CONFIG_DIR}/lib ]]; then
+    echo ""
+    echo -e "${BOLD}Library Files:${NC}"
+    for file in ${ZSH_CONFIG_DIR}/lib/*.zsh(N); do
+        compile_file "$file"
+    done
+fi
+
+# Compile completion dump
+if [[ -f ${ZSH_CONFIG_DIR}/.zcompdump ]]; then
+    echo ""
+    echo -e "${BOLD}Completion Dump:${NC}"
+    compile_file ${ZSH_CONFIG_DIR}/.zcompdump
+fi
+
+# Compile functions
+if [[ -d ${ZSH_CONFIG_DIR}/.zsh_functions ]]; then
+    echo ""
+    echo -e "${BOLD}Functions:${NC}"
+    for func in ${ZSH_CONFIG_DIR}/.zsh_functions/*(N); do
+        compile_file "$func"
+    done
+fi
+
+# Compile p10k config if exists
+if [[ -f ${ZSH_CONFIG_DIR}/.p10k.zsh ]]; then
+    echo ""
+    echo -e "${BOLD}Powerlevel10k:${NC}"
+    compile_file ${ZSH_CONFIG_DIR}/.p10k.zsh
+fi
+
+# Summary
+echo ""
+echo -e "${BLUE}════════════════════════════════════════${NC}"
+echo -e "${BOLD}Summary:${NC}"
+echo -e "  ${GREEN}Compiled:${NC} $compiled_count file(s)"
+echo -e "  ${BLUE}Skipped:${NC}  $skipped_count file(s) (up to date)"
+
+if [[ $error_count -gt 0 ]]; then
+    echo -e "  ${YELLOW}Errors:${NC}   $error_count file(s)"
+fi
+
+echo ""
+
+if [[ $compiled_count -gt 0 ]]; then
+    echo -e "${GREEN}✅ Compilation complete!${NC}"
+    echo -e "${BLUE}Tip:${NC} Restart your shell to use compiled files:"
+    echo "  exec zsh"
+    echo ""
+    echo -e "${BLUE}Expected improvement:${NC} 100-200ms faster startup"
+else
+    echo -e "${BLUE}ℹ All files already up to date.${NC}"
+fi

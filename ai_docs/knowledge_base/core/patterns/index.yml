@@ -1,0 +1,34 @@
+title: "Design Patterns and Best Practices"
+version: "1.0.0"
+last_updated: "2025-01-12T15:00:00Z"
+
+sources:
+  - name: "Swift Design Patterns"
+    url: "https://github.com/ochococo/Design-Patterns-In-Swift"
+    type: "pattern_catalog"
+    fetch_frequency: "monthly"
+    validation: "checksum"
+
+  - name: "TCA Architecture Guide"
+    url: "https://github.com/pointfreeco/swift-composable-architecture"
+    type: "architecture_documentation"
+    fetch_frequency: "weekly"
+    validation: "checksum"
+
+files:
+  - path: "refactoring-patterns.md"
+    title: "Common Refactoring Patterns"
+    topics: ["refactoring", "patterns", "best-practices"]
+    agent_relevance: ["swift-pro", "backend-architect", "code-reviewer"]
+
+  - path: "tca-patterns.md"
+    title: "TCA Architecture Patterns"
+    topics: ["tca", "state-management", "composable-architecture"]
+    agent_relevance: ["frontend-developer", "ios-architect", "swift-pro"]
+
+domains: ["patterns", "architecture", "best-practices"]
+
+ide_integration:
+  xcode:
+    indexable: true
+    autocomplete_prefix: "pattern_"

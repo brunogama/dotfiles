@@ -1,0 +1,351 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+# Git Reword - Interactive commit message reword with FZF
+# Allows rewording commit messages on the current branch
+
+# Exit codes
+readonly EXIT_SUCCESS=0
+readonly EXIT_ERROR=1
+readonly EXIT_MISSING_DEPENDENCY=2
+readonly EXIT_USER_CANCELLED=130
+readonly EXIT_DIRTY_TREE=3
+readonly EXIT_INVALID_MESSAGE=4
+
+# Color constants
+readonly COLOR_RESET='\033[0m'
+readonly COLOR_RED='\033[0;31m'
+readonly COLOR_GREEN='\033[0;32m'
+readonly COLOR_YELLOW='\033[0;33m'
+readonly COLOR_BLUE='\033[0;34m'
+readonly COLOR_CYAN='\033[0;36m'
+readonly COLOR_DIM='\033[2m'
+readonly COLOR_BOLD='\033[1m'
+
+# Temporary files for cleanup
+REBASE_SCRIPT=""
+
+# Cleanup function
+cleanup() {
+    local exit_code=$?
+
+    # Cleanup temporary files
+    if [[ -n "${REBASE_SCRIPT}" && -f "${REBASE_SCRIPT}" ]]; then
+        rm -f "${REBASE_SCRIPT}"
+    fi
+
+    exit "$exit_code"
+}
+
+# Set trap for cleanup
+trap cleanup EXIT INT TERM
+
+# Logging functions
+log_error() {
+    echo -e "${COLOR_RED}[error]${COLOR_RESET} $*" >&2
+}
+
+log_warning() {
+    echo -e "${COLOR_YELLOW}[warning]${COLOR_RESET} $*" >&2
+}
+
+log_info() {
+    echo -e "${COLOR_BLUE}[info]${COLOR_RESET} $*"
+}
+
+log_success() {
+    echo -e "${COLOR_GREEN}[success]${COLOR_RESET} $*"
+}
+
+log_dim() {
+    echo -e "${COLOR_DIM}$*${COLOR_RESET}"
+}
+
+show_installation_instructions() {
+    echo ""
+    echo "Installation instructions:"
+    echo "  fzf:  brew install fzf  (macOS)"
+    echo "        apt install fzf   (Debian/Ubuntu)"
+    echo "  git:  brew install git  (macOS)"
+    echo "        apt install git   (Debian/Ubuntu)"
+}
+
+check_dependencies() {
+    local missing_deps=()
+
+    if ! command -v fzf &>/dev/null; then
+        missing_deps+=("fzf")
+    fi
+
+    if ! command -v git &>/dev/null; then
+        missing_deps+=("git")
+    fi
+
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        log_error "missing required dependencies: ${missing_deps[*]}"
+        show_installation_instructions
+        return "${EXIT_MISSING_DEPENDENCY}"
+    fi
+
+    # Check we're in a git repository
+    if ! git rev-parse --git-dir &>/dev/null; then
+        log_error "not a git repository"
+        return "${EXIT_ERROR}"
+    fi
+
+    # Check for detached HEAD state
+    if ! git symbolic-ref -q HEAD &>/dev/null; then
+        log_error "detached HEAD state detected"
+        log_info "checkout a branch before using reword"
+        return "${EXIT_ERROR}"
+    fi
+
+    # Check for interrupted rebase state
+    if [[ -d "$(git rev-parse --git-dir)/rebase-merge" ]] || \
+       [[ -d "$(git rev-parse --git-dir)/rebase-apply" ]]; then
+        log_error "rebase in progress detected"
+        log_info "complete or abort current rebase:"
+        log_info "  git rebase --continue"
+        log_info "  git rebase --abort"
+        return "${EXIT_ERROR}"
+    fi
+
+    return 0
+}
+
+get_branch_commits() {
+    local base_branch
+    local current_branch
+
+    current_branch="$(git rev-parse --abbrev-ref HEAD)" || return 1
+
+    # Determine base branch
+    if git rev-parse --verify main &>/dev/null; then
+        base_branch="main"
+    elif git rev-parse --verify master &>/dev/null; then
+        base_branch="master"
+    else
+        # If no main/master, show all commits
+        git log --oneline --decorate=no --color=never
+        return 0
+    fi
+
+    # Show commits on current branch that aren't on base
+    if [[ "$current_branch" == "$base_branch" ]]; then
+        # On base branch, show all commits
+        git log --oneline --decorate=no --color=never
+    else
+        # On feature branch, show commits not in base
+        git log --oneline --decorate=no --color=never "${base_branch}..HEAD"
+    fi
+}
+
+generate_preview() {
+    local hash="$1"
+
+    if [[ -z "$hash" ]]; then
+        return
+    fi
+
+    # Header
+    echo -e "${COLOR_CYAN}Commit: ${hash}${COLOR_RESET}"
+    echo ""
+
+    # Metadata
+    local author date
+
+    author="$(git show -s --format='%an <%ae>' "$hash" 2>/dev/null || echo "unknown")"
+    date="$(git show -s --format='%ar (%ai)' "$hash" 2>/dev/null || echo "unknown")"
+
+    echo -e "${COLOR_BLUE}Author:${COLOR_RESET} $author"
+    echo -e "${COLOR_BLUE}Date:${COLOR_RESET} $date"
+    echo ""
+
+    # Full message
+    echo -e "${COLOR_BOLD}Message:${COLOR_RESET}"
+    git show -s --format='%B' "$hash" 2>/dev/null | sed 's/^/  /' || echo "  unknown"
+    echo ""
+
+    # File statistics
+    echo -e "${COLOR_BOLD}Changes:${COLOR_RESET}"
+    git show --stat --format='' "$hash" 2>/dev/null | sed 's/^/  /' || echo "  unable to show changes"
+}
+
+check_commit_status() {
+    local hash="$1"
+
+    # Check working tree is clean (unstaged changes)
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        log_error "working tree has uncommitted changes"
+        log_info "commit or stash changes before reword"
+        return "${EXIT_DIRTY_TREE}"
+    fi
+
+    # Check for staged changes
+    if ! git diff-index --quiet --cached HEAD -- 2>/dev/null; then
+        log_error "working tree has staged changes"
+        log_info "commit or unstage changes before reword"
+        return "${EXIT_DIRTY_TREE}"
+    fi
+
+    # Check if commit has been pushed (with network error handling)
+    local branches_containing
+    if branches_containing="$(git branch -r --contains "$hash" 2>/dev/null)"; then
+        if [[ -n "$branches_containing" ]]; then
+            log_warning "commit $hash has been pushed to:"
+            echo "$branches_containing" | sed 's/^/  /'
+            echo ""
+            log_warning "rewriting pushed commits will require force push"
+
+            read -rp "Continue anyway? (y/N): " confirm
+            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                log_info "reword cancelled"
+                return "${EXIT_USER_CANCELLED}"
+            fi
+        fi
+    else
+        # Network error or no remotes - warn but allow to continue
+        log_dim "unable to check remote branches (network error or no remotes)"
+    fi
+
+    return 0
+}
+
+reword_head() {
+    log_info "rewording HEAD commit (using amend)"
+
+    # Use git commit --amend to reword HEAD
+    if git commit --amend --no-verify 2>&1; then
+        log_success "commit message updated"
+        return 0
+    else
+        local exit_code=$?
+        log_error "failed to amend commit"
+
+        # Provide recovery instructions
+        if [[ $exit_code -eq 1 ]]; then
+            log_info "editor may have been closed without saving"
+            log_info "try again with: git reword"
+        fi
+
+        return "${EXIT_ERROR}"
+    fi
+}
+
+reword_older_commit() {
+    local hash="$1"
+    local commit_position
+
+    # Calculate commit position from HEAD
+    commit_position="$(git rev-list --count "${hash}..HEAD")"
+
+    log_info "rewording commit $commit_position position(s) back from HEAD"
+    log_info "using interactive rebase"
+
+    # Create a temporary script for automatic reword
+    REBASE_SCRIPT="$(mktemp)"
+
+    # Generate rebase todo with selected commit marked as "reword"
+    git log --reverse --format='%H' "${hash}~1..HEAD" 2>/dev/null | while IFS= read -r commit; do
+        if [[ "$commit" == "$hash" ]]; then
+            echo "reword $commit"
+        else
+            echo "pick $commit"
+        fi
+    done > "$REBASE_SCRIPT"
+
+    # Execute interactive rebase
+    if GIT_SEQUENCE_EDITOR="cat '$REBASE_SCRIPT' >" git rebase -i "${hash}~1" 2>&1; then
+        log_success "commit message updated"
+        rm -f "$REBASE_SCRIPT"
+        REBASE_SCRIPT=""
+        return 0
+    else
+        log_error "rebase failed"
+        log_info "recovery instructions:"
+        log_info "  to abort: git rebase --abort"
+        log_info "  to continue after fixing conflicts: git rebase --continue"
+        log_info "  to skip current commit: git rebase --skip"
+
+        # Clean up temp file
+        rm -f "$REBASE_SCRIPT"
+        REBASE_SCRIPT=""
+
+        return "${EXIT_ERROR}"
+    fi
+}
+
+select_commit_and_reword() {
+    local commits selection hash
+
+    # Get commits on current branch
+    if ! commits="$(get_branch_commits)"; then
+        log_error "failed to get branch commits"
+        return "${EXIT_ERROR}"
+    fi
+
+    if [[ -z "$commits" ]]; then
+        log_warning "no commits found on current branch"
+        return "${EXIT_ERROR}"
+    fi
+
+    # FZF selection with preview
+    selection=$(echo "$commits" | fzf \
+        --ansi \
+        --height=80% \
+        --layout=reverse \
+        --border \
+        --prompt="Select commit to reword > " \
+        --header="Use arrows to navigate, Enter to select, Ctrl-C to cancel" \
+        --preview="bash -c 'source $(realpath \"$0\") && generate_preview {1}'" \
+        --preview-window=right:50% \
+        --color="prompt:cyan,header:dim,pointer:green"
+    ) || {
+        log_info "selection cancelled"
+        return "${EXIT_USER_CANCELLED}"
+    }
+
+    # Extract hash from selection
+    hash="$(echo "$selection" | awk '{print $1}')"
+
+    if [[ -z "$hash" ]]; then
+        log_error "failed to extract commit hash"
+        return "${EXIT_ERROR}"
+    fi
+
+    # Validate hash
+    if ! git rev-parse --verify "$hash" &>/dev/null; then
+        log_error "invalid commit hash: $hash"
+        return "${EXIT_ERROR}"
+    fi
+
+    log_info "selected commit: $hash"
+
+    # Check commit status (dirty tree, pushed commits)
+    check_commit_status "$hash" || return $?
+
+    # Determine reword strategy
+    local head_hash
+    head_hash="$(git rev-parse HEAD)"
+
+    if [[ "$hash" == "$head_hash" ]]; then
+        reword_head
+    else
+        reword_older_commit "$hash"
+    fi
+}
+
+main() {
+    # Check dependencies
+    check_dependencies || exit $?
+
+    # Select and reword commit
+    select_commit_and_reword
+    exit $?
+}
+
+# Only run main if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

@@ -1,0 +1,113 @@
+#
+# Sets Prezto options.
+#
+
+#
+# General
+#
+
+# Set case-sensitivity for completion, history lookup, etc.
+zstyle ':prezto:*:*' case-sensitive 'no'
+
+# Color output (auto set to 'no' on dumb terminals).
+zstyle ':prezto:*:*' color 'yes'
+
+# Set the Prezto modules to load (browse modules).
+# The order matters.
+zstyle ':prezto:load' pmodule \
+  'environment' \
+  'terminal' \
+  'editor' \
+  'history' \
+  'directory' \
+  'spectrum' \
+  'utility' \
+  'completion' \
+  'git' \
+  'syntax-highlighting' \
+  'history-substring-search' \
+  'autosuggestions' \
+  'prompt'
+
+#
+# Editor
+#
+
+# Set the key mapping style to 'emacs' or 'vi'.
+zstyle ':prezto:module:editor' key-bindings 'emacs'
+
+# Auto convert .... to ../..
+zstyle ':prezto:module:editor' dot-expansion 'yes'
+
+#
+# Git
+#
+
+# Ignore submodules when they are 'dirty', 'untracked', 'all', or 'none'.
+zstyle ':prezto:module:git:status:ignore' submodules 'all'
+
+#
+# History
+#
+
+# Set the file to save the history in when an interactive shell exits.
+zstyle ':prezto:module:history' histfile "${ZDOTDIR:-$HOME}/.config/zsh/.zsh_history"
+
+# Set the maximum number of events stored in the internal history list.
+# Reduced from 100,000 to 10,000 for faster startup
+zstyle ':prezto:module:history' histsize 10000
+
+# Set the maximum number of history events to save in the history file.
+# Reduced from 100,000 to 10,000 for faster startup
+zstyle ':prezto:module:history' savehist 10000
+
+#
+# History Substring Search
+#
+
+# Enable search case-sensitivity.
+zstyle ':prezto:module:history-substring-search' case-sensitive 'no'
+
+# Enable search for fuzzy matches.
+zstyle ':prezto:module:history-substring-search' fuzzy 'yes'
+
+#
+# Prompt
+#
+
+# Set the prompt theme to load.
+# Use powerlevel10k for advanced prompt
+zstyle ':prezto:module:prompt' theme 'powerlevel10k'
+
+#
+# Syntax Highlighting
+#
+
+# Set syntax highlighters.
+zstyle ':prezto:module:syntax-highlighting' highlighters \
+  'main' \
+  'brackets' \
+  'pattern' \
+  'cursor'
+
+#
+# Terminal
+#
+
+# Auto set the tab and window titles.
+zstyle ':prezto:module:terminal' auto-title 'yes'
+
+# Set the window title format.
+zstyle ':prezto:module:terminal:window-title' format '%n@%m: %s'
+
+# Set the tab title format.
+zstyle ':prezto:module:terminal:tab-title' format '%m: %s'
+
+#
+# Utility
+#
+
+# Enabled safe options. This aliases cp, ln, mv and rm so that they prompt
+# before deleting or overwriting files. Set to 'no' to disable this safer
+# behavior.
+zstyle ':prezto:module:utility' safe-ops 'no'

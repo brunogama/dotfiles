@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Opens dotfiles configuration files in VS Code
+# Automatically resolves the repository location
+
+# Find dotfiles directory by checking symlink sources
+DOTFILES_DIR=""
+
+# Try to resolve from ~/.config-fixing-dot-files-bugs
+if [[ -d "$HOME/.config-fixing-dot-files-bugs" ]]; then
+    DOTFILES_DIR="$HOME/.config-fixing-dot-files-bugs"
+fi
+
+# Fallback: Check common locations
+if [[ -z "$DOTFILES_DIR" ]]; then
+    for dir in "$HOME/.config-fixing-dot-files-bugs" "$HOME/.config" "$HOME/.dotfiles"; do
+        if [[ -f "$dir/LinkingManifest.json" && -d "$dir/zsh" ]]; then
+            DOTFILES_DIR="$dir"
+            break
+        fi
+    done
+fi
+
+# Error if not found
+if [[ -z "$DOTFILES_DIR" || ! -d "$DOTFILES_DIR" ]]; then
+    echo "❌ Error: Could not find dotfiles repository" >&2
+    exit 1
+fi
+
+# Open requested config file
+case "$1" in
+    personal|personal-config)
+        code "$DOTFILES_DIR/zsh/personal-config.zsh"
+        ;;
+    zsh|zshrc)
+        code "$DOTFILES_DIR/zsh/.zshrc"
+        ;;
+    git|gitconfig)
+        # Open git config directory (gitconfig may not exist in repo)
+        code "$DOTFILES_DIR/Git"
+        ;;
+    work|work-config)
+        code "$DOTFILES_DIR/zsh/work-config.zsh"
+        ;;
+    repo|dotfiles)
+        code "$DOTFILES_DIR"
+        ;;
+    *)
+        echo "Usage: $(basename "$0") {personal|zsh|git|work|repo}"
+        echo ""
+        echo "Options:"
+        echo "  personal     - Open personal-config.zsh"
+        echo "  zsh          - Open .zshrc"
+        echo "  git          - Open git config directory"
+        echo "  work         - Open work-config.zsh"
+        echo "  repo         - Open entire dotfiles repository"
+        exit 1
+        ;;
+esac

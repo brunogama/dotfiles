@@ -1,0 +1,7 @@
+[user]
+	name = Bruno
+	email = bruno@naboo.local
+[core]
+	excludesfile = /Users/bruno/.gitignore_global
+[include]
+	path = ~/.config/git/github-flow-aliases.gitconfig

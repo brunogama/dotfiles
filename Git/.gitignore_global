@@ -1,0 +1,390 @@
+# ============================================================================
+# GLOBAL GITIGNORE - macOS, Swift, Python, and AI Development
+# ============================================================================
+
+# === macOS System Files ===
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# === Xcode & iOS Development ===
+## Build generated
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+*.xcuserstate
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Provisioning
+*.mobileprovision
+*.provisionprofile
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+## Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+fastlane/README.md
+
+## App Packaging
+*.ipa
+*.app.zip
+*.xcarchive
+
+# === Swift Package Manager ===
+.build/
+.swiftpm/
+Package.resolved
+*.xcworkspace/xcshareddata/swiftpm/
+.package.resolved
+
+# === CocoaPods ===
+Pods/
+Podfile.lock
+*.xcworkspace
+!default.xcworkspace
+
+# === Carthage ===
+Carthage/Build/
+Carthage/Checkouts/
+Cartfile.resolved
+
+# === Accio ===
+Dependencies/
+.accio/
+
+# === Python Development ===
+## Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+## Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+## Virtual environments
+venv/
+env/
+ENV/
+.venv
+.pyenv
+pipenv/
+poetry.lock
+Pipfile.lock
+
+## Testing
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+htmlcov/
+.hypothesis/
+
+## MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+## Pyre
+.pyre/
+
+## Pytype
+.pytype/
+
+## Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+## IPython
+profile_default/
+ipython_config.py
+
+## PyCharm
+.idea/
+*.iml
+
+# === Coding Agents and Context Frameworks ===
+
+## Cursor IDE
+.cursor/
+.cursorignore
+.cursor/settings.json
+.cursor/rules/personal/
+*.mdc.local
+
+## Claude Code / Claude Desktop
+.claude/
+.claudeignore
+.claude/settings.local.json
+.claude/commands/personal/
+CLAUDE.local.md
+
+## Aider
+.aider*
+.aiderignore
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache.v3/
+
+## Continue.dev
+.continue/
+.continueignore
+
+## Cody (Sourcegraph)
+.cody/
+.codyignore
+
+## Tabnine
+.tabnine/
+
+## Supermaven
+.supermavenignore
+
+## GitHub Copilot
+.github/copilot-instructions.local.md
+.github/copilot-workspace.yml
+
+## Gemini Code Assist / AI Exclude
+.aiexclude
+.gemini/
+
+## Amazon Q
+.amazonq/
+
+## JetBrains AI Assistant
+.aiignore
+
+## Windsurf IDE (Codeium)
+.windsurfrules
+.windsurf/
+
+## Zed AI
+.zed/
+.zedignore
+
+## Replit AI
+.replit
+.replitignore
+
+## Model Context Protocol (MCP)
+.mcp/
+.mcp-local.json
+.mcp-server.json
+context-engineering.json
+context.config.local.json
+mcp-servers.json
+
+## Factory AI
+.factory/droids/personal/
+.factory/commands/personal/
+.factory/local/
+
+# === Environment & Secrets ===
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.key
+*.secret
+*.pem
+*.cert
+*.crt
+secrets/
+keys/
+credentials/
+config.local.*
+context.local.*
+.secrets
+
+# === IDEs and Editors ===
+## VSCode
+.vscode/
+*.code-workspace
+.history/
+
+## IntelliJ IDEA / WebStorm / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+## Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+## Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~
+tags
+[._]*.un~
+
+## Emacs
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+.org-id-locations
+*_archive
+*_flymake.*
+/eshell/history
+/eshell/lastdir
+/elpa/
+*.rel
+/auto/
+.cask/
+dist/
+flycheck_*.el
+/server/
+.projectile
+.dir-locals.el
+/network-security.data
+
+# === Version Control ===
+.git.bfg-report/
+
+# === Build & Dependency Tools ===
+## General
+*.log
+*.pid
+*.seed
+*.lock
+node_modules/
+bower_components/
+.sass-cache/
+.grunt/
+.npm/
+.yarn/
+.pnp/
+.pnp.js
+
+# === Testing & Coverage ===
+coverage/
+*.cover
+.nyc_output/
+.pytest_cache/
+test_output/
+spec/reports/
+tmp/
+
+# === Documentation ===
+docs/_build/
+site/
+.cache/
+
+# === Database ===
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# === Logs ===
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# === Operating System ===
+## Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+## Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# === Temporary Files ===
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.old
+*~

@@ -1,0 +1,458 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "rich>=13.7.0",
+#     "click>=8.1.0",
+#     "gitpython>=3.1.0",
+# ]
+# ///
+
+"""
+syncenv - Environment-aware dotfiles sync with marvelous DX
+
+Syncs your dotfiles with smart git strategy (rebase → merge fallback → push).
+Automatically detects and uses the correct environment (work vs personal).
+
+Usage:
+    syncenv [environment] [options]
+
+Examples:
+    syncenv              # Sync current environment
+    syncenv personal     # Sync personal environment
+    syncenv work         # Sync work environment
+    syncenv --dry-run    # Preview operations
+    syncenv --status     # Show sync status
+    syncenv --force      # Auto-commit uncommitted changes
+"""
+
+import os
+import sys
+from pathlib import Path
+from typing import Optional
+import subprocess
+
+import click
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
+import git
+
+console = Console()
+
+# Environment constants
+VALID_ENVIRONMENTS = ["work", "personal"]
+DEFAULT_ENVIRONMENT = "personal"
+
+# Dotfiles repository search locations
+DOTFILES_LOCATIONS = [
+    "~/.config-fixing-dot-files-bugs",
+    "~/.config",
+    "~/.dotfiles",
+    "~/dotfiles",
+]
+
+
+def detect_environment(env_arg: Optional[str]) -> str:
+    """
+    Detect target environment with priority:
+    1. Command-line argument
+    2. DOTFILES_ENV environment variable
+    3. Parse from ~/.zshenv
+    4. Default to personal
+    """
+    # Priority 1: CLI argument
+    if env_arg:
+        if env_arg in VALID_ENVIRONMENTS:
+            return env_arg
+        console.print(f"[red]✗[/red] Invalid environment: {env_arg}")
+        console.print(f"[yellow]Valid options:[/yellow] {', '.join(VALID_ENVIRONMENTS)}")
+        sys.exit(1)
+
+    # Priority 2: DOTFILES_ENV environment variable
+    env_var = os.environ.get("DOTFILES_ENV")
+    if env_var in VALID_ENVIRONMENTS:
+        return env_var
+
+    # Priority 3: Parse from ~/.zshenv
+    zshenv_path = Path.home() / ".zshenv"
+    if zshenv_path.exists():
+        try:
+            content = zshenv_path.read_text()
+            for line in content.splitlines():
+                if line.strip().startswith("export DOTFILES_ENV="):
+                    value = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    if value in VALID_ENVIRONMENTS:
+                        return value
+        except Exception:
+            pass
+
+    # Priority 4: Default
+    console.print(f"[yellow]ℹ[/yellow] No environment specified, using default: [cyan]{DEFAULT_ENVIRONMENT}[/cyan]")
+    return DEFAULT_ENVIRONMENT
+
+
+def find_dotfiles_repo() -> Optional[git.Repo]:
+    """
+    Find dotfiles git repository in common locations.
+    Returns git.Repo object or None if not found.
+    """
+    for location in DOTFILES_LOCATIONS:
+        path = Path(location).expanduser()
+        if path.exists() and (path / ".git").exists():
+            try:
+                repo = git.Repo(path)
+                return repo
+            except Exception:
+                continue
+    return None
+
+
+def check_uncommitted_changes(repo: git.Repo) -> list:
+    """Check for uncommitted changes in repository."""
+    changed_files = []
+
+    # Check for modified files
+    if repo.is_dirty(untracked_files=False):
+        changed_files.extend([item.a_path for item in repo.index.diff(None)])
+
+    # Check for staged files
+    if repo.is_dirty(untracked_files=False, index=True):
+        changed_files.extend([item.a_path for item in repo.index.diff("HEAD")])
+
+    # Check for untracked files
+    changed_files.extend(repo.untracked_files)
+
+    return list(set(changed_files))
+
+
+def pull_with_rebase(repo: git.Repo, branch: str) -> dict:
+    """
+    Attempt to pull with rebase.
+    Returns dict with: success (bool), message (str), method (str)
+    """
+    try:
+        origin = repo.remotes.origin
+        # Try rebase
+        origin.pull(rebase=True)
+        return {
+            "success": True,
+            "message": "Successfully rebased",
+            "method": "rebase"
+        }
+    except git.GitCommandError as e:
+        # Rebase failed, abort it
+        try:
+            repo.git.rebase("--abort")
+        except Exception:
+            pass
+        return {
+            "success": False,
+            "message": str(e),
+            "method": "rebase"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e),
+            "method": "rebase"
+        }
+
+
+def pull_with_merge(repo: git.Repo, branch: str) -> dict:
+    """
+    Attempt to pull with merge (no fast-forward).
+    Returns dict with: success (bool), message (str), method (str)
+    """
+    try:
+        origin = repo.remotes.origin
+        # Pull with merge (no fast-forward)
+        origin.pull(ff=False)
+        return {
+            "success": True,
+            "message": "Successfully merged",
+            "method": "merge"
+        }
+    except git.GitCommandError as e:
+        return {
+            "success": False,
+            "message": str(e),
+            "method": "merge",
+            "conflicts": True
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e),
+            "method": "merge"
+        }
+
+
+def push_to_remote(repo: git.Repo, branch: str) -> dict:
+    """
+    Push changes to remote.
+    Returns dict with: success (bool), message (str)
+    """
+    try:
+        origin = repo.remotes.origin
+        push_info = origin.push()[0]
+
+        return {
+            "success": True,
+            "message": "Successfully pushed to remote"
+        }
+    except git.GitCommandError as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+
+def display_status(repo: git.Repo, environment: str):
+    """Display comprehensive sync status."""
+    table = Table(title="Sync Status", box=box.ROUNDED)
+    table.add_column("Item", style="cyan", no_wrap=True)
+    table.add_column("Value", style="green")
+
+    # Environment
+    table.add_row("Environment", environment)
+
+    # Repository path
+    table.add_row("Repository", str(repo.working_dir))
+
+    # Current branch
+    try:
+        branch = repo.active_branch.name
+        tracking = repo.active_branch.tracking_branch()
+        if tracking:
+            table.add_row("Branch", f"{branch} → {tracking.name}")
+        else:
+            table.add_row("Branch", f"{branch} (no tracking)")
+    except Exception:
+        table.add_row("Branch", "detached HEAD")
+
+    # Working directory status
+    changed = check_uncommitted_changes(repo)
+    if changed:
+        table.add_row("Status", f"[yellow]{len(changed)} uncommitted changes[/yellow]")
+    else:
+        table.add_row("Status", "[green]Clean working directory[/green]")
+
+    # Remote info
+    try:
+        origin = repo.remotes.origin
+        table.add_row("Remote", origin.url)
+    except Exception:
+        table.add_row("Remote", "[red]Not configured[/red]")
+
+    # Ahead/Behind
+    try:
+        branch = repo.active_branch
+        tracking = branch.tracking_branch()
+        if tracking:
+            commits_ahead = len(list(repo.iter_commits(f"{tracking.name}..{branch.name}")))
+            commits_behind = len(list(repo.iter_commits(f"{branch.name}..{tracking.name}")))
+            table.add_row("Ahead/Behind", f"{commits_ahead} ahead, {commits_behind} behind")
+    except Exception:
+        pass
+
+    console.print(table)
+
+
+@click.command()
+@click.argument("environment", required=False, type=click.Choice(VALID_ENVIRONMENTS + ["current"], case_sensitive=False))
+@click.option("--dry-run", is_flag=True, help="Show what would be done without doing it")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
+@click.option("--force", "-f", is_flag=True, help="Auto-commit uncommitted changes")
+@click.option("--no-push", is_flag=True, help="Skip push after successful pull")
+@click.option("--status", "-s", is_flag=True, help="Show sync status without syncing")
+def main(environment, dry_run, verbose, force, no_push, status):
+    """
+    Environment-aware dotfiles sync with marvelous DX.
+
+    Syncs your dotfiles using smart git strategy:
+    1. Try pull --rebase (clean linear history)
+    2. Fallback to pull --no-ff (merge commit)
+    3. Push changes to remote
+
+    ENVIRONMENT: Target environment (work|personal|current)
+                 Defaults to auto-detection from DOTFILES_ENV
+    """
+    # Detect environment
+    env = "current" if environment == "current" else environment
+    detected_env = detect_environment(env)
+
+    # Show header
+    console.print()
+    console.print(f"[bold cyan]🔄 Syncing [yellow]{detected_env}[/yellow] environment...[/bold cyan]")
+    console.print()
+
+    # Find repository
+    with console.status("[cyan]Searching for dotfiles repository..."):
+        repo = find_dotfiles_repo()
+
+    if not repo:
+        console.print("[red]✗[/red] Dotfiles repository not found")
+        console.print()
+        console.print("[yellow]Searched locations:[/yellow]")
+        for loc in DOTFILES_LOCATIONS:
+            console.print(f"  • {loc}")
+        console.print()
+        console.print("[cyan]💡 Suggestion:[/cyan] Run [bold]make install[/bold] to set up dotfiles")
+        sys.exit(1)
+
+    console.print(f"[green]✓[/green] Repository: [cyan]{repo.working_dir}[/cyan]")
+
+    # Get current branch
+    try:
+        branch = repo.active_branch.name
+        console.print(f"[green]✓[/green] Branch: [cyan]{branch}[/cyan]")
+    except Exception:
+        console.print("[red]✗[/red] Detached HEAD state")
+        sys.exit(1)
+
+    # Check remote
+    try:
+        origin = repo.remotes.origin
+        console.print(f"[green]✓[/green] Remote: [cyan]{origin.url}[/cyan]")
+    except Exception:
+        console.print("[red]✗[/red] Remote 'origin' not configured")
+        sys.exit(1)
+
+    console.print()
+
+    # Status mode
+    if status:
+        display_status(repo, detected_env)
+        sys.exit(0)
+
+    # Dry-run mode (check early to avoid side effects)
+    if dry_run:
+        changed_files = check_uncommitted_changes(repo)
+        console.print("[yellow]━━━ DRY RUN MODE ━━━[/yellow]")
+        console.print()
+
+        if changed_files and not force:
+            console.print(f"[yellow]⚠[/yellow] Would fail: {len(changed_files)} uncommitted changes")
+            console.print("[dim]Use --force to auto-commit[/dim]")
+            console.print()
+
+        console.print("Would perform:")
+        if changed_files and force:
+            console.print(f"  0. [yellow]Auto-commit {len(changed_files)} uncommitted changes[/yellow]")
+        console.print(f"  1. [cyan]git pull --rebase origin {branch}[/cyan]")
+        console.print(f"  2. If rebase fails: [cyan]git pull --no-ff origin {branch}[/cyan]")
+        if not no_push:
+            console.print(f"  3. [cyan]git push origin {branch}[/cyan]")
+        else:
+            console.print("  3. [dim]Skip push (--no-push)[/dim]")
+        console.print()
+        sys.exit(0)
+
+    # Check uncommitted changes
+    changed_files = check_uncommitted_changes(repo)
+    if changed_files and not force:
+        console.print("[red]✗[/red] Uncommitted changes detected:")
+        console.print()
+        for file in changed_files[:10]:  # Show first 10
+            console.print(f"  [yellow]•[/yellow] {file}")
+        if len(changed_files) > 10:
+            console.print(f"  [dim]... and {len(changed_files) - 10} more[/dim]")
+        console.print()
+        console.print("[cyan]💡 Suggestions:[/cyan]")
+        console.print("  • Commit your changes: [bold]git add . && git commit -m 'message'[/bold]")
+        console.print("  • Auto-commit: [bold]syncenv --force[/bold]")
+        console.print("  • Stash changes: [bold]git stash[/bold]")
+        sys.exit(1)
+
+    # Force mode: auto-commit
+    if changed_files and force:
+        console.print(f"[yellow]⚠[/yellow] Auto-committing {len(changed_files)} uncommitted changes...")
+        try:
+            repo.git.add(A=True)
+            repo.index.commit(f"chore: auto-commit before sync - {os.environ.get('USER', 'user')}")
+            console.print("[green]✓[/green] Changes committed")
+        except Exception as e:
+            console.print(f"[red]✗[/red] Failed to commit: {e}")
+            sys.exit(1)
+        console.print()
+
+    # Pull with rebase
+    with console.status("[cyan]⏳ Pulling from remote (rebase)..."):
+        result = pull_with_rebase(repo, branch)
+
+    if result["success"]:
+        console.print(f"[green]✓[/green] Successfully rebased")
+    else:
+        # Rebase failed, try merge
+        console.print(f"[yellow]⚠[/yellow] Rebase failed, trying merge...")
+
+        with console.status("[cyan]⏳ Pulling from remote (merge)..."):
+            result = pull_with_merge(repo, branch)
+
+        if result["success"]:
+            console.print(f"[green]✓[/green] Successfully merged")
+        else:
+            # Merge also failed
+            console.print("[red]✗[/red] Both rebase and merge failed")
+            console.print()
+
+            # Check for conflicts
+            if result.get("conflicts"):
+                console.print("[red]Merge conflicts detected:[/red]")
+                console.print()
+                conflicted = [item.a_path for item in repo.index.diff(None) if item.change_type == 'M']
+                for file in conflicted:
+                    console.print(f"  [red]•[/red] {file}")
+                console.print()
+                console.print("[cyan]💡 Resolution steps:[/cyan]")
+                console.print("  1. Run: [bold]git status[/bold]")
+                console.print("  2. Resolve conflicts in listed files")
+                console.print("  3. Run: [bold]git add .[/bold]")
+                console.print("  4. Run: [bold]git commit[/bold]")
+                console.print("  5. Run: [bold]syncenv[/bold] again")
+            else:
+                console.print(f"[red]Error:[/red] {result['message']}")
+
+            sys.exit(1)
+
+    console.print()
+
+    # Push to remote (unless --no-push)
+    if not no_push:
+        with console.status("[cyan]⏳ Pushing to remote..."):
+            push_result = push_to_remote(repo, branch)
+
+        if push_result["success"]:
+            console.print(f"[green]✓[/green] Pushed to [cyan]origin/{branch}[/cyan]")
+        else:
+            console.print(f"[red]✗[/red] Push failed: {push_result['message']}")
+            console.print()
+            console.print("[cyan]💡 Suggestion:[/cyan] Run [bold]syncenv[/bold] again to sync with remote")
+            sys.exit(1)
+    else:
+        console.print("[dim]⊘ Push skipped (--no-push)[/dim]")
+
+    # Success summary
+    console.print()
+    console.print(Panel(
+        "[green]✨ Sync complete![/green]\n\n"
+        f"Environment: [cyan]{detected_env}[/cyan]\n"
+        f"Strategy: [cyan]{result['method']}[/cyan]\n"
+        f"Branch: [cyan]{branch}[/cyan]",
+        border_style="green",
+        box=box.ROUNDED
+    ))
+    console.print()
+    console.print("[dim]💡 Tip: Use [bold]syncenv --status[/bold] to check sync status[/dim]")
+    console.print()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# check-commit-msg - Validate conventional commit message format
+#
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+COMMIT_MSG_FILE="${1:-.git/COMMIT_EDITMSG}"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE" 2>/dev/null || echo "")
+
+if [[ -z "$COMMIT_MSG" ]]; then
+    exit 0
+fi
+
+# Skip if merge commit
+if echo "$COMMIT_MSG" | grep -q "^Merge"; then
+    exit 0
+fi
+
+# Skip if revert commit
+if echo "$COMMIT_MSG" | grep -q "^Revert"; then
+    exit 0
+fi
+
+# Conventional commit pattern
+PATTERN='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?!?: .{1,100}'
+
+if ! echo "$COMMIT_MSG" | head -1 | grep -qE "$PATTERN"; then
+    cat << EOF
+${RED}ERROR: Commit message does not follow Conventional Commits format${NC}
+
+Your message:
+  $(echo "$COMMIT_MSG" | head -1)
+
+Required format:
+  <type>(<scope>): <description>
+
+Types:
+  feat:     New feature
+  fix:      Bug fix
+  docs:     Documentation only
+  style:    Formatting changes
+  refactor: Code restructuring
+  test:     Adding tests
+  chore:    Maintenance
+  perf:     Performance improvement
+  ci:       CI/CD changes
+  build:    Build system changes
+  revert:   Revert previous commit
+
+Examples:
+  feat: add zsh-benchmark script
+  fix(install): handle missing jq gracefully
+  docs: update README with performance tips
+  chore(deps): update pre-commit hooks
+
+See: https://www.conventionalcommits.org/
+
+To bypass this check (not recommended):
+  git commit --no-verify
+EOF
+    exit 1
+fi
+
+exit 0

@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+#
+# remove-all-emojis - Remove all emojis from codebase
+# Enforces MINDSET.MD Rule 2: No emojis in documentation or code
+#
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Get repository root
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
+echo -e "${BLUE}Removing all emojis from codebase...${NC}"
+echo ""
+
+# Find all text files with emojis using ripgrep
+# Exclude .git, binary files, and compiled files
+FILES=$(rg -l '[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{231A}-\x{23F3}]' \
+  --type-add 'text:*.{md,sh,bash,zsh,txt,yaml,yml,json,js,py,rb,java,swift,kt}' \
+  --type text \
+  --no-ignore \
+  --hidden \
+  -g '!.git/' \
+  -g '!*.zwc' \
+  -g '!*.pyc' \
+  -g '!node_modules/' \
+  -g '!.cache/' \
+  2>/dev/null || true)
+
+if [[ -z "$FILES" ]]; then
+  echo -e "${GREEN}No emojis found! Repository is clean.${NC}"
+  exit 0
+fi
+
+echo -e "${YELLOW}Found emojis in the following files:${NC}"
+echo "$FILES" | while read -r file; do
+  echo "  - $file"
+done
+echo ""
+
+# Count total files
+TOTAL=$(echo "$FILES" | wc -l | tr -d ' ')
+echo -e "${BLUE}Processing $TOTAL files...${NC}"
+echo ""
+
+# Process each file
+PROCESSED=0
+echo "$FILES" | while read -r file; do
+  if [[ -f "$file" ]]; then
+    # Replace common emojis with text equivalents
+    perl -CSD -i -pe '
+      # Common status emojis
+      s/✅/[YES]/g;
+      s/❌/[NO]/g;
+      s/⚠️/[WARNING]/g;
+      s/⚠/[WARNING]/g;
+      s/✓/[OK]/g;
+      s/✗/[X]/g;
+      s/✔️/[OK]/g;
+      s/🚀//g;
+      s/💡//g;
+      s/📌//g;
+      s/🔧//g;
+      s/🏠//g;
+      s/💼//g;
+      s/🎭//g;
+      s/🚫//g;
+      s/🧪//g;
+      s/🛡️//g;
+      s/🚨//g;
+      s/🧠//g;
+
+      # Remove any remaining emojis (full Unicode emoji ranges)
+      s/[\x{1F300}-\x{1F9FF}]//g;  # Miscellaneous Symbols and Pictographs
+      s/[\x{2600}-\x{26FF}]//g;    # Miscellaneous Symbols
+      s/[\x{2700}-\x{27BF}]//g;    # Dingbats
+      s/[\x{231A}-\x{23F3}]//g;    # Miscellaneous Technical
+      s/[\x{FE00}-\x{FE0F}]//g;    # Variation Selectors
+    ' "$file" 2>/dev/null && echo -e "${GREEN}✓${NC} $file" || echo -e "${RED}✗${NC} $file"
+
+    PROCESSED=$((PROCESSED + 1))
+  fi
+done
+
+echo ""
+echo -e "${GREEN}Done! Processed $TOTAL files.${NC}"
+echo ""
+echo -e "${BLUE}Next steps:${NC}"
+echo "  1. Review changes: git diff"
+echo "  2. Stage changes: git add -A"
+echo "  3. Commit: git commit -m 'style: remove emojis per MINDSET Rule 2'"

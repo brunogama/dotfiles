@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#
+# validate-openspec - Validate OpenSpec proposals
+#
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Only validate if openspec is available
+if ! command -v openspec &>/dev/null; then
+    echo -e "${YELLOW}WARN: openspec not installed, skipping validation${NC}"
+    exit 0
+fi
+
+# Get changed proposals from staged files
+CHANGED_PROPOSALS=$(git diff --cached --name-only | \
+    grep "openspec/changes/" | \
+    cut -d'/' -f3 | \
+    sort -u || true)
+
+if [[ -z "$CHANGED_PROPOSALS" ]]; then
+    exit 0
+fi
+
+FAILED=false
+
+for proposal in $CHANGED_PROPOSALS; do
+    echo "Validating OpenSpec proposal: $proposal"
+    if ! openspec validate "$proposal" --strict; then
+        FAILED=true
+    fi
+done
+
+if [[ "$FAILED" == "true" ]]; then
+    echo ""
+    echo -e "${RED}Fix OpenSpec validation errors before committing${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}OpenSpec proposals are valid${NC}"
+exit 0

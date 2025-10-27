@@ -1,0 +1,89 @@
+# Pre-commit hooks configuration
+# Enforces code quality and MINDSET constitutional rules
+#
+# Installation:
+#   bin/core/setup-git-hooks
+#
+# Manual run:
+#   pre-commit run --all-files
+#
+# Skip hooks (not recommended):
+#   git commit --no-verify
+
+repos:
+  # Shellcheck - validate all shell scripts
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        args: ['--severity=error']
+        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|Bin/Core/zsh-)
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        exclude: ^(\.git|\.claude)
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        exclude: ^(\.git|\.claude)
+
+      # Validate YAML syntax
+      - id: check-yaml
+        exclude: ^(\.git|\.claude)
+
+      # Validate JSON syntax
+      - id: check-json
+        exclude: ^(\.git|\.claude)
+
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+
+      # Fix mixed line endings
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+        exclude: ^(\.git|\.claude)
+
+  # Custom local hooks
+  - repo: local
+    hooks:
+      # Check for emojis (MINDSET Rule 2)
+      - id: no-emojis
+        name: Check for emojis (MINDSET Rule 2)
+        entry: bin/git/hooks/check-no-emojis
+        language: script
+        types: [text]
+        exclude: ^(\.git|\.claude|ai_docs/legacy)
+
+      # Check for uppercase directories (MINDSET Rule 1)
+      - id: lowercase-dirs
+        name: Check directories are lowercase (MINDSET Rule 1)
+        entry: bin/git/hooks/check-lowercase-dirs
+        language: script
+        pass_filenames: false
+        exclude: ^(\.git|\.claude)
+
+      # Validate LinkingManifest.json
+      - id: validate-manifest
+        name: Validate LinkingManifest.json
+        entry: bin/git/hooks/validate-manifest
+        language: script
+        files: LinkingManifest\.json$
+
+      # OpenSpec validation
+      - id: openspec-validate
+        name: Validate OpenSpec proposals
+        entry: bin/git/hooks/validate-openspec
+        language: script
+        files: openspec/changes/.*\.(md|yaml)$
+
+      # Conventional commit message
+      - id: conventional-commit
+        name: Check conventional commit format
+        entry: bin/git/hooks/check-commit-msg
+        language: script
+        stages: [commit-msg]
+        always_run: true

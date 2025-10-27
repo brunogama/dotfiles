@@ -1,0 +1,311 @@
+# Ignore sensitive information and secrets
+**/secrets
+**/*.log
+**/logs/
+**/gcloud/logs/
+
+# Ignore cache files
+**/.DS_Store
+**/cache/
+
+# Specific app data that might contain sensitive information
+iterm2/AppSupport
+iterm2/sockets/
+github-copilot/
+swiftpm/
+gh/
+raycast/
+
+
+# Local configuration that shouldn't be shared
+mise/local.toml
+
+# Temporary files
+**/tmp/
+**/*.tmp
+
+# Backup files
+**/*.backup*
+**/*.bak
+**/*.old
+**/*~
+
+# Zsh specific files
+zsh/.zsh_history*
+**/zsh_history.zsh
+**/*_history.zsh
+**/.zsh_history*
+# zsh/.zprezto - now tracked as symlink to submodule
+zsh/.zsh_sessions
+zsh/.zcompdump*
+zsh/.zcompcache/
+# Zsh compiled files (bytecode)
+**/*.zwc
+*.zwc
+
+# Shell history files (all shells)
+**/*_history
+**/.bash_history*
+**/.fish_history*
+**/.node_repl_history*
+**/.python_history*
+# Ignore build artifacts
+**/build/
+# Ignore IDE specific files
+**/.idea/
+# Ignore Python cache files
+**/__pycache__/
+# Ignore Jupyter Notebook checkpoints
+**/.ipynb_checkpoints/
+# Ignore virtual environments
+**/venv/
+# Ignore macOS specific files
+**/.DS_Store
+# Ignore Python egg files
+**/*.egg-info/
+
+
+### OSX ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+gcloud
+
+# Database files
+**/*.sqlite
+**/*.db
+**/*.sql
+
+# Other potentially sensitive data
+**/*.p12
+**/*.pfx
+**/*.passwd
+
+# macOS Keychain files
+**/*.keychain
+**/*.keychain-db
+
+# Credential helpers
+**/credentials.json
+**/client_secrets.json
+**/*-credentials.json
+
+# Authentication files and tokens
+**/*.pem
+**/*.key
+**/*.crt
+**/*.cer
+**/*.der
+**/id_rsa*
+**/.ssh/id_*
+**/.ssh/*_rsa*
+**/.ssh/known_hosts
+**/.ssh/authorized_keys
+# Keep: .ssh/config for SSH configuration sharing
+**/*_token
+**/*.keystore
+**/*.jks
+**/.netrc
+
+# Environment variables and configuration files
+**/.env*
+**/.aws/
+**/.boto
+**/terraformrc
+**/.npmrc
+**/.yarnrc
+**/.bundle/config
+
+# Node.js and npm artifacts
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/lerna-debug.log*
+**/.npm
+**/.yarn/
+**/package-lock.json
+**/yarn.lock
+
+# NVM (Node Version Manager)
+**/.nvm/
+**/nvm/
+**/.nvmrc.local
+
+# Additional cloud service configurations
+**/gcloud/
+**/.gcloud/
+**/.config/gcloud/
+**/.aws/
+**/.azure/
+**/terraform.tfvars
+**/terraform.tfvars.json
+**/.terraform/
+**/secrets.yaml
+**/secrets.yml
+
+# Cursor and VSCode - completely ignore
+cursor/
+.cursor/
+**/.vscode/
+**/vscode/
+**/*cursor*
+**/*vscode*
+
+# Additional authentication tokens and certificates
+**/oauth_token*
+**/access_token*
+**/refresh_token*
+**/*_token.json
+**/*_credentials.json
+**/*-token
+**/*-key
+!bin/*-key
+!bin/get-api-key
+!bin/store-api-key
+!bin/dump-api-keys
+!bin/get-password-from-keytchain
+**/*-secret
+
+# Runtime & VM
+colima/
+*.pid
+*.sock
+
+uv/
+
+
+# Claude Code
+.claude/data/sessions/
+.claude/settings.local.json
+.claude/tasks/
+
+# Credentials
+*.key
+*.pem
+*_rsa
+*_ed25519
+
+# User-specific git configuration
+Git/.gitconfig
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+*.plist
+
+# Logs
+*.log
+
+# Temporary
+*.tmp
+*.temp
+.cache/
+
+# Pre-commit
+.pre-commit-cache/
+
+# New structure - ignore backups
+.dotfiles-backup-*/
+
+# Old stow structure (deprecated)
+# Keep for reference during migration
+# stow-packages/
+zsh/.zcompdump
+
+
+########### AGENTS
+# === Global Ignore: Coding Agents and Context Frameworks ===
+
+# Cursor IDE
+.cursor/
+.cursorignore
+.cursor/settings.json
+.cursor/rules/personal/
+*.mdc.local
+
+# Claude Code
+.claude/
+.claudeignore
+.claude/settings.local.json
+.claude/commands/personal/
+CLAUDE.local.md
+
+# Aider
+.aider*
+.aiderignore
+
+# Supermaven
+.supermavenignore
+
+# GitHub Copilot
+.github/copilot-instructions.local.md
+
+# Gemini Code Assist / AI Exclude
+.aiexclude
+
+# JetBrains AI Assistant
+.aiignore
+
+# Model Context Protocol (MCP)
+.mcp/
+.mcp-local.json
+.mcp-server.json
+context-engineering.json
+context.config.local.json
+
+# Dotenv & Secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.secret
+secrets/
+keys/
+config.local.*
+context.local.*
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*~
+.DS_Store
+Thumbs.db
+
+# System files
+*.lock
+*.log
+*.pid
+.cache/
+tmp/

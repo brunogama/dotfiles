@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
+sh "$DOTFILES_ROOT/bin/git/conventional-commit" $1 $2 

@@ -1,0 +1,140 @@
+{
+  "$schema": "./linkingManifest.schema.json",
+  "version": "1.0.0",
+  "description": "Declarative manifest for dotfiles symlink management",
+  "links": {
+    "shell": {
+      "zsh": [
+        {
+          "source": "zsh/.zshenv",
+          "target": "~/.zshenv",
+          "description": "Zsh environment file (sets ZDOTDIR)",
+          "note": "This MUST be in $HOME to bootstrap ZDOTDIR"
+        },
+        {
+          "source": "zsh/.zshrc",
+          "target": "~/.config/zsh/.zshrc",
+          "description": "Zsh main configuration"
+        },
+        {
+          "source": "zsh/.zprofile",
+          "target": "~/.config/zsh/.zprofile",
+          "description": "Zsh profile (login shell)"
+        },
+        {
+          "source": "zsh/.zpreztorc",
+          "target": "~/.config/zsh/.zpreztorc",
+          "description": "Prezto configuration"
+        },
+        {
+          "source": "zsh/.p10k.zsh",
+          "target": "~/.config/zsh/.p10k.zsh",
+          "description": "Powerlevel10k theme configuration"
+        },
+        {
+          "source": "zsh/work-config.zsh",
+          "target": "~/.config/zsh/work-config.zsh",
+          "description": "Work environment configuration"
+        },
+        {
+          "source": "zsh/personal-config.zsh",
+          "target": "~/.config/zsh/personal-config.zsh",
+          "description": "Personal environment configuration"
+        },
+        {
+          "source": "zsh/lib/",
+          "target": "~/.config/zsh/lib",
+          "description": "Zsh library files (lazy-load, etc.)",
+          "type": "directory-contents"
+        }
+      ]
+    },
+    "git": [
+      {
+        "source": "git/.gitconfig",
+        "target": "~/.gitconfig",
+        "description": "Git global configuration"
+      },
+      {
+        "source": "git/.gitignore_global",
+        "target": "~/.gitignore_global",
+        "description": "Git global ignore patterns (400+ patterns for macOS, Swift, Python, AI agents)",
+        "note": "Referenced by core.excludesfile in .gitconfig"
+      },
+      {
+        "source": "git/conventional-commits-gitmessage",
+        "target": "~/.config/git/conventional-commits-gitmessage",
+        "description": "Conventional commits message template",
+        "note": "Referenced by commit.template in .gitconfig"
+      },
+      {
+        "source": "git/github-flow-aliases.gitconfig",
+        "target": "~/.config/git/github-flow-aliases.gitconfig",
+        "description": "GitHub Flow workflow git aliases",
+        "optional": true,
+        "note": "Can be included in .gitconfig with [include] path"
+      },
+      {
+        "source": "git/ios.gitattributes",
+        "target": "~/.config/git/ios.gitattributes",
+        "description": "iOS-specific git attributes (text handling, diff drivers)",
+        "platforms": ["darwin"],
+        "optional": true,
+        "note": "Can be included in repository-specific .gitattributes"
+      }
+    ],
+    "packages": {
+      "homebrew": [
+        {
+          "source": "packages/homebrew/Brewfile",
+          "target": "~/Brewfile",
+          "description": "Homebrew bundle file",
+          "platforms": ["darwin"]
+        }
+      ],
+      "mise": [
+        {
+          "source": "packages/mise/config.toml",
+          "target": "~/.config/mise/config.toml",
+          "description": "Mise version manager configuration"
+        }
+      ],
+      "sync-service": [
+        {
+          "source": "packages/syncservice/com.brunogama.home-sync.plist",
+          "target": "~/Library/LaunchAgents/com.brunogama.home-sync.plist",
+          "description": "Home sync service launch agent",
+          "platforms": ["darwin"]
+        },
+        {
+          "source": "packages/syncservice/config.yml",
+          "target": "~/.config/home-sync/config.yml",
+          "description": "Home sync service configuration"
+        }
+      ]
+    },
+    "binaries": {
+      "bin": [
+        {
+          "source": "bin/",
+          "target": "~/.local/bin",
+          "description": "Core utility scripts",
+          "type": "directory-contents",
+          "executable": true
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "linkTypes": {
+      "file": "Creates a symbolic link to a single file",
+      "directory": "Creates a symbolic link to an entire directory",
+      "directory-contents": "Creates individual symlinks for each file in the directory"
+    },
+    "platforms": {
+      "darwin": "macOS",
+      "linux": "Linux distributions",
+      "all": "All platforms (default if not specified)"
+    }
+  }
+}

@@ -1,0 +1,97 @@
+# General settings
+* text=auto
+
+# Source code
+*.swift          text diff=swift
+*.h              text diff=objc
+*.m              text diff=objc
+*.mm             text diff=objc
+*.c              text diff=c
+*.cpp            text diff=cpp
+*.hpp            text diff=cpp
+*.java           text diff=java
+*.json           text
+*.plist          text
+*.strings        text
+*.stringsdict    text
+*.css            text diff=css
+*.js             text
+*.html           text diff=html
+*.xml            text
+*.yaml           text
+*.yml            text
+*.md             text diff=markdown
+*.sh             text eol=lf
+*.bash           text eol=lf
+*.zsh            text eol=lf
+Makefile         text
+Cartfile         text
+Fastfile         text
+Appfile          text
+Matchfile        text
+Pluginfile       text
+Snapfile         text
+Deliverfile      text
+
+# Xcode specific
+*.pbxproj        text binary merge=union
+*.xcconfig       text
+*.xcscheme       text
+*.xcworkspacedata text
+*.xib            text diff=xml
+*.storyboard     text diff=xml
+*.xcassets       binary
+
+# CocoaPods specific
+Pods/            binary
+*.xcodeproj      binary
+*.xcworkspace    binary
+
+# Project specific binaries
+*.framework      binary
+*.a              binary
+*.dylib          binary
+
+# Media and binary files
+*.png            binary
+*.jpg            binary
+*.jpeg           binary
+*.gif            binary
+*.ico            binary
+*.mov            binary
+*.mp4            binary
+*.mp3            binary
+*.wav            binary
+*.flv            binary
+*.fla            binary
+*.swf            binary
+*.gz             binary
+*.zip            binary
+*.pdf            binary
+*.ez             binary
+*.bz2            binary
+*.swc            binary
+*.ttf            binary
+*.otf            binary
+*.eot            binary
+*.woff           binary
+*.woff2          binary
+
+# Large File Storage (LFS)
+*.ipa filter=lfs diff=lfs merge=lfs -text
+*.app filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.mobileprovision filter=lfs diff=lfs merge=lfs -text
+*.cer filter=lfs diff=lfs merge=lfs -text
+*.certSigningRequest filter=lfs diff=lfs merge=lfs -text
+*.p12 filter=lfs diff=lfs merge=lfs -text
+*.provisionprofile filter=lfs diff=lfs merge=lfs -text
+*.dSYM.zip filter=lfs diff=lfs merge=lfs -text
+*.sketch filter=lfs diff=lfs merge=lfs -text
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.ai filter=lfs diff=lfs merge=lfs -text
+*.fig filter=lfs diff=lfs merge=lfs -text
+*.xd filter=lfs diff=lfs merge=lfs -text
+
+# Documentation generation
+docs/            linguist-documentation

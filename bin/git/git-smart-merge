@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""
+Intelligent Git Branch Merge Script
+
+Automatically determines the optimal Git merge strategy (rebase vs merge)
+based on conflict detection and branch state analysis.
+"""
+
+import sys
+import subprocess
+import argparse
+from pathlib import Path
+
+
+EXIT_SUCCESS = 0
+EXIT_ERROR = 1
+EXIT_USAGE_ERROR = 2
+
+
+def log(message, prefix="[git-smart-merge]"):
+    """Print log message to stdout."""
+    print(f"{prefix} {message}")
+
+
+def log_error(message):
+    """Print error message to stderr."""
+    print(f"[git-smart-merge] ERROR: {message}", file=sys.stderr)
+
+
+def run_git_command(args, check=True, capture_output=True):
+    """Execute a git command and return result."""
+    try:
+        result = subprocess.run(
+            ["git"] + args,
+            capture_output=capture_output,
+            text=True,
+            check=check
+        )
+        return result
+    except subprocess.CalledProcessError as e:
+        return e
+
+
+def check_git_repository():
+    """Verify we're in a git repository."""
+    result = run_git_command(["rev-parse", "--git-dir"], check=False)
+    if result.returncode != 0:
+        log_error("Not a git repository")
+        return False
+    return True
+
+
+def check_uncommitted_changes():
+    """Check if there are uncommitted changes in the working directory."""
+    log("Checking repository state...")
+
+    result = run_git_command(["status", "--porcelain"], check=False)
+    if result.returncode != 0:
+        log_error("Failed to check git status")
+        return False
+
+    if result.stdout.strip():
+        log_error("Uncommitted changes detected. Commit or stash changes before merging.")
+        log("Run 'git status' to see uncommitted changes.")
+        return False
+
+    return True
+
+
+def fetch_remote_changes():
+    """Fetch latest remote changes."""
+    log("Fetching latest remote changes...")
+
+    result = run_git_command(["fetch"], check=False, capture_output=False)
+    if result.returncode != 0:
+        log("Warning: Failed to fetch remote changes. Continuing with local state.")
+        return False
+
+    return True
+
+
+def get_current_branch():
+    """Get the name of the current branch."""
+    result = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], check=False)
+    if result.returncode != 0:
+        log_error("Failed to get current branch")
+        return None
+
+    return result.stdout.strip()
+
+
+def branch_exists(branch_name):
+    """Check if a branch exists locally or remotely."""
+    local_check = run_git_command(["rev-parse", "--verify", branch_name], check=False)
+    if local_check.returncode == 0:
+        return True
+
+    remote_check = run_git_command(
+        ["rev-parse", "--verify", f"origin/{branch_name}"],
+        check=False
+    )
+    if remote_check.returncode == 0:
+        return True
+
+    return False
+
+
+def detect_conflicts(source_branch, current_branch):
+    """
+    Detect if merging source_branch would cause conflicts.
+    Uses git merge-tree to simulate the merge without touching the working tree.
+    """
+    log("Detecting conflicts...")
+
+    merge_base_result = run_git_command(
+        ["merge-base", current_branch, source_branch],
+        check=False
+    )
+
+    if merge_base_result.returncode != 0:
+        log("Warning: Could not find merge base. Branches may have diverged significantly.")
+        return True
+
+    merge_base = merge_base_result.stdout.strip()
+
+    merge_tree_result = run_git_command(
+        ["merge-tree", merge_base, current_branch, source_branch],
+        check=False
+    )
+
+    if merge_tree_result.returncode != 0:
+        log("Warning: Conflict detection failed. Falling back to merge strategy.")
+        return True
+
+    output = merge_tree_result.stdout
+
+    if "<<<<<" in output or "=====" in output or ">>>>>" in output:
+        conflicted_files = []
+        for line in output.split('\n'):
+            if line.startswith('+<<<<<<<') or line.startswith('-<<<<<<<'):
+                conflicted_files.append("conflict detected in merge simulation")
+                break
+
+        if conflicted_files or "<<<<<" in output:
+            log(f"Conflicts detected during analysis")
+            log("Rebase not safe, falling back to merge strategy")
+            return True
+
+    log("No conflicts detected")
+    return False
+
+
+def execute_rebase(source_branch, dry_run=False):
+    """Execute git rebase."""
+    if dry_run:
+        log(f"[DRY RUN] Would execute: git rebase {source_branch}")
+        return True
+
+    log(f"Strategy selected: rebase")
+    log(f"Executing rebase...")
+    log(f"Running: git rebase {source_branch}")
+
+    result = run_git_command(["rebase", source_branch], check=False, capture_output=False)
+
+    if result.returncode != 0:
+        log_error(f"Rebase failed with exit code {result.returncode}")
+        log("You may need to resolve conflicts manually.")
+        log("Run 'git rebase --abort' to cancel the rebase.")
+        return False
+
+    log("Rebase strategy chosen: no conflicts detected")
+    log("Operation completed successfully")
+    return True
+
+
+def execute_merge(source_branch, dry_run=False):
+    """Execute git merge --no-ff."""
+    if dry_run:
+        log(f"[DRY RUN] Would execute: git merge --no-ff {source_branch}")
+        return True
+
+    log(f"Strategy selected: merge")
+    log(f"Executing merge...")
+    log(f"Running: git merge --no-ff {source_branch}")
+
+    result = run_git_command(
+        ["merge", "--no-ff", source_branch, "-m", f"Merge branch '{source_branch}'"],
+        check=False,
+        capture_output=False
+    )
+
+    if result.returncode != 0:
+        log_error("Merge failed: manual conflict resolution required")
+        log("Resolve conflicts and run 'git merge --continue'")
+        log("Or run 'git merge --abort' to cancel the merge.")
+        return False
+
+    log("Merge strategy chosen: conflicts detected, rebase not safe")
+    log("Operation completed successfully")
+    return True
+
+
+def smart_merge(source_branch, force_rebase=False, force_merge=False, dry_run=False):
+    """Main logic for intelligent merge strategy selection."""
+
+    if not check_git_repository():
+        return EXIT_ERROR
+
+    if not dry_run and not check_uncommitted_changes():
+        return EXIT_ERROR
+
+    current_branch = get_current_branch()
+    if not current_branch:
+        return EXIT_ERROR
+
+    log(f"Current branch: {current_branch}")
+    log(f"Source branch: {source_branch}")
+
+    if not branch_exists(source_branch):
+        log_error(f"Branch '{source_branch}' not found")
+        return EXIT_ERROR
+
+    fetch_remote_changes()
+
+    if force_rebase:
+        log("Force rebase mode: attempting rebase without conflict check")
+        success = execute_rebase(source_branch, dry_run)
+        return EXIT_SUCCESS if success else EXIT_ERROR
+
+    if force_merge:
+        log("Force merge mode: skipping rebase analysis")
+        success = execute_merge(source_branch, dry_run)
+        return EXIT_SUCCESS if success else EXIT_ERROR
+
+    has_conflicts = detect_conflicts(source_branch, current_branch)
+
+    if dry_run:
+        if has_conflicts:
+            log("[DRY RUN] Strategy would be: merge (conflicts detected)")
+        else:
+            log("[DRY RUN] Strategy would be: rebase (no conflicts)")
+        return EXIT_SUCCESS
+
+    if has_conflicts:
+        success = execute_merge(source_branch, dry_run)
+    else:
+        success = execute_rebase(source_branch, dry_run)
+
+    return EXIT_SUCCESS if success else EXIT_ERROR
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Intelligently merge a Git branch using rebase or merge based on conflict detection.",
+        epilog="""
+Examples:
+  %(prog)s feature-branch              # Smart merge feature-branch into current branch
+  %(prog)s feature-branch --dry-run    # Show which strategy would be used
+  %(prog)s feature-branch --force-merge    # Force merge without trying rebase
+  %(prog)s feature-branch --force-rebase   # Force rebase without conflict check
+
+Exit codes:
+  0 - Success
+  1 - Error (conflicts, git failure, uncommitted changes)
+  2 - Usage error (missing arguments, invalid options)
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument(
+        "source_branch",
+        nargs="?",
+        help="Name of the branch to merge into the current branch"
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show which strategy would be used without executing"
+    )
+
+    parser.add_argument(
+        "--force-merge",
+        action="store_true",
+        help="Force merge strategy, skip rebase attempt"
+    )
+
+    parser.add_argument(
+        "--force-rebase",
+        action="store_true",
+        help="Force rebase strategy, skip conflict detection"
+    )
+
+    args = parser.parse_args()
+
+    if not args.source_branch:
+        parser.print_help()
+        print("\nError: source_branch is required", file=sys.stderr)
+        return EXIT_USAGE_ERROR
+
+    if args.force_merge and args.force_rebase:
+        log_error("Cannot use --force-merge and --force-rebase together")
+        return EXIT_USAGE_ERROR
+
+    try:
+        return smart_merge(
+            args.source_branch,
+            force_rebase=args.force_rebase,
+            force_merge=args.force_merge,
+            dry_run=args.dry_run
+        )
+    except KeyboardInterrupt:
+        log("\nOperation cancelled by user")
+        return EXIT_ERROR
+    except Exception as e:
+        log_error(f"Unexpected error: {e}")
+        return EXIT_ERROR
+
+
+if __name__ == "__main__":
+    sys.exit(main())

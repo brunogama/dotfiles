@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# validate-manifest - Validate LinkingManifest.json syntax and structure
+#
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+MANIFEST="LinkingManifest.json"
+
+if [[ ! -f "$MANIFEST" ]]; then
+    exit 0
+fi
+
+# Check JSON syntax
+if ! jq empty "$MANIFEST" 2>/dev/null; then
+    echo -e "${RED}ERROR: Invalid JSON in $MANIFEST${NC}"
+    echo "Run: jq . $MANIFEST"
+    exit 1
+fi
+
+# Check required fields
+REQUIRED_FIELDS=("links" "version")
+
+for field in "${REQUIRED_FIELDS[@]}"; do
+    if ! jq -e ".$field" "$MANIFEST" &>/dev/null; then
+        echo -e "${RED}ERROR: Missing required field '$field' in $MANIFEST${NC}"
+        exit 1
+    fi
+done
+
+echo -e "${GREEN}LinkingManifest.json is valid${NC}"
+exit 0

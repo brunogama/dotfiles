@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+
+# Environment Switcher
+# Switch between work and personal environments
+
+set -euo pipefail
+
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+ZSHENV="$HOME/.zshenv"
+OLD_MARKER="$HOME/.work-machine"
+
+# Migrate from old marker file system
+migrate_old_system() {
+    if [[ -f "$OLD_MARKER" ]]; then
+        echo -e "${YELLOW}Migrating from old marker file system...${NC}"
+        set_work_env
+        rm "$OLD_MARKER"
+        echo -e "${GREEN}Migration complete: Removed old marker file${NC}"
+        return 0
+    fi
+    return 1
+}
+
+# Get current environment from .zshenv
+get_current_env() {
+    if [[ -f "$ZSHENV" ]] && grep -q "^export DOTFILES_ENV=work" "$ZSHENV"; then
+        echo "work"
+    elif [[ -f "$ZSHENV" ]] && grep -q "^export DOTFILES_ENV=personal" "$ZSHENV"; then
+        echo "personal"
+    else
+        echo "personal"  # Default
+    fi
+}
+
+# Set work environment
+set_work_env() {
+    # Create .zshenv if it doesn't exist
+    touch "$ZSHENV"
+
+    # Remove any existing DOTFILES_ENV line
+    if grep -q "^export DOTFILES_ENV=" "$ZSHENV" 2>/dev/null; then
+        sed -i.bak '/^export DOTFILES_ENV=/d' "$ZSHENV" && rm "${ZSHENV}.bak"
+    fi
+
+    # Add work environment
+    echo "export DOTFILES_ENV=work" >> "$ZSHENV"
+}
+
+# Set personal environment (remove DOTFILES_ENV)
+set_personal_env() {
+    if [[ -f "$ZSHENV" ]]; then
+        # Remove DOTFILES_ENV line
+        if grep -q "^export DOTFILES_ENV=" "$ZSHENV"; then
+            sed -i.bak '/^export DOTFILES_ENV=/d' "$ZSHENV" && rm "${ZSHENV}.bak"
+        fi
+    fi
+}
+
+# Offer to reload shell
+offer_reload() {
+    echo ""
+    echo -e "${YELLOW}Reload your shell to apply changes:${NC}"
+    echo -e "   ${BLUE}exec zsh${NC}"
+    echo ""
+    read -p "Reload shell now? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        exec zsh
+    fi
+}
+
+# Main command handling
+case "${1:-status}" in
+    "work"|"on"|"enable")
+        migrate_old_system || true
+
+        current=$(get_current_env)
+        if [[ "$current" == "work" ]]; then
+            echo -e "${BLUE}Already in work environment${NC}"
+            exit 0
+        fi
+
+        set_work_env
+        echo -e "${GREEN}Switched to work environment${NC}"
+        echo -e "${BLUE}Prompt will show: ${YELLOW}WORK${NC}"
+        offer_reload
+        ;;
+
+    "personal"|"home"|"off"|"disable")
+        current=$(get_current_env)
+        if [[ "$current" == "personal" ]]; then
+            echo -e "${BLUE}Already in personal environment${NC}"
+            exit 0
+        fi
+
+        set_personal_env
+        echo -e "${GREEN}Switched to personal environment${NC}"
+        echo -e "${BLUE}Prompt will show: ${YELLOW}HOME:PERSONAL${NC}"
+        offer_reload
+        ;;
+
+    "status")
+        # Check for migration needed
+        if [[ -f "$OLD_MARKER" ]]; then
+            echo -e "${YELLOW}Old marker file detected: $OLD_MARKER${NC}"
+            echo -e "${YELLOW}   Run 'work-mode work' or 'work-mode personal' to migrate${NC}"
+            echo ""
+        fi
+
+        current=$(get_current_env)
+        if [[ "$current" == "work" ]]; then
+            echo -e "${GREEN}Current environment: WORK${NC}"
+            echo "   Variable: DOTFILES_ENV=work"
+            echo "   Config file: ~/.config/zsh/work-config.zsh"
+            echo "   Prompt shows: WORK (orange)"
+        else
+            echo -e "${BLUE}Current environment: PERSONAL${NC}"
+            echo "   Variable: DOTFILES_ENV not set (default)"
+            echo "   Config file: ~/.config/zsh/personal-config.zsh"
+            echo "   Prompt shows: HOME:PERSONAL (blue)"
+        fi
+        ;;
+
+    "help"|"-h"|"--help")
+        cat << 'EOF'
+Environment Switcher
+
+Switch between work and personal dotfiles environments.
+
+Usage: work-mode [COMMAND]
+
+COMMANDS:
+    work, on, enable          Switch to work environment
+    personal, home, off       Switch to personal environment
+    status                    Show current environment
+    help                      Show this help message
+
+EXAMPLES:
+    work-mode work           # Switch to work (shows "WORK" in prompt)
+    work-mode personal       # Switch to personal (shows "HOME:PERSONAL")
+    work-mode status         # Check which environment is active
+
+WHAT IT DOES:
+    - Work mode: Sets DOTFILES_ENV=work in ~/.zshenv
+    - Personal mode: Removes DOTFILES_ENV from ~/.zshenv
+    - Changes take effect after shell reload (exec zsh)
+    - Prompt indicator updates automatically
+
+NOTES:
+    - Safe to run multiple times
+    - Migrates from old ~/.work-machine marker system
+    - Preserves other content in ~/.zshenv
+
+EOF
+        ;;
+
+    *)
+        echo -e "${RED}Unknown command: $1${NC}"
+        echo "Run 'work-mode help' for usage"
+        exit 1
+        ;;
+esac

@@ -1,0 +1,260 @@
+#!/usr/bin/env bash
+#
+# dotfiles-help - Interactive help for dotfiles scripts
+#
+
+set -euo pipefail
+
+# Colors
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Detect repo root
+REPO_ROOT="${HOME}/.config"
+if [[ -d "$(pwd)/bin" ]]; then
+    REPO_ROOT="$(pwd)"
+fi
+
+usage() {
+    cat << EOF
+dotfiles-help - Interactive help for dotfiles scripts
+
+USAGE:
+    dotfiles-help              # Interactive menu
+    dotfiles-help <script>     # Help for specific script
+    dotfiles-help --search <keyword>  # Search scripts
+
+EXAMPLES:
+    dotfiles-help              # Launch interactive menu
+    dotfiles-help zsh-benchmark    # Show zsh-benchmark help
+    dotfiles-help --search sync    # Find sync-related scripts
+EOF
+}
+
+show_menu() {
+    clear
+    cat << EOF
+${BLUE}Dotfiles Scripts Help${NC}
+
+Select a category to see available scripts:
+
+  ${CYAN}1${NC}) Core Utilities (${GREEN}27 scripts${NC})
+  ${CYAN}2${NC}) Credential Management (${GREEN}8 scripts${NC})
+  ${CYAN}3${NC}) Git Utilities (${GREEN}23 scripts${NC})
+  ${CYAN}4${NC}) macOS Tools (${GREEN}3 scripts${NC})
+  ${CYAN}5${NC}) Performance Tools (${GREEN}4 scripts${NC})
+  ${CYAN}6${NC}) Search by keyword
+  ${CYAN}7${NC}) Show all scripts
+  ${CYAN}8${NC}) Quick reference
+  ${CYAN}0${NC}) Exit
+
+EOF
+    read -p "Choice: " choice
+
+    case "$choice" in
+        1) show_category "core" ;;
+        2) show_category "credentials" ;;
+        3) show_category "git" ;;
+        4) show_category "macos" ;;
+        5) show_performance ;;
+        6) search_scripts ;;
+        7) show_all ;;
+        8) show_quick_ref ;;
+        0) exit 0 ;;
+        *) echo "Invalid choice" ; sleep 1 ; show_menu ;;
+    esac
+}
+
+show_category() {
+    local category="$1"
+
+    clear
+    echo ""
+    echo -e "${GREEN}=== ${category^} Scripts ===${NC}"
+    echo ""
+
+    local count=0
+    for script in "$REPO_ROOT/bin/$category"/*; do
+        if [[ -x "$script" && -f "$script" ]]; then
+            local name=$(basename "$script")
+            local desc=$("$script" --help 2>&1 | head -1 || echo "$name")
+            printf "  ${YELLOW}%-30s${NC} %s\n" "$name" "$desc"
+            count=$((count + 1))
+        fi
+    done
+
+    echo ""
+    echo -e "${CYAN}Found $count scripts${NC}"
+    echo ""
+    read -p "Enter script name for details (or press Enter to continue): " script_name
+
+    if [[ -n "$script_name" ]] && [[ -x "$REPO_ROOT/bin/$category/$script_name" ]]; then
+        clear
+        "$REPO_ROOT/bin/$category/$script_name" --help 2>&1 | less
+    fi
+
+    show_menu
+}
+
+search_scripts() {
+    clear
+    read -p "Search keyword: " keyword
+
+    if [[ -z "$keyword" ]]; then
+        show_menu
+        return
+    fi
+
+    echo ""
+    echo -e "${GREEN}=== Results for '$keyword' ===${NC}"
+    echo ""
+
+    local found=0
+    find "$REPO_ROOT/bin" -type f -executable 2>/dev/null | while read script; do
+        if grep -qi "$keyword" "$script" 2>/dev/null; then
+            local name=$(basename "$script")
+            local category=$(basename "$(dirname "$script")")
+            echo -e "  ${YELLOW}$category/$name${NC}"
+            found=$((found + 1))
+        fi
+    done
+
+    echo ""
+    read -p "Press Enter to continue..."
+    show_menu
+}
+
+show_all() {
+    clear
+    echo ""
+    echo -e "${GREEN}=== All Scripts ===${NC}"
+    echo ""
+
+    find "$REPO_ROOT/bin" -type f -executable -exec basename {} \; 2>/dev/null | \
+        sort | \
+        column || find "$REPO_ROOT/bin" -type f -executable -exec basename {} \; 2>/dev/null | sort
+
+    echo ""
+    read -p "Press Enter to continue..."
+    show_menu
+}
+
+show_performance() {
+    clear
+    cat << EOF
+
+${GREEN}=== Performance Tools ===${NC}
+
+${YELLOW}zsh-benchmark${NC}
+  Measure shell startup time
+  Usage: zsh-benchmark [--detailed]
+
+${YELLOW}zsh-compile${NC}
+  Compile configs to bytecode (.zwc)
+  Usage: zsh-compile
+
+${YELLOW}zsh-trim-history${NC}
+  Reduce history from 100k to 10k entries
+  Usage: zsh-trim-history
+
+${YELLOW}update-dotfiles-scripts${NC}
+  Update scripts from dotfiles repo (background)
+  Usage: update-dotfiles-scripts
+
+EOF
+    read -p "Press Enter to continue..."
+    show_menu
+}
+
+show_quick_ref() {
+    clear
+    if [[ -f "$REPO_ROOT/docs/scripts/quick-reference.md" ]]; then
+        less "$REPO_ROOT/docs/scripts/quick-reference.md"
+    else
+        cat << EOF
+
+${GREEN}=== Quick Reference ===${NC}
+
+${CYAN}Most Used Scripts:${NC}
+
+  ${YELLOW}work-mode${NC}              Switch work/personal environments
+  ${YELLOW}syncenv${NC}                Sync dotfiles across machines
+  ${YELLOW}store-api-key${NC}          Store credentials securely (interactive)
+  ${YELLOW}get-api-key${NC}            Retrieve credentials
+  ${YELLOW}zsh-benchmark${NC}          Measure performance
+  ${YELLOW}conventional-commit${NC}    Guided git commits
+  ${YELLOW}link-dotfiles${NC}          Apply symlinks from manifest
+
+${CYAN}By Task:${NC}
+
+  Sync dotfiles:         ${YELLOW}syncenv${NC} or ${YELLOW}home-sync${NC}
+  Store secret:          ${YELLOW}store-api-key KEY_NAME${NC}
+  Speed up shell:        ${YELLOW}zsh-benchmark${NC} → ${YELLOW}zsh-compile${NC}
+  Git commit:            ${YELLOW}conventional-commit${NC}
+  Switch environment:    ${YELLOW}work-mode work${NC} or ${YELLOW}work-mode personal${NC}
+
+${CYAN}Documentation:${NC}
+
+  Full docs: $REPO_ROOT/docs/scripts/
+  README:    $REPO_ROOT/README.md
+  Onboarding: $REPO_ROOT/ONBOARDING.md
+
+EOF
+        read -p "Press Enter to continue..."
+    fi
+    show_menu
+}
+
+show_script_help() {
+    local script_name="$1"
+
+    # Search for script
+    local script_path=""
+    for category in core credentials git macos ide ios; do
+        if [[ -x "$REPO_ROOT/bin/$category/$script_name" ]]; then
+            script_path="$REPO_ROOT/bin/$category/$script_name"
+            break
+        fi
+    done
+
+    if [[ -n "$script_path" ]]; then
+        "$script_path" --help
+    else
+        echo "Script not found: $script_name"
+        echo "Run 'dotfiles-help' for interactive menu"
+        exit 1
+    fi
+}
+
+main() {
+    case "${1:-}" in
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --search)
+            if [[ -n "${2:-}" ]]; then
+                keyword="$2"
+                find "$REPO_ROOT/bin" -type f -executable 2>/dev/null | while read script; do
+                    if grep -qi "$keyword" "$script" 2>/dev/null; then
+                        echo "$(basename "$(dirname "$script")")/$(basename "$script")"
+                    fi
+                done
+            else
+                echo "ERROR: --search requires keyword"
+                exit 1
+            fi
+            ;;
+        "")
+            show_menu
+            ;;
+        *)
+            show_script_help "$1"
+            ;;
+    esac
+}
+
+main "$@"

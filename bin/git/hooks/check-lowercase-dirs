@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# check-lowercase-dirs - Check all directories are lowercase
+# Enforces MINDSET.MD Rule 1: All directories MUST be lowercase
+#
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Get all directories in repo (exclude .git, .claude, etc.)
+DIRS=$(find . -type d \
+    -not -path "./.git/*" \
+    -not -path "./.git" \
+    -not -path "./.claude/*" \
+    -not -path "./node_modules/*" \
+    -not -path "./.cache/*" \
+    | sed 's|^\./||' || true)
+
+FOUND=false
+
+for dir in $DIRS; do
+    # Check if directory name contains uppercase letters
+    if [[ "$dir" =~ [A-Z] ]]; then
+        echo -e "${RED}ERROR: Uppercase directory found: $dir${NC}"
+        echo "MINDSET.MD Rule 1: All directories MUST be lowercase"
+        FOUND=true
+    fi
+done
+
+if [[ "$FOUND" == "true" ]]; then
+    echo ""
+    echo -e "${YELLOW}Fix: Rename directories to lowercase${NC}"
+    echo "  Example: mv Directory directory"
+    echo ""
+    echo "See MINDSET.MD for constitutional rules"
+    exit 1
+fi
+
+exit 0

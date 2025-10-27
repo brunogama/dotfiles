@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# update-dotfiles-scripts - Update scripts from dotfiles repository
+# Version: 1.0
+#
+# Run manually to update scripts or schedule via cron/launchd.
+# Replaces inline auto-update logic that slowed shell startup.
+#
+
+set -euo pipefail
+
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+DOTFILES_REPO="${DOTFILES_REPO:-$HOME/.config-fixing-dot-files-bugs}"
+LOCAL_BIN="${LOCAL_BIN:-$HOME/.local/bin}"
+
+if [[ ! -d "$DOTFILES_REPO" ]]; then
+    echo -e "${RED}Error: Dotfiles repository not found: $DOTFILES_REPO${NC}" >&2
+    echo "Set DOTFILES_REPO environment variable or check path."
+    exit 1
+fi
+
+echo -e "${BLUE}Updating scripts from dotfiles repository...${NC}"
+echo ""
+
+# Check if bin directory exists
+if [[ ! -d "$DOTFILES_REPO/bin" ]]; then
+    echo -e "${YELLOW}Warning: No bin/ directory found in $DOTFILES_REPO${NC}"
+    exit 0
+fi
+
+# Ensure target directory exists
+mkdir -p "$LOCAL_BIN"
+
+# Count scripts
+SCRIPT_COUNT=$(find "$DOTFILES_REPO/bin" -type f -executable | wc -l | tr -d ' ')
+
+if [[ $SCRIPT_COUNT -eq 0 ]]; then
+    echo -e "${YELLOW}No executable scripts found in $DOTFILES_REPO/bin${NC}"
+    exit 0
+fi
+
+echo "Found $SCRIPT_COUNT script(s) to sync..."
+echo ""
+
+# Sync scripts (preserving directory structure under bin/)
+rsync -av --delete \
+    "$DOTFILES_REPO/bin/" \
+    "$LOCAL_BIN/" \
+    --exclude=".DS_Store" \
+    --exclude="*.md" \
+    | grep -v "/$" || true
+
+echo ""
+echo -e "${GREEN}✅ Scripts updated successfully!${NC}"
+echo ""
+echo -e "${BLUE}Updated location:${NC} $LOCAL_BIN"
+echo -e "${BLUE}Total scripts:${NC} $SCRIPT_COUNT"
+echo ""
+
+# Update timestamp marker
+touch "$LOCAL_BIN/.scripts-updated"
+
+echo -e "${BLUE}Tip:${NC} Scripts are now available in your PATH"
+echo -e "${BLUE}Tip:${NC} Run 'update-dotfiles-scripts' again to sync future changes"
