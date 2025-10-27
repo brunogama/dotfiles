@@ -19,7 +19,8 @@ if [[ -d "$HOME/.config-fixing-dot-files-bugs" ]]; then
         {
             if command -v update-dotfiles-scripts &>/dev/null; then
                 update-dotfiles-scripts &>/dev/null
-                # Clean old markers
+                # Clean old markers (use setopt NULL_GLOB to avoid error if no matches)
+                setopt LOCAL_OPTIONS NULL_GLOB
                 rm -f ~/.cache/zsh/scripts-checked-* 2>/dev/null
                 touch "$TODAY_MARKER"
             fi
