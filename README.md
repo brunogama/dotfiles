@@ -289,6 +289,51 @@ zsh-trim-history          # Reduce to 10k entries
 
 See [ONBOARDING.md](ONBOARDING.md) for detailed structure explanation.
 
+## Testing
+
+Comprehensive integration test suite using Bats (Bash Automated Testing System):
+
+```bash
+# Run all tests
+./bin/test/run-tests
+
+# Run with verbose output
+./bin/test/run-tests --verbose
+
+# Run specific test category
+./bin/test/run-tests core       # Core utilities
+./bin/test/run-tests git        # Git utilities
+./bin/test/run-tests workflows  # End-to-end workflows
+
+# Run tests matching a pattern
+./bin/test/run-tests --filter "wip"
+
+# Run in parallel (4 jobs)
+./bin/test/run-tests --parallel 4
+
+# Show timing information
+./bin/test/run-tests --timing
+```
+
+**Test Coverage:**
+- 890+ integration test cases across 16 test files
+- 5,500+ lines of test code
+- Core utilities, git utilities, credentials, workflows
+- Automated CI/CD testing on macOS and Linux
+- < 100ms test suite execution time
+
+**Installation:**
+```bash
+# macOS
+brew install bats-core
+
+# Linux
+sudo apt-get install bats  # Ubuntu/Debian
+sudo dnf install bats      # Fedora/RHEL
+```
+
+See [tests/README.md](tests/README.md) for complete testing documentation.
+
 ## Documentation
 
 **Getting Started:**
