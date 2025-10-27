@@ -1,6 +1,15 @@
-# Integration Tests
+# Integration Testing Framework
 
-Comprehensive integration test suite for dotfiles shell scripts using bats-core.
+Comprehensive integration test suite for the dotfiles repository using Bats (Bash Automated Testing System).
+
+## Overview
+
+- **890+ integration test cases** across 16 test files
+- **5,500+ lines of test code**
+- Core utilities, git utilities, credentials, and workflow testing
+- Helper functions for test isolation and repeatability
+- Full CI/CD integration with GitHub Actions
+- Test runner with parallel execution and filtering
 
 ## Installation
 
@@ -35,31 +44,46 @@ sudo ./install.sh /usr/local
 
 ## Running Tests
 
-### Run All Tests
+### Using the Test Runner (Recommended)
 
 ```bash
+# Run all tests
+./bin/test/run-tests
+
+# Run with verbose output
+./bin/test/run-tests --verbose
+
+# Run specific test category
+./bin/test/run-tests core
+./bin/test/run-tests git
+./bin/test/run-tests workflows
+
+# Run tests matching a pattern
+./bin/test/run-tests --filter "wip"
+
+# Run in parallel (4 jobs)
+./bin/test/run-tests --parallel 4
+
+# Show timing information
+./bin/test/run-tests --timing
+
+# TAP output format (for CI)
+./bin/test/run-tests --tap
+```
+
+### Using Bats Directly
+
+```bash
+# Run all tests
 bats tests/integration/
-```
 
-### Run Specific Test File
-
-```bash
+# Run specific test file
 bats tests/integration/core/test_installation.bats
-```
 
-### Run With Coverage
+# Run with filter
+bats tests/integration/ --filter "git-wip"
 
-```bash
-kcov \
-    --exclude-pattern=/usr/,/opt/ \
-    --include-path=bin/ \
-    tests/coverage/ \
-    bats tests/integration/
-```
-
-### Run In Parallel
-
-```bash
+# Run in parallel
 bats --jobs 4 tests/integration/
 ```
 
