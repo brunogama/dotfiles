@@ -269,6 +269,26 @@ Tasks are organized into phases for incremental delivery. Each task is small, ve
 
 **Validation**: Coverage report shows ≥95%, mypy passes
 
+### 6.3.1 Add CI Python Testing Job
+- [ ] Add `test-python` job to `.github/workflows/ci.yml`
+- [ ] Install uv and Python 3.11 in CI
+- [ ] Run pytest with coverage report
+- [ ] Verify minimum 91% coverage threshold
+- [ ] Run mypy --strict type checking
+- [ ] Upload coverage to Codecov
+
+**Validation**: CI workflow includes Python testing, job passes on main branch
+
+### 6.3.2 Add Mutation Testing
+- [ ] Install mutmut in CI pipeline
+- [ ] Configure mutmut to test home_sync modules
+- [ ] Run mutation tests on all core modules
+- [ ] Set minimum mutation score threshold (80%)
+- [ ] Generate HTML mutation test report
+- [ ] Upload mutation test results as artifacts
+
+**Validation**: Mutation testing job passes with ≥80% mutation score
+
 ### 6.4 Manual Testing - CLI Commands
 - [ ] Test: `home-sync --help`
 - [ ] Test: `home-sync version`
