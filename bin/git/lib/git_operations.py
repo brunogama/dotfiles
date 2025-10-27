@@ -13,7 +13,7 @@ from typing import Optional
 # Add parent's parent to path for bin/lib/ access
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from lib.git_common import GIT_TIMEOUT, GitError, console
+from git_common import GIT_TIMEOUT, GitError, console
 
 
 class Git:
