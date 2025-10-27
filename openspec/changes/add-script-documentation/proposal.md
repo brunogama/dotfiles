@@ -128,12 +128,12 @@ extract_help() {
     local script="$1"
     local category="$2"
     local name=$(basename "$script")
-    
+
     # Try to extract from usage() function or --help
     if "$script" --help 2>&1 | head -50; then
         return 0
     fi
-    
+
     # Or parse script header comments
     grep -A 20 "^# " "$script" | head -20 || echo "No help available"
 }
@@ -143,14 +143,14 @@ generate_category_doc() {
     local category="$1"
     local dir="bin/$category"
     local output="$OUTPUT_DIR/$category.md"
-    
+
     cat > "$output" << EOF
 # ${category^} Scripts
 
 Utilities in \`bin/$category/\`
 
 EOF
-    
+
     for script in "$dir"/*; do
         if [[ -x "$script" && -f "$script" ]]; then
             {
@@ -295,7 +295,7 @@ Select a category to see available scripts:
 
 EOF
     read -p "Choice: " choice
-    
+
     case "$choice" in
         1) show_category "core" ;;
         2) show_category "credentials" ;;
@@ -311,11 +311,11 @@ EOF
 
 show_category() {
     local category="$1"
-    
+
     echo ""
     echo "${GREEN}=== ${category^} Scripts ===${NC}"
     echo ""
-    
+
     for script in bin/"$category"/*; do
         if [[ -x "$script" ]]; then
             local name=$(basename "$script")
@@ -323,7 +323,7 @@ show_category() {
             printf "  ${YELLOW}%-25s${NC} %s\n" "$name" "$desc"
         fi
     done
-    
+
     echo ""
     read -p "Press Enter to continue..."
     show_menu
@@ -331,17 +331,17 @@ show_category() {
 
 search_scripts() {
     read -p "Search keyword: " keyword
-    
+
     echo ""
     echo "${GREEN}=== Results for '$keyword' ===${NC}"
     echo ""
-    
+
     grep -r "$keyword" bin/ --include="*" -l 2>/dev/null | while read script; do
         if [[ -x "$script" ]]; then
             echo "  - $(basename "$script")"
         fi
     done
-    
+
     echo ""
     read -p "Press Enter to continue..."
     show_menu
@@ -351,9 +351,9 @@ show_all() {
     echo ""
     echo "${GREEN}=== All Scripts ===${NC}"
     echo ""
-    
+
     find bin/ -type f -executable -exec basename {} \; | sort | column
-    
+
     echo ""
     read -p "Press Enter to continue..."
     show_menu
@@ -421,7 +421,7 @@ mkdir -p "$MAN_DIR"
 generate_man() {
     local script="$1"
     local name=$(basename "$script")
-    
+
     cat > "$MAN_DIR/$name.1" << EOF
 .TH ${name^^} 1 "$(date +%Y-%m-%d)" "Dotfiles Scripts"
 .SH NAME

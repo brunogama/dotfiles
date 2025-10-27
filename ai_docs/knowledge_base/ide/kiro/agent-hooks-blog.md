@@ -1,8 +1,8 @@
 # Automate Your Development Workflow with Kiro's AI Agent Hooks
 
-**Source**: https://kiro.dev/blog/automate-your-development-workflow-with-agent-hooks/  
-**Author**: MJ Kubba  
-**Date**: July 16, 2025  
+**Source**: https://kiro.dev/blog/automate-your-development-workflow-with-agent-hooks/
+**Author**: MJ Kubba
+**Date**: July 16, 2025
 **Last Updated**: 2025-10-13
 
 ## Overview

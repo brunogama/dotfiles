@@ -1,6 +1,6 @@
 # Custom Commands and Pre-defined Prompts in Kiro
 
-**Source**: https://kiro.dev/docs/hooks/ and related pages  
+**Source**: https://kiro.dev/docs/hooks/ and related pages
 **Last Updated**: 2025-10-13
 
 ## Overview
@@ -112,7 +112,7 @@ Review the current file for:
 ### Hook Examples
 
 #### Security Pre-Commit Scanner
-**Trigger Type:** File Save  
+**Trigger Type:** File Save
 **Target:** `**/*`
 
 ```text
@@ -133,7 +133,7 @@ For each issue found:
 ```
 
 #### Internationalization Helper
-**Trigger Type:** File Save  
+**Trigger Type:** File Save
 **Target:** `src/locales/en/*.json`
 
 ```text
@@ -158,7 +158,7 @@ Generate comprehensive documentation for the current file:
 ```
 
 #### Test Coverage Maintainer
-**Trigger Type:** File Save  
+**Trigger Type:** File Save
 **Target:** `src/**/*.{js,ts,jsx,tsx}`
 
 ```text
@@ -180,7 +180,7 @@ Agent Hooks can be enhanced with Model Context Protocol (MCP) capabilities:
 
 **Example: Validate Figma Design**
 
-**Trigger Type:** File Save Hook  
+**Trigger Type:** File Save Hook
 **Target:** `*.css` `*.html`
 
 ```text

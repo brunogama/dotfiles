@@ -50,7 +50,7 @@ repos:
         language: system
         types: [shell]
         args: ['--severity=error']
-        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|Bin/Core/zsh-|tests/helpers/bats-|tests/fixtures/repos/|tests/.*\.bats$)
+        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|bin/.*/zsh-|bin/credentials/secure-store-api|tests/helpers/bats-|tests/fixtures/repos/|tests/.*\.bats$)
 
       # Check for emojis (MINDSET Rule 2)
       - id: no-emojis

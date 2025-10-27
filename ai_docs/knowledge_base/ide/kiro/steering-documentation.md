@@ -1,6 +1,6 @@
 # Steering Documentation - Kiro
 
-**Source**: https://kiro.dev/docs/steering/  
+**Source**: https://kiro.dev/docs/steering/
 **Last Updated**: 2025-10-13
 
 ## What is Steering?

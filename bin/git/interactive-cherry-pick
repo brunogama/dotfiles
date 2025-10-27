@@ -23,7 +23,7 @@ def cherry_pick_commits(selected_shas):
     """Execute git cherry-pick for selected commits in order."""
     if not selected_shas:
         return
-    
+
     shas_str = ' '.join(selected_shas)
     try:
         subprocess.check_call(['git', 'cherry-pick'] + selected_shas)
@@ -38,29 +38,29 @@ def main(stdscr):
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_GREEN, -1)
     curses.init_pair(2, curses.COLOR_YELLOW, -1)
-    
+
     # Hide cursor
     curses.curs_set(0)
-    
+
     # Get git log
     commits = get_git_log()
-    
+
     # Initialize variables
     current_pos = 0
     selected_commits = []
-    
+
     while True:
         # Clear screen
         stdscr.clear()
-        
+
         # Display instructions
         stdscr.addstr(0, 0, "Use ↑/↓ to navigate, Enter to select, Q to finish", curses.A_BOLD)
         stdscr.addstr(1, 0, "Selected commits:", curses.A_BOLD)
-        
+
         # Display selected commits
         for i, sha in enumerate(selected_commits):
             stdscr.addstr(2 + i, 2, f"{i + 1}. {sha}", curses.color_pair(1))
-        
+
         # Display commit list
         start_y = 2 + len(selected_commits) + 1
         for i, (sha, msg) in enumerate(commits):
@@ -68,18 +68,18 @@ def main(stdscr):
                 attr = curses.A_REVERSE
             else:
                 attr = curses.A_NORMAL
-                
+
             if sha in selected_commits:
                 attr |= curses.color_pair(1)
-            
+
             stdscr.addstr(start_y + i, 0, f"{sha} {msg}"[:curses.COLS-1], attr)
-        
+
         # Refresh screen
         stdscr.refresh()
-        
+
         # Handle input
         key = stdscr.getch()
-        
+
         if key == ord('q') or key == ord('Q'):
             break
         elif key == curses.KEY_UP and current_pos > 0:
@@ -90,10 +90,10 @@ def main(stdscr):
             sha = commits[current_pos][0]
             if sha not in selected_commits:
                 selected_commits.append(sha)
-    
+
     # Clean up screen
     curses.endwin()
-    
+
     # Execute cherry-pick
     if selected_commits:
         print("Cherry-picking selected commits...")

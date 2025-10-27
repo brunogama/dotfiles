@@ -11,7 +11,7 @@ Currently, the shell prompt doesn't show whether you're using the work or home e
 
 ## Impact
 - Affected specs: `shell-environment`
-- Affected files: 
+- Affected files:
   - `config/zsh/.zshrc` - Add environment detection and sourcing logic
   - `config/zsh/work-config.zsh` - Uncomment and set WORK_ENV variable
   - `config/zsh/personal-config.zsh` - Already sets HOME_ENV correctly
