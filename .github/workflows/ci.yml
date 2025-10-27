@@ -243,8 +243,8 @@ jobs:
       - name: Set execute permissions
         run: |
           # Set permissions for all scripts in bin/ subdirectories
-          find bin/core bin/credentials bin/git bin/ide bin/macos bin/test -type f 2>/dev/null | xargs chmod +x
-          chmod +x tests/helpers/*.bash install
+          find bin/ -type f ! -path '*/\.*' 2>/dev/null | xargs chmod +x 2>/dev/null || true
+          chmod +x tests/helpers/*.bash install 2>/dev/null || true
 
       - name: Run integration tests
         run: |
@@ -283,8 +283,8 @@ jobs:
       - name: Set execute permissions
         run: |
           # Set permissions for all scripts in bin/ subdirectories
-          find bin/core bin/credentials bin/git bin/ide bin/macos bin/test -type f 2>/dev/null | xargs chmod +x
-          chmod +x tests/helpers/*.bash install
+          find bin/ -type f ! -path '*/\.*' 2>/dev/null | xargs chmod +x 2>/dev/null || true
+          chmod +x tests/helpers/*.bash install 2>/dev/null || true
 
       - name: Run integration tests
         run: |
