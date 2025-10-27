@@ -59,11 +59,33 @@ See `openspec/AGENTS.md` for complete workflow.
 
 ### Installation & Setup
 ```bash
-./install                    # Interactive installation (5-10 minutes)
+./install                    # Interactive installation (10-20 minutes)
 ./install --dry-run          # Preview changes
 ./install --yes              # Non-interactive mode
 link-dotfiles --dry-run      # Preview symlinks
 link-dotfiles --apply        # Apply symlinks from manifest
+```
+
+### Language Runtime Management
+The system uses official version managers for language runtimes:
+```bash
+# Python (pyenv)
+pyenv install --list         # List available Python versions
+pyenv install 3.11.5         # Install specific version
+pyenv global 3.11.5          # Set global default
+pyenv local 3.10.0           # Set project-specific version (.python-version)
+
+# Ruby (rbenv)
+rbenv install --list         # List available Ruby versions
+rbenv install 3.2.2          # Install specific version
+rbenv global 3.2.2           # Set global default
+rbenv local 3.1.0            # Set project-specific version (.ruby-version)
+
+# Node.js (nvm)
+nvm install --lts            # Install latest LTS version
+nvm install 18.16.0          # Install specific version
+nvm use 18.16.0              # Use specific version
+nvm alias default 18.16.0    # Set default version (.nvmrc supported)
 ```
 
 ### Testing
