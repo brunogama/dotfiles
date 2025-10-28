@@ -21,6 +21,22 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    """Custom formatter to capitalize section headers for test compatibility."""
+
+    def add_usage(self, usage, actions, groups, prefix=None):
+        if prefix is None:
+            prefix = 'Usage: '
+        return super().add_usage(usage, actions, groups, prefix)
+
+    def start_section(self, heading):
+        # Capitalize common section headers
+        if heading == 'options':
+            heading = 'Options'
+        elif heading == 'positional arguments':
+            heading = 'Positional Arguments'
+        return super().start_section(heading)
+
 VERSION = "2.0.0"
 
 # ANSI colors
@@ -108,6 +124,9 @@ class LinkManager:
         # Handle both "platform" (string) and "platforms" (array) from manifest
         if isinstance(platforms, str):
             platforms = [platforms]
+        # Handle "all" as a wildcard for all platforms
+        if "all" in platforms:
+            return True
         return self.platform in platforms
 
     def create_link(self, source: str, target: str, description: str = "") -> int:
@@ -165,9 +184,11 @@ class LinkManager:
 
         # Create the symlink
         if not self.dry_run:
+            self.log_verbose(f"DRY_RUN={self.dry_run} - Creating actual symlink")
             target_path.symlink_to(source_path)
             self.log_success(f"Created: {target_path} -> {source_path}")
         else:
+            self.log_verbose(f"DRY_RUN={self.dry_run} - Skipping symlink creation")
             self.log_info(f"Would create: {target_path} -> {source_path}")
 
         return 0
@@ -328,12 +349,13 @@ class LinkManager:
 def main():
     parser = argparse.ArgumentParser(
         description="Automated symlink creation from LinkingManifest.json",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=CustomHelpFormatter,
     )
+    # Override usage to start with capital "Usage" for test compatibility
+    # We'll customize the help text to match test expectations
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        default=True,
         help="Preview changes without applying (default)",
     )
     parser.add_argument(
@@ -348,6 +370,10 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
 
     args = parser.parse_args()
+
+    # Default to dry-run mode, unless --apply is specified
+    if not args.dry_run and not args.apply:
+        args.dry_run = True
 
     # If --apply is specified, turn off dry_run
     if args.apply:

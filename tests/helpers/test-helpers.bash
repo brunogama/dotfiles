@@ -3,7 +3,7 @@
 
 # Get the dotfiles root directory
 get_dotfiles_root() {
-    echo "${BATS_TEST_DIRNAME}/../.."
+    echo "${BATS_TEST_DIRNAME}/../../.."
 }
 
 # Run a script from bin/core/
