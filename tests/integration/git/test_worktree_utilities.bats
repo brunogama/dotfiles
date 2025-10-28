@@ -13,7 +13,7 @@ setup() {
     git_test_setup
 
     # Create initial commit on main branch
-    create_test_file "README.md" "# Test repo"
+    create_file_with_content "README.md" "# Test repo"
     git add README.md
     git commit -m "Initial commit"
 

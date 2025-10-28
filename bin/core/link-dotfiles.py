@@ -21,6 +21,22 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    """Custom formatter to capitalize section headers for test compatibility."""
+
+    def add_usage(self, usage, actions, groups, prefix=None):
+        if prefix is None:
+            prefix = 'Usage: '
+        return super().add_usage(usage, actions, groups, prefix)
+
+    def start_section(self, heading):
+        # Capitalize common section headers
+        if heading == 'options':
+            heading = 'Options'
+        elif heading == 'positional arguments':
+            heading = 'Positional Arguments'
+        return super().start_section(heading)
+
 VERSION = "2.0.0"
 
 # ANSI colors
@@ -84,8 +100,7 @@ class LinkManager:
         self.log_verbose("Checking prerequisites...")
 
         if not self.manifest_file.exists():
-            self.log_error(f"LinkingManifest.json not found at: {self.manifest_file}")
-            self.log_info("Make sure you're running from the dotfiles repository")
+            print("LinkingManifest.json not found", file=sys.stderr)
             return False
 
         try:
@@ -93,7 +108,7 @@ class LinkManager:
                 json.load(f)
             self.log_verbose("Manifest JSON is valid")
         except json.JSONDecodeError:
-            self.log_error("LinkingManifest.json contains invalid JSON")
+            print("invalid JSON", file=sys.stderr)
             return False
 
         return True
@@ -105,6 +120,12 @@ class LinkManager:
     def matches_platform(self, platforms: Optional[List[str]]) -> bool:
         """Check if link matches current platform."""
         if not platforms:
+            return True
+        # Handle both "platform" (string) and "platforms" (array) from manifest
+        if isinstance(platforms, str):
+            platforms = [platforms]
+        # Handle "all" as a wildcard for all platforms
+        if "all" in platforms:
             return True
         return self.platform in platforms
 
@@ -134,7 +155,7 @@ class LinkManager:
         if target_path.is_symlink():
             current_source = target_path.resolve()
             if current_source == source_path:
-                self.log_verbose(f"Already linked correctly: {target_path}")
+                self.log_info(f"Already linked: {target_path}")
                 return 2
 
             if not self.force and not self.yes and not self.dry_run:
@@ -163,9 +184,11 @@ class LinkManager:
 
         # Create the symlink
         if not self.dry_run:
+            self.log_verbose(f"DRY_RUN={self.dry_run} - Creating actual symlink")
             target_path.symlink_to(source_path)
             self.log_success(f"Created: {target_path} -> {source_path}")
         else:
+            self.log_verbose(f"DRY_RUN={self.dry_run} - Skipping symlink creation")
             self.log_info(f"Would create: {target_path} -> {source_path}")
 
         return 0
@@ -199,7 +222,7 @@ class LinkManager:
         with open(self.manifest_file) as f:
             manifest = json.load(f)
 
-        # Extract all links recursively
+        # Extract all links from complex manifest structure
         links = []
 
         def extract_links(obj):
@@ -222,7 +245,7 @@ class LinkManager:
             source = link["source"]
             target = link["target"]
             link_type = link.get("type", "file")
-            platforms = link.get("platforms")
+            platforms = link.get("platforms") or link.get("platform")  # Handle both formats
             optional = link.get("optional", False)
             executable = link.get("executable", False)
             description = link.get("description", "")
@@ -233,6 +256,18 @@ class LinkManager:
                 self.count_platform_skip += 1
                 continue
 
+            # Check if source exists for optional links
+            source_path = self.dotfiles_root / source
+            if not source_path.exists():
+                if optional:
+                    self.log_verbose(f"Skipped (optional, source missing): {target}")
+                    self.count_optional_skip += 1
+                    continue
+                else:
+                    self.log_error(f"Source not found: {target}")
+                    self.count_errors += 1
+                    continue
+
             # Handle different link types
             if link_type in ("file", "directory"):
                 ret = self.create_link(source, target, description)
@@ -241,12 +276,8 @@ class LinkManager:
                 elif ret == 2:
                     self.count_skipped += 1
                 else:
-                    if optional:
-                        self.log_verbose(f"Skipped (optional, source missing): {target}")
-                        self.count_optional_skip += 1
-                    else:
-                        self.log_error(f"Failed to link: {target}")
-                        self.count_errors += 1
+                    self.log_error(f"Failed to link: {target}")
+                    self.count_errors += 1
 
             elif link_type == "directory-contents":
                 self.process_directory_contents(source, target, executable)
@@ -318,12 +349,13 @@ class LinkManager:
 def main():
     parser = argparse.ArgumentParser(
         description="Automated symlink creation from LinkingManifest.json",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=CustomHelpFormatter,
     )
+    # Override usage to start with capital "Usage" for test compatibility
+    # We'll customize the help text to match test expectations
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        default=True,
         help="Preview changes without applying (default)",
     )
     parser.add_argument(
@@ -338,6 +370,10 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
 
     args = parser.parse_args()
+
+    # Default to dry-run mode, unless --apply is specified
+    if not args.dry_run and not args.apply:
+        args.dry_run = True
 
     # If --apply is specified, turn off dry_run
     if args.apply:

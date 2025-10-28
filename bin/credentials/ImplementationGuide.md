@@ -42,23 +42,23 @@
 @MainActor
 class AuthenticationViewController: UIViewController {
     @IBOutlet weak var cameraPreviewView: UIImageView!
-    
+
     private lazy var livenessManager = LivenessDetectionManager()
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupLivenessDetection()
     }
-    
+
     private func setupLivenessDetection() {
         // Check library requirements
         let requirements = livenessManager.getConfigurationRequirements(for: .uiBased)
-        
+
         if requirements.requiresUI {
             setupUIComponents()
         }
     }
-    
+
     private func setupUIComponents() {
         cameraPreviewView.contentMode = .scaleAspectFit
         cameraPreviewView.backgroundColor = .black
@@ -77,20 +77,20 @@ class AuthenticationViewController: UIViewController {
 class FaceTecAdapter: NSObject, LivenessDetectorAdapter {
     let libraryName = "FaceTec"
     let requiresUIConfiguration = true
-    
+
     private let analytics: LivenessAnalytics
     private var detectionContinuation: CheckedContinuation<LivenessResult, Never>?
-    
+
     init(analytics: LivenessAnalytics) {
         self.analytics = analytics
         super.init()
     }
-    
+
     func configure(with config: LivenessConfiguration) async throws {
         guard let uiConfig = config.uiConfiguration else {
             throw LivenessConfigurationError.missingUIConfiguration
         }
-        
+
         // Configure FaceTec with UI components
         FaceTecSDK.initialize(
             productionKeyText: getAPIKey(from: config.parameters),
@@ -101,26 +101,26 @@ class FaceTecAdapter: NSObject, LivenessDetectorAdapter {
             }
         }
     }
-    
+
     func startDetection(sessionId: String) async -> LivenessResult {
         return await withCheckedContinuation { continuation in
             self.detectionContinuation = continuation
-            
+
             // Start FaceTec session
             let sessionViewController = FaceTecSessionViewController()
             sessionViewController.delegate = self
-            
+
             configuredViewController?.present(sessionViewController, animated: true)
         }
     }
-    
+
     private func getAPIKey(from parameters: [String: SendableValue]) -> String {
         if case .string(let key) = parameters["apiKey"] {
             return key
         }
         return ""
     }
-    
+
     private func getLicenseKey(from parameters: [String: SendableValue]) -> String {
         if case .string(let key) = parameters["licenseKey"] {
             return key
@@ -145,14 +145,14 @@ extension FaceTecAdapter: FaceTecSessionDelegate {
                 libraryName: libraryName
             )
             detectionContinuation?.resume(returning: .success(success))
-            
+
         case .sessionUserCancelled:
             let error = createError(
                 category: .userAction,
                 message: "User cancelled the session"
             )
             detectionContinuation?.resume(returning: .failure(error))
-            
+
         default:
             let error = createError(
                 category: .processing,
@@ -160,7 +160,7 @@ extension FaceTecAdapter: FaceTecSessionDelegate {
             )
             detectionContinuation?.resume(returning: .failure(error))
         }
-        
+
         detectionContinuation = nil
     }
 }
@@ -173,18 +173,18 @@ extension FaceTecAdapter: FaceTecSessionDelegate {
 class iProovAdapter: LivenessDetectorAdapter {
     let libraryName = "iProov"
     let requiresUIConfiguration = true
-    
+
     private let analytics: LivenessAnalytics
-    
+
     func configure(with config: LivenessConfiguration) async throws {
         // Configure iProov
         IProov.setBaseURL(getBaseURL(from: config.parameters))
         IProov.setAPIKey(getAPIKey(from: config.parameters))
     }
-    
+
     func startDetection(sessionId: String) async -> LivenessResult {
         return await withCheckedContinuation { continuation in
-            
+
             IProov.launch(
                 type: .enrol,
                 token: sessionId,
@@ -201,7 +201,7 @@ class iProovAdapter: LivenessDetectorAdapter {
                         libraryName: self.libraryName
                     )
                     continuation.resume(returning: .success(success))
-                    
+
                 case .failure(let error):
                     let livenessError = LivenessError(
                         category: self.mapErrorCategory(error),
@@ -218,7 +218,7 @@ class iProovAdapter: LivenessDetectorAdapter {
             }
         }
     }
-    
+
     private func mapErrorCategory(_ error: IProovError) -> LivenessErrorCategory {
         switch error.type {
         case .networkError:
@@ -241,18 +241,18 @@ class iProovAdapter: LivenessDetectorAdapter {
 class OnfidoAdapter: LivenessDetectorAdapter {
     let libraryName = "Onfido"
     let requiresUIConfiguration = false
-    
+
     func configure(with config: LivenessConfiguration) async throws {
         let apiKey = getAPIKey(from: config.parameters)
         OnfidoConfig.configure(apiKey: apiKey)
     }
-    
+
     func startDetection(sessionId: String) async -> LivenessResult {
         do {
             let result = try await OnfidoSDK.shared.performLivenessCheck(
                 sessionId: sessionId
             )
-            
+
             return .success(LivenessSuccess(
                 confidence: result.confidence,
                 processingTime: result.duration,
@@ -261,7 +261,7 @@ class OnfidoAdapter: LivenessDetectorAdapter {
                 sessionId: sessionId,
                 libraryName: libraryName
             ))
-            
+
         } catch {
             return .failure(LivenessError(
                 category: mapErrorToCategory(error),
@@ -294,7 +294,7 @@ struct LibraryConfiguration {
     let apiKeys: [String: String]
     let endpoints: [String: String]
     let timeouts: [String: TimeInterval]
-    
+
     static func forEnvironment(_ env: Environment) -> LibraryConfiguration {
         switch env {
         case .development:
@@ -358,7 +358,7 @@ struct FeatureFlags {
     let threatDetection: Bool
     let performanceMonitoring: Bool
     let debugLogging: Bool
-    
+
     static let current = FeatureFlags(
         enhancedAnalytics: true,
         threatDetection: true,
@@ -370,12 +370,12 @@ struct FeatureFlags {
 class ConfigurableLibraryManager {
     private let configuration: LibraryConfiguration
     private let featureFlags: FeatureFlags
-    
+
     init(environment: Environment, featureFlags: FeatureFlags = .current) {
         self.configuration = LibraryConfiguration.forEnvironment(environment)
         self.featureFlags = featureFlags
     }
-    
+
     func createAnalytics() -> LivenessAnalytics {
         if featureFlags.enhancedAnalytics {
             return EnhancedLivenessAnalyticsImpl()
@@ -397,7 +397,7 @@ extension LivenessDetectionManager {
         from library: String,
         sessionId: String
     ) -> LivenessError {
-        
+
         // Map common error types
         switch error {
         case let nsError as NSError:
@@ -417,16 +417,16 @@ extension LivenessDetectionManager {
             )
         }
     }
-    
+
     private func mapNSError(
         _ error: NSError,
         library: String,
         sessionId: String
     ) -> LivenessError {
-        
+
         let category: LivenessErrorCategory
         let severity: LivenessErrorSeverity
-        
+
         switch error.domain {
         case NSURLErrorDomain:
             category = .network
@@ -441,7 +441,7 @@ extension LivenessDetectionManager {
             category = .unknown
             severity = .error
         }
-        
+
         return LivenessError(
             category: category,
             severity: severity,
@@ -456,15 +456,15 @@ extension LivenessDetectionManager {
             libraryName: library
         )
     }
-    
+
     private func mapURLError(
         _ error: URLError,
         library: String,
         sessionId: String
     ) -> LivenessError {
-        
+
         let category: LivenessErrorCategory
-        
+
         switch error.code {
         case .notConnectedToInternet, .networkConnectionLost:
             category = .network
@@ -475,7 +475,7 @@ extension LivenessDetectionManager {
         default:
             category = .network
         }
-        
+
         return LivenessError(
             category: category,
             severity: .error,
@@ -499,20 +499,20 @@ actor RetryManager {
     private var retryAttempts: [String: Int] = [:]
     private let maxRetries: Int = 3
     private let retryDelay: TimeInterval = 2.0
-    
+
     func shouldRetry(for sessionId: String) -> Bool {
         let attempts = retryAttempts[sessionId, default: 0]
         return attempts < maxRetries
     }
-    
+
     func recordAttempt(for sessionId: String) {
         retryAttempts[sessionId, default: 0] += 1
     }
-    
+
     func resetAttempts(for sessionId: String) {
         retryAttempts.removeValue(forKey: sessionId)
     }
-    
+
     func getRetryDelay(for sessionId: String) -> TimeInterval {
         let attempts = retryAttempts[sessionId, default: 0]
         return retryDelay * Double(attempts) // Exponential backoff
@@ -525,24 +525,24 @@ extension LivenessDetectionManager {
         in viewController: UIViewController,
         parameters: [String: SendableValue] = [:]
     ) async -> LivenessResult {
-        
+
         let sessionId = UUID().uuidString
         let retryManager = RetryManager()
-        
+
         while await retryManager.shouldRetry(for: sessionId) {
             await retryManager.recordAttempt(for: sessionId)
-            
+
             let result = await performLivenessDetection(
                 using: libraryType,
                 in: viewController,
                 parameters: parameters
             )
-            
+
             switch result {
             case .success:
                 await retryManager.resetAttempts(for: sessionId)
                 return result
-                
+
             case .failure(let error):
                 // Determine if error is retryable
                 if isRetryableError(error) {
@@ -554,7 +554,7 @@ extension LivenessDetectionManager {
                 }
             }
         }
-        
+
         // Max retries exceeded
         return .failure(LivenessError(
             category: .processing,
@@ -567,7 +567,7 @@ extension LivenessDetectionManager {
             libraryName: "RetryManager"
         ))
     }
-    
+
     private func isRetryableError(_ error: LivenessError) -> Bool {
         switch error.category {
         case .network, .timeout:
@@ -596,12 +596,12 @@ class FirebaseAnalyticsProvider: AnalyticsProvider {
     func track(event: String, parameters: [String: Any]) {
         Analytics.logEvent(event, parameters: parameters)
     }
-    
+
     func logError(error: Error, context: [String: Any]) {
         Crashlytics.crashlytics().log("Liveness Error: \(error.localizedDescription)")
         Crashlytics.crashlytics().setCustomKeysAndValues(context)
     }
-    
+
     func setUserProperty(key: String, value: Any) {
         Analytics.setUserProperty(String(describing: value), forName: key)
     }
@@ -609,17 +609,17 @@ class FirebaseAnalyticsProvider: AnalyticsProvider {
 
 class MixpanelAnalyticsProvider: AnalyticsProvider {
     private let mixpanel = Mixpanel.mainInstance()
-    
+
     func track(event: String, parameters: [String: Any]) {
         mixpanel.track(event: event, properties: parameters)
     }
-    
+
     func logError(error: Error, context: [String: Any]) {
         var errorParams = context
         errorParams["error_message"] = error.localizedDescription
         mixpanel.track(event: "Liveness_Error", properties: errorParams)
     }
-    
+
     func setUserProperty(key: String, value: Any) {
         mixpanel.people.set(property: key, to: value)
     }
@@ -631,19 +631,19 @@ class MixpanelAnalyticsProvider: AnalyticsProvider {
 ```swift
 class AggregatedAnalyticsProvider: AnalyticsProvider {
     private let providers: [AnalyticsProvider]
-    
+
     init(providers: [AnalyticsProvider]) {
         self.providers = providers
     }
-    
+
     func track(event: String, parameters: [String: Any]) {
         providers.forEach { $0.track(event: event, parameters: parameters) }
     }
-    
+
     func logError(error: Error, context: [String: Any]) {
         providers.forEach { $0.logError(error: error, context: context) }
     }
-    
+
     func setUserProperty(key: String, value: Any) {
         providers.forEach { $0.setUserProperty(key: key, value: value) }
     }
@@ -665,23 +665,23 @@ import Security
 
 class SecureConfigurationManager {
     private let keychain = Keychain(service: "com.yourapp.liveness")
-    
+
     func storeAPIKey(_ key: String, for library: String) throws {
         try keychain.set(key, key: "api_key_\(library)")
     }
-    
+
     func getAPIKey(for library: String) -> String? {
         return try? keychain.get("api_key_\(library)")
     }
-    
+
     func storeLicenseKey(_ key: String, for library: String) throws {
         try keychain.set(key, key: "license_key_\(library)")
     }
-    
+
     func getLicenseKey(for library: String) -> String? {
         return try? keychain.get("license_key_\(library)")
     }
-    
+
     func removeCredentials(for library: String) {
         try? keychain.remove("api_key_\(library)")
         try? keychain.remove("license_key_\(library)")
@@ -695,24 +695,24 @@ class SecureConfigurationManager {
 class ThreatDetectionManager {
     private let threatDetection = ThreatDetectionService()
     private let securityAnalytics: SecurityAnalyticsProvider
-    
+
     init(securityAnalytics: SecurityAnalyticsProvider) {
         self.securityAnalytics = securityAnalytics
     }
-    
+
     func analyzeLivenessFailure(
         error: LivenessError,
         context: [String: Any]
     ) async -> ThreatAssessment {
-        
+
         let threatIntel = await threatDetection.analyzeThreat(
             sessionId: error.sessionId,
             userIdentifier: context["user_id"] as? String,
             errorDetails: context
         )
-        
+
         let threatLevel = assessThreatLevel(threatIntel)
-        
+
         if threatLevel >= .high {
             await securityAnalytics.reportSecurityIncident(
                 type: .suspiciousBiometricActivity,
@@ -724,17 +724,17 @@ class ThreatDetectionManager {
                 ]
             )
         }
-        
+
         return ThreatAssessment(
             threatLevel: threatLevel,
             recommendedAction: getRecommendedAction(for: threatLevel),
             additionalContext: threatIntel
         )
     }
-    
+
     private func assessThreatLevel(_ threat: ThreatIntelligence) -> ThreatLevel {
         guard let confidence = threat.attackConfidenceScore else { return .low }
-        
+
         switch confidence {
         case 0.8...:
             return .critical
@@ -746,7 +746,7 @@ class ThreatDetectionManager {
             return .low
         }
     }
-    
+
     private func getRecommendedAction(for level: ThreatLevel) -> RecommendedAction {
         switch level {
         case .critical:
@@ -791,24 +791,24 @@ import XCTest
 @testable import LivenessFramework
 
 class LivenessFrameworkTests: XCTestCase {
-    
+
     var manager: LivenessDetectionManager!
     var mockAnalytics: MockAnalyticsProvider!
-    
+
     override func setUp() {
         super.setUp()
         mockAnalytics = MockAnalyticsProvider()
         manager = LivenessDetectionManager()
     }
-    
+
     func testLibraryConfiguration() {
         // Test configuration requirements
         let requirements = manager.getConfigurationRequirements(for: .delegateBased)
-        
+
         XCTAssertFalse(requirements.requiresUI)
         XCTAssertTrue(requirements.requiredParameters.contains("apiKey"))
     }
-    
+
     func testErrorMapping() {
         // Test error category mapping
         let networkError = URLError(.notConnectedToInternet)
@@ -817,14 +817,14 @@ class LivenessFrameworkTests: XCTestCase {
             from: "TestLibrary",
             sessionId: "test-session"
         )
-        
+
         XCTAssertEqual(mappedError.category, .network)
         XCTAssertEqual(mappedError.severity, .error)
     }
-    
+
     func testThreatDetection() async {
         let threatDetection = ThreatDetectionService()
-        
+
         let threat = await threatDetection.analyzeThreat(
             sessionId: "test-session",
             userIdentifier: "test-user",
@@ -833,7 +833,7 @@ class LivenessFrameworkTests: XCTestCase {
                 "confidence": 0.9
             ]
         )
-        
+
         XCTAssertEqual(threat.attackVector, .photo)
         XCTAssertNotNil(threat.attackConfidenceScore)
     }
@@ -844,15 +844,15 @@ class MockAnalyticsProvider: LivenessAnalytics {
     var loggedEvents: [LivenessAnalyticsEvent] = []
     var loggedErrors: [LivenessError] = []
     var loggedSuccesses: [LivenessSuccess] = []
-    
+
     func logEvent(_ event: LivenessAnalyticsEvent) async {
         loggedEvents.append(event)
     }
-    
+
     func logError(_ error: LivenessError) async {
         loggedErrors.append(error)
     }
-    
+
     func logSuccess(_ success: LivenessSuccess) async {
         loggedSuccesses.append(success)
     }
@@ -861,11 +861,11 @@ class MockAnalyticsProvider: LivenessAnalytics {
 class MockLibraryAdapter: LivenessDetectorAdapter {
     let libraryName = "MockLibrary"
     let requiresUIConfiguration = false
-    
+
     var configurationCalled = false
     var startDetectionCalled = false
     var stopDetectionCalled = false
-    
+
     var simulatedResult: LivenessResult = .failure(LivenessError(
         category: .unknown,
         severity: .error,
@@ -876,16 +876,16 @@ class MockLibraryAdapter: LivenessDetectorAdapter {
         sessionId: "mock-session",
         libraryName: "MockLibrary"
     ))
-    
+
     func configure(with config: LivenessConfiguration) async throws {
         configurationCalled = true
     }
-    
+
     func startDetection(sessionId: String) async -> LivenessResult {
         startDetectionCalled = true
         return simulatedResult
     }
-    
+
     func stopDetection() async {
         stopDetectionCalled = true
     }
@@ -896,13 +896,13 @@ class MockLibraryAdapter: LivenessDetectorAdapter {
 
 ```swift
 class LivenessIntegrationTests: XCTestCase {
-    
+
     func testFullDetectionFlow() async {
         let expectation = XCTestExpectation(description: "Detection completes")
-        
+
         let manager = LivenessDetectionManager()
         let mockViewController = UIViewController()
-        
+
         Task {
             let result = await manager.performLivenessDetection(
                 using: .delegateBased,
@@ -912,7 +912,7 @@ class LivenessIntegrationTests: XCTestCase {
                     "environment": .string("test")
                 ]
             )
-            
+
             switch result {
             case .success(let success):
                 XCTAssertNotNil(success.sessionId)
@@ -920,10 +920,10 @@ class LivenessIntegrationTests: XCTestCase {
             case .failure(let error):
                 XCTFail("Expected success, got error: \(error.message)")
             }
-            
+
             expectation.fulfill()
         }
-        
+
         await fulfillment(of: [expectation], timeout: 10.0)
     }
 }
@@ -933,14 +933,14 @@ class LivenessIntegrationTests: XCTestCase {
 
 ```swift
 class PerformanceTests: XCTestCase {
-    
+
     func testDetectionPerformance() {
         let manager = LivenessDetectionManager()
         let mockViewController = UIViewController()
-        
+
         measure {
             let expectation = XCTestExpectation(description: "Performance test")
-            
+
             Task {
                 _ = await manager.performLivenessDetection(
                     using: .delegateBased,
@@ -949,17 +949,17 @@ class PerformanceTests: XCTestCase {
                 )
                 expectation.fulfill()
             }
-            
+
             wait(for: [expectation], timeout: 5.0)
         }
     }
-    
+
     func testMemoryUsage() {
         let manager = LivenessDetectionManager()
-        
+
         // Measure memory before
         let initialMemory = getMemoryUsage()
-        
+
         // Perform multiple operations
         for i in 0..<100 {
             let sessionId = "test-session-\(i)"
@@ -973,24 +973,24 @@ class PerformanceTests: XCTestCase {
                 sessionId: sessionId,
                 libraryName: "TestLibrary"
             )
-            
+
             Task {
                 await manager.analytics.logError(error)
             }
         }
-        
+
         // Measure memory after
         let finalMemory = getMemoryUsage()
         let memoryDifference = finalMemory - initialMemory
-        
+
         // Assert reasonable memory usage
         XCTAssertLessThan(memoryDifference, 10_000_000) // 10MB threshold
     }
-    
+
     private func getMemoryUsage() -> Int64 {
         var info = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
-        
+
         let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
             $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
                 task_info(mach_task_self_,
@@ -999,7 +999,7 @@ class PerformanceTests: XCTestCase {
                          &count)
             }
         }
-        
+
         return kerr == KERN_SUCCESS ? Int64(info.resident_size) : 0
     }
 }

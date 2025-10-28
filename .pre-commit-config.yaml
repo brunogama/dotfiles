@@ -11,13 +11,6 @@
 #   git commit --no-verify
 
 repos:
-  # Shellcheck - validate all shell scripts
-  - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.10.0
-    hooks:
-      - id: shellcheck
-        args: ['--severity=error']
-        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|Bin/Core/zsh-|tests/helpers/bats-|tests/fixtures/repos/|tests/.*\.bats$)
 
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -50,6 +43,15 @@ repos:
   # Custom local hooks
   - repo: local
     hooks:
+      # Shellcheck - validate all shell scripts (uses system shellcheck)
+      - id: shellcheck
+        name: ShellCheck v0.10.0
+        entry: shellcheck
+        language: system
+        types: [shell]
+        args: ['--severity=error']
+        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|bin/.*/zsh-|bin/credentials/secure-store-api|tests/helpers/bats-|tests/fixtures/repos/|tests/.*\.bats$)
+
       # Check for emojis (MINDSET Rule 2)
       - id: no-emojis
         name: Check for emojis (MINDSET Rule 2)

@@ -32,7 +32,7 @@ log() {
     local message="$*"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
-    
+
     case "$level" in
         "ERROR") echo -e "${RED}[ERROR]${NC} $message" >&2 ;;
         "WARN")  echo -e "${YELLOW}[WARN]${NC} $message" ;;
@@ -144,19 +144,19 @@ update_domains() {
 # Dump current preferences
 dump_preferences() {
     local dry_run="${1:-false}"
-    
+
     if [[ "$dry_run" == "true" ]]; then
         log "INFO" "DRY RUN: Would dump preferences to $PREFS_DIR"
         return 0
     fi
-    
+
     log "INFO" "Dumping macOS preferences..."
-    
+
     # Ensure domains file exists
     if [[ ! -f "$DOMAINS_FILE" ]]; then
         update_domains
     fi
-    
+
     # Create comprehensive preference dump
     {
         echo "#!/usr/bin/env bash"
@@ -172,38 +172,38 @@ dump_preferences() {
         echo "echo 'Restoring macOS preferences...'"
         echo ""
     } > "$SYSTEM_PREFS"
-    
+
     # Counter for progress
     local total_domains=$(grep -v '^#' "$DOMAINS_FILE" | grep -v '^$' | wc -l | tr -d ' ')
     local current=0
-    
+
     # Process each domain
     while IFS= read -r domain; do
         # Skip comments and empty lines
         [[ "$domain" =~ ^#.*$ ]] || [[ -z "$domain" ]] && continue
-        
+
         current=$((current + 1))
         log "INFO" "Processing domain $current/$total_domains: $domain"
-        
+
         # Check if domain has any preferences
         if defaults read "$domain" &>/dev/null; then
             {
                 echo "# $domain preferences"
                 echo "echo 'Setting $domain preferences...'"
-                
+
                 # Get all preferences for this domain and convert to defaults write commands
                 defaults read "$domain" 2>/dev/null | while IFS= read -r line; do
                     # This is a simplified approach - in practice you'd want more sophisticated parsing
                     echo "# $line" | head -1
                 done
-                
+
                 echo ""
             } >> "$SYSTEM_PREFS"
         else
             log "DEBUG" "No preferences found for domain: $domain"
         fi
     done < "$DOMAINS_FILE"
-    
+
     # Add system restart recommendations
     {
         echo "# System restart recommendations"
@@ -222,10 +222,10 @@ dump_preferences() {
         echo ""
         echo "echo 'macOS preferences restoration complete!'"
     } >> "$SYSTEM_PREFS"
-    
+
     # Make script executable
     chmod +x "$SYSTEM_PREFS"
-    
+
     log "INFO" "Preferences dumped successfully!"
     log "INFO" "Restoration script: $SYSTEM_PREFS"
     log "INFO" "Total domains processed: $total_domains"
@@ -235,18 +235,18 @@ dump_preferences() {
 restore_preferences() {
     local dry_run="${1:-false}"
     local force="${2:-false}"
-    
+
     if [[ ! -f "$SYSTEM_PREFS" ]]; then
         log "ERROR" "No preferences file found. Run 'macos-prefs dump' first."
         return 1
     fi
-    
+
     if [[ "$dry_run" == "true" ]]; then
         log "INFO" "DRY RUN: Would execute restoration script:"
         log "INFO" "Script: $SYSTEM_PREFS"
         return 0
     fi
-    
+
     if [[ "$force" != "true" ]]; then
         echo -e "${YELLOW}This will modify your macOS system preferences.${NC}"
         echo -e "${YELLOW}It's recommended to create a backup first.${NC}"
@@ -258,10 +258,10 @@ restore_preferences() {
             return 0
         fi
     fi
-    
+
     log "INFO" "Creating backup before restoration..."
     backup_preferences
-    
+
     log "INFO" "Restoring macOS preferences..."
     if bash "$SYSTEM_PREFS"; then
         log "INFO" "Preferences restored successfully!"
@@ -275,13 +275,13 @@ restore_preferences() {
 backup_preferences() {
     local timestamp=$(date +%Y%m%d_%H%M%S)
     local backup_dir="$BACKUP_DIR/$timestamp"
-    
+
     log "INFO" "Creating backup: $backup_dir"
     mkdir -p "$backup_dir"
-    
+
     # Dump current preferences to backup
     PREFS_DIR="$backup_dir" dump_preferences false
-    
+
     log "INFO" "Backup created: $backup_dir"
 }
 
@@ -296,10 +296,10 @@ list_domains() {
     if [[ ! -f "$DOMAINS_FILE" ]]; then
         update_domains
     fi
-    
+
     log "INFO" "Tracked preference domains:"
     echo ""
-    
+
     while IFS= read -r domain; do
         if [[ "$domain" =~ ^#.*$ ]]; then
             echo -e "${BLUE}$domain${NC}"
@@ -319,7 +319,7 @@ main() {
     local dry_run=false
     local force=false
     local quiet=false
-    
+
     # Parse options
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -359,12 +359,12 @@ main() {
                 ;;
         esac
     done
-    
+
     # Set quiet mode
     if [[ "$quiet" == "true" ]]; then
         exec 1>/dev/null
     fi
-    
+
     # Execute command
     case "$command" in
         dump)

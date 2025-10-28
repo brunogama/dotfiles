@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Unified configuration validation utility
+
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# Colors
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m'
+
+usage() {
+    cat <<EOF
+Usage: validate-config [COMMAND] [OPTIONS]
+
+Commands:
+    manifest            Validate LinkingManifest.json
+    openspec            Validate OpenSpec proposals
+    shell-scripts       Validate shell scripts with shellcheck
+    all                 Validate everything
+    help                Show this help message
+
+Options:
+    --strict            Enable strict validation mode
+    --fix               Auto-fix issues where possible
+
+Examples:
+    validate-config manifest
+    validate-config shell-scripts --strict
+    validate-config all
+
+EOF
+}
+
+# Validate LinkingManifest.json
+validate_manifest() {
+    local manifest="${PROJECT_ROOT}/LinkingManifest.json"
+    local schema="${PROJECT_ROOT}/schemas/LinkingManifest.schema.json"
+
+    echo -e "${BLUE}Validating LinkingManifest.json...${NC}\n"
+
+    if [[ ! -f "${manifest}" ]]; then
+        echo -e "${RED}[ERROR]${NC} LinkingManifest.json not found"
+        return 1
+    fi
+
+    if [[ ! -f "${schema}" ]]; then
+        echo -e "${YELLOW}[WARNING]${NC}  Schema file not found at ${schema}"
+        echo -e "${YELLOW}[WARNING]${NC}  Skipping schema validation"
+        return 0
+    fi
+
+    # Check if jq can parse the JSON
+    if ! jq empty "${manifest}" 2>/dev/null; then
+        echo -e "${RED}[ERROR]${NC} Invalid JSON syntax in LinkingManifest.json"
+        return 1
+    fi
+
+    # Basic structural validation
+    local version
+    version=$(jq -r '.version' "${manifest}")
+
+    if [[ "${version}" == "null" ]] || [[ -z "${version}" ]]; then
+        echo -e "${RED}[ERROR]${NC} Missing version field"
+        return 1
+    fi
+
+    local links_count
+    links_count=$(jq -r '.links | length' "${manifest}")
+
+    echo -e "${GREEN}[OK]${NC} Valid JSON structure"
+    echo -e "${GREEN}[OK]${NC} Version: ${version}"
+    echo -e "${GREEN}[OK]${NC} Link categories: ${links_count}"
+
+    return 0
+}
+
+# Validate OpenSpec proposals
+validate_openspec() {
+    echo -e "${BLUE}Validating OpenSpec proposals...${NC}\n"
+
+    if ! command -v openspec &> /dev/null; then
+        echo -e "${YELLOW}[WARNING]${NC}  openspec command not found"
+        echo -e "${YELLOW}[WARNING]${NC}  Install openspec CLI to validate proposals"
+        return 0
+    fi
+
+    # Run openspec validation
+    if openspec validate --strict 2>&1; then
+        echo -e "\n${GREEN}[OK]${NC} All OpenSpec proposals are valid"
+        return 0
+    else
+        echo -e "\n${RED}[ERROR]${NC} OpenSpec validation failed"
+        return 1
+    fi
+}
+
+# Validate shell scripts
+validate_shell_scripts() {
+    local strict="${1:-false}"
+
+    echo -e "${BLUE}Validating shell scripts...${NC}\n"
+
+    if ! command -v shellcheck &> /dev/null; then
+        echo -e "${RED}[ERROR]${NC} shellcheck not installed"
+        echo -e "${YELLOW}->${NC} Install with: brew install shellcheck"
+        return 1
+    fi
+
+    local total_files=0
+    local failed_files=0
+    local errors=0
+    local warnings=0
+
+    # Find all shell scripts
+    while IFS= read -r -d '' script; do
+        ((total_files++))
+
+        # Run shellcheck with JSON output
+        local output exit_code=0
+        output=$(shellcheck -f json "${script}" 2>&1) || exit_code=$?
+
+        if (( exit_code == 0 )); then
+            echo -e "${GREEN}[OK]${NC} ${script#${PROJECT_ROOT}/}"
+        else
+            ((failed_files++))
+            echo -e "${RED}[ERROR]${NC} ${script#${PROJECT_ROOT}/}"
+
+            # Count errors and warnings from JSON output
+            local error_count warning_count
+            error_count=$(echo "${output}" | jq '[.[] | select(.level=="error")] | length' 2>/dev/null || echo 0)
+            warning_count=$(echo "${output}" | jq '[.[] | select(.level=="warning")] | length' 2>/dev/null || echo 0)
+
+            errors=$((errors + error_count))
+            warnings=$((warnings + warning_count))
+
+            # Show first few issues in human-readable format
+            echo "${output}" | jq -r '.[] | "\(.file):\(.line):\(.code) \(.level): \(.message)"' 2>/dev/null | head -10 || echo "${output}" | head -10
+            echo ""
+        fi
+    done < <(find "${PROJECT_ROOT}/bin" -type f -executable -print0 2>/dev/null || true)
+
+    # Summary
+    echo -e "\n${BLUE}Shell Script Validation Summary${NC}"
+    echo -e "  Total files:   ${total_files}"
+    echo -e "  Passed:        $((total_files - failed_files))"
+    echo -e "  Failed:        ${failed_files}"
+    echo -e "  Errors:        ${errors}"
+    echo -e "  Warnings:      ${warnings}"
+
+    if [[ "${strict}" == "true" ]] && (( warnings > 0 )); then
+        echo -e "\n${RED}[ERROR]${NC} Strict mode: Warnings treated as errors"
+        return 1
+    fi
+
+    if (( failed_files > 0 )); then
+        echo -e "\n${RED}[ERROR]${NC} Shell script validation failed"
+        return 1
+    else
+        echo -e "\n${GREEN}[OK]${NC} All shell scripts are valid"
+        return 0
+    fi
+}
+
+# Validate everything
+validate_all() {
+    local strict="${1:-false}"
+    local exit_code=0
+
+    echo -e "${BLUE}═══════════════════════════════════════${NC}"
+    echo -e "${BLUE}  Configuration Validation${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════${NC}\n"
+
+    # Validate manifest
+    if ! validate_manifest; then
+        exit_code=1
+    fi
+    echo ""
+
+    # Validate OpenSpec
+    if ! validate_openspec; then
+        exit_code=1
+    fi
+    echo ""
+
+    # Validate shell scripts
+    if ! validate_shell_scripts "${strict}"; then
+        exit_code=1
+    fi
+
+    echo -e "\n${BLUE}═══════════════════════════════════════${NC}"
+
+    if (( exit_code == 0 )); then
+        echo -e "${GREEN}[OK] All validations passed${NC}"
+    else
+        echo -e "${RED}[ERROR] Some validations failed${NC}"
+    fi
+
+    return ${exit_code}
+}
+
+# Main command dispatcher
+main() {
+    if [[ $# -eq 0 ]]; then
+        validate_all "false"
+        exit $?
+    fi
+
+    local command="${1}"
+    shift
+
+    local strict="false"
+    local fix="false"
+
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
+            --strict) strict="true"; shift ;;
+            --fix) fix="true"; shift ;;
+            *) echo "Unknown option: ${1}"; usage; exit 1 ;;
+        esac
+    done
+
+    case "${command}" in
+        manifest)
+            validate_manifest
+            ;;
+        openspec)
+            validate_openspec
+            ;;
+        shell-scripts)
+            validate_shell_scripts "${strict}"
+            ;;
+        all)
+            validate_all "${strict}"
+            ;;
+        help|--help|-h)
+            usage
+            ;;
+        *)
+            echo "Unknown command: ${command}"
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

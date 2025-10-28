@@ -89,7 +89,7 @@ jobs:
 
       - name: Test link-dotfiles
         run: |
-          bin/core/link-dotfiles --dry-run
+          bin/core/link-dotfiles.py --dry-run
 
       - name: Test script help messages
         run: |
@@ -120,7 +120,7 @@ jobs:
 
       - name: Test link-dotfiles
         run: |
-          bin/core/link-dotfiles --dry-run
+          bin/core/link-dotfiles.py --dry-run
 
   test-python:
     name: Test Python Packages
@@ -144,6 +144,7 @@ jobs:
       - name: Test home-sync package
         run: |
           cd bin/core/home_sync
+          uv venv
           uv pip install -e ".[dev]"
 
           # Run all tests with coverage
@@ -158,7 +159,7 @@ jobs:
           uv run mypy home_sync --strict
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./bin/core/home_sync/coverage.xml
           flags: home-sync
@@ -186,6 +187,7 @@ jobs:
       - name: Run mutation tests on home-sync
         run: |
           cd bin/core/home_sync
+          uv venv
           uv pip install -e ".[dev]"
           uv pip install mutmut
 
@@ -209,7 +211,7 @@ jobs:
           fi
 
       - name: Upload mutation test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mutation-test-results
@@ -237,16 +239,25 @@ jobs:
           git clone https://github.com/bats-core/bats-assert.git tests/helpers/bats-assert || true
           git clone https://github.com/bats-core/bats-file.git tests/helpers/bats-file || true
 
+      - name: Set execute permissions
+        run: |
+          # Set permissions for shell scripts only
+          find bin/ -type f \( -name "*.sh" -o -name "*.bash" -o -name "*.zsh" \) -exec chmod +x {} \; 2>/dev/null || true
+          find bin/ -type f -executable ! -path '*/\.*' | xargs chmod +x 2>/dev/null || true
+          chmod +x tests/helpers/*.bash install 2>/dev/null || true
+
       - name: Run integration tests
         run: |
-          ./bin/test/run-tests --tap
+          bash bin/test/run-tests --tap
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: integration-test-results-macos
-          path: test-results/
+          path: |
+            test-results/
+            reports/
 
   test-integration-linux:
     name: Integration Tests (Linux)
@@ -271,16 +282,25 @@ jobs:
           git clone https://github.com/bats-core/bats-assert.git tests/helpers/bats-assert || true
           git clone https://github.com/bats-core/bats-file.git tests/helpers/bats-file || true
 
+      - name: Set execute permissions
+        run: |
+          # Set permissions for shell scripts only
+          find bin/ -type f \( -name "*.sh" -o -name "*.bash" -o -name "*.zsh" \) -exec chmod +x {} \; 2>/dev/null || true
+          find bin/ -type f -executable ! -path '*/\.*' | xargs chmod +x 2>/dev/null || true
+          chmod +x tests/helpers/*.bash install 2>/dev/null || true
+
       - name: Run integration tests
         run: |
-          ./bin/test/run-tests --tap
+          bash bin/test/run-tests --tap
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: integration-test-results-linux
-          path: test-results/
+          path: |
+            test-results/
+            reports/
 
   documentation:
     name: Check Documentation

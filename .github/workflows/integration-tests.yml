@@ -1,0 +1,30 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, feature/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration-tests:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install bats-core
+        run: |
+          brew install bats-core shellcheck
+
+      - name: Run integration tests
+        run: |
+          bats tests/integration/*.bats
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Test execution completed. Check logs for details." >> $GITHUB_STEP_SUMMARY

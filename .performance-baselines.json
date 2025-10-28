@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "updated": "2025-10-27T11:14:24Z",
+  "metrics": {
+    "zsh-startup": {
+      "baseline_ms": 450,
+      "threshold_pct": 10,
+      "last_measured": 450,
+      "history": [
+        {
+          "timestamp": "2025-10-27T11:14:24Z",
+          "value": 450
+        }
+      ]
+    },
+    "script-execution": {
+      "baseline_ms": 0,
+      "threshold_pct": 15,
+      "last_measured": 0,
+      "history": []
+    },
+    "lazy-load-overhead": {
+      "baseline_ms": 0,
+      "threshold_pct": 20,
+      "last_measured": 0,
+      "history": []
+    }
+  }
+}

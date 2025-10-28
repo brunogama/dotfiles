@@ -73,23 +73,23 @@ script-name --help
 
 # Output format:
 # script-name - One-line description
-# 
+#
 # USAGE:
 #     script-name [OPTIONS] [ARGUMENTS]
-# 
+#
 # OPTIONS:
 #     --flag          Description
 #     --help, -h      Show this help
-# 
+#
 # EXAMPLES:
 #     script-name --flag value
-# 
+#
 # REQUIREMENTS:
 #     - dependency1
 #     - dependency2
-# 
+#
 # PLATFORM: darwin | linux | all
-# 
+#
 # SEE ALSO:
 #     related-script1, related-script2
 ```

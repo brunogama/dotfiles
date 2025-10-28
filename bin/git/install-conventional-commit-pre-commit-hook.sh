@@ -2,14 +2,14 @@
 
 source ${HOME}/.local/bin/prints
 GIT_DIR="$1"
-HOOKS_DIR=="$GIT_DIR/.git/hooks"
-    
+HOOKS_DIR="$GIT_DIR/.git/hooks"
+
 install_hook() {
     local repo_path="$1"
     DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
     local hook="$DOTFILES_ROOT/bin/git/git-hooks/pre-commit-conventional-commit-msg"
     local hooks_dir="$HOOKS_DIR"
-    
+
     mkdir -p "$hooks_dir"
 
     if [ -f "$hooks_dir/pre-commit" ]; then
@@ -31,7 +31,7 @@ install_hook() {
             echo "" >> "$hooks_dir/pre-commit"
             echo "# $0" >> "$hooks_dir/pre-commit"
             echo "$hook" >> "$hooks_dir/pre-commit"
-        fi        
+        fi
     else
         rm -rf "$hooks_dir/pre-commit"
         touch "$hooks_dir/pre-commit"
@@ -42,7 +42,7 @@ install_hook() {
     fi
 
     chmod +x "$hooks_dir/pre-commit"
-    
+
     psuccess "Installed ${BLUE}$0${GREEN} hook in ${repo_path}${NC}"
 }
 
@@ -60,10 +60,10 @@ install_hook "$GIT_DIR"
 # Check if repository has submodules
 if [ -f ".gitmodules" ]; then
     pwarning "Installing hooks in submodules..."
-    
+
     # Get all submodule paths
     submodules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-    
+
     # Install hook in each submodule
     for submodule in $submodules; do
         if [ -d "$submodule/.git" ]; then

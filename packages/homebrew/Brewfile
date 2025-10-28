@@ -49,6 +49,10 @@ brew "fastlane"
 brew "xcodegen"
 brew "ios-deploy"
 
+# Testing Tools
+brew "bats-core"
+brew "shellcheck"
+
 # Additional Tools
 brew "neovim"
 brew "watchman"  # React Native dependency

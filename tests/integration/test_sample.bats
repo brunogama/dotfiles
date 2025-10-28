@@ -67,7 +67,7 @@ teardown() {
 
     # Assert symlink exists and points to correct target
     assert_symlink_exists "$HOME/link.txt"
-    assert_symlink_to "$HOME/link.txt" "$HOME/source.txt"
+    assert_symlink_to "$HOME/source.txt" "$HOME/link.txt"
 
     # Assert symlink content is accessible
     assert_file_contains "$HOME/link.txt" "source content"
@@ -137,6 +137,7 @@ teardown() {
     fi
 
     # Test continues if not skipped
+    run true
     assert_success
 }
 

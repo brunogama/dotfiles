@@ -9,7 +9,7 @@ create_test_repo() {
     mkdir -p "$repo_path"
     cd "$repo_path" || return 1
 
-    git init
+    git init >/dev/null 2>&1
     git config user.email "test@example.com"
     git config user.name "Test User"
     git config init.defaultBranch "main"

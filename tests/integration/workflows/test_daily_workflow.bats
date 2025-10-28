@@ -13,7 +13,7 @@ setup() {
     git_test_setup
 
     # Create initial commit
-    create_test_file "README.md" "# Test repo"
+    create_file_with_content "README.md" "# Test repo"
     git add README.md
     git commit -m "Initial commit"
 
@@ -32,7 +32,7 @@ teardown() {
 }
 
 @test "daily workflow: sync with uncommitted changes" {
-    create_test_file "new-file.txt" "content"
+    create_file_with_content "new-file.txt" "content"
 
     run_core_script "syncenv" --dry-run
     # Should handle uncommitted changes
@@ -103,14 +103,14 @@ teardown() {
 # Git Workflow Tests
 
 @test "git workflow: create WIP commit" {
-    create_test_file "wip.txt" "work in progress"
+    create_file_with_content "wip.txt" "work in progress"
 
     run_git_script "git-wip.sh"
     assert_success
 }
 
 @test "git workflow: restore WIP" {
-    create_test_file "wip.txt" "work in progress"
+    create_file_with_content "wip.txt" "work in progress"
     run_git_script "git-wip.sh"
 
     # Reset to clean state
@@ -121,7 +121,7 @@ teardown() {
 }
 
 @test "git workflow: create savepoint" {
-    create_test_file "save.txt" "savepoint"
+    create_file_with_content "save.txt" "savepoint"
 
     run_git_script "git-save-all.sh"
     assert_success
@@ -136,7 +136,7 @@ teardown() {
 @test "git workflow: smart merge" {
     # Create feature branch
     git checkout -b feature/test
-    create_test_file "feature.txt" "feature work"
+    create_file_with_content "feature.txt" "feature work"
     git add feature.txt
     git commit -m "Add feature"
 
@@ -176,7 +176,7 @@ teardown() {
 
 @test "combined workflow: WIP -> switch env -> restore" {
     # Create WIP
-    create_test_file "wip.txt" "content"
+    create_file_with_content "wip.txt" "content"
     run_git_script "git-wip.sh"
     assert_success
 
@@ -191,7 +191,7 @@ teardown() {
 
 @test "combined workflow: savepoint -> modify -> restore" {
     # Create savepoint
-    create_test_file "original.txt" "original content"
+    create_file_with_content "original.txt" "original content"
     run_git_script "git-save-all.sh"
     assert_success
 
@@ -206,7 +206,7 @@ teardown() {
 @test "combined workflow: feature branch -> merge -> cleanup" {
     # Create feature
     git checkout -b feature/test-workflow
-    create_test_file "feature.txt" "feature"
+    create_file_with_content "feature.txt" "feature"
     git add feature.txt
     git commit -m "Add feature"
 
@@ -309,7 +309,7 @@ teardown() {
 
 @test "backup: savepoint before risky operation" {
     # Create savepoint
-    create_test_file "before.txt" "before"
+    create_file_with_content "before.txt" "before"
     run_git_script "git-save-all.sh"
     assert_success
 
@@ -321,12 +321,12 @@ teardown() {
 
 @test "backup: multiple savepoints maintained" {
     # First savepoint
-    create_test_file "v1.txt" "version 1"
+    create_file_with_content "v1.txt" "version 1"
     run_git_script "git-save-all.sh"
     assert_success
 
     # Second savepoint
-    create_test_file "v2.txt" "version 2"
+    create_file_with_content "v2.txt" "version 2"
     run_git_script "git-save-all.sh"
     assert_success
 
@@ -388,7 +388,7 @@ teardown() {
 # Exit Code Tests
 
 @test "exit codes: successful WIP returns 0" {
-    create_test_file "test.txt" "content"
+    create_file_with_content "test.txt" "content"
 
     run_git_script "git-wip.sh"
     assert_equal "$status" 0

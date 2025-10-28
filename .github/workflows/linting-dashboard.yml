@@ -1,0 +1,116 @@
+name: Linting Dashboard
+
+on:
+  push:
+    branches: [ main, feature/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-dashboard:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install shellcheck jq bc
+
+      - name: Run linting dashboard
+        id: lint
+        run: |
+          chmod +x bin/core/lint-dashboard
+          bin/core/lint-dashboard run --save-metrics | tee lint-output.txt
+
+          # Extract metrics for reporting
+          TOTAL=$(grep "Total files:" lint-output.txt | awk '{print $3}')
+          PASSED=$(grep "Passed:" lint-output.txt | grep -oE '[0-9]+' | head -1)
+          FAILED=$(grep "Failed:" lint-output.txt | grep -oE '[0-9]+' | head -1)
+          ERRORS=$(grep "Errors:" lint-output.txt | grep -oE '[0-9]+' | head -1)
+          WARNINGS=$(grep "Warnings:" lint-output.txt | grep -oE '[0-9]+' | head -1)
+          SCORE=$(grep "Quality Score:" lint-output.txt | grep -oE '[0-9]+\.[0-9]+')
+
+          echo "total=${TOTAL}" >> $GITHUB_OUTPUT
+          echo "passed=${PASSED}" >> $GITHUB_OUTPUT
+          echo "failed=${FAILED}" >> $GITHUB_OUTPUT
+          echo "errors=${ERRORS}" >> $GITHUB_OUTPUT
+          echo "warnings=${WARNINGS}" >> $GITHUB_OUTPUT
+          echo "score=${SCORE}" >> $GITHUB_OUTPUT
+
+      - name: Generate PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const score = '${{ steps.lint.outputs.score }}';
+            const total = '${{ steps.lint.outputs.total }}';
+            const passed = '${{ steps.lint.outputs.passed }}';
+            const failed = '${{ steps.lint.outputs.failed }}';
+            const errors = '${{ steps.lint.outputs.errors }}';
+            const warnings = '${{ steps.lint.outputs.warnings }}';
+
+            const scoreEmoji = parseFloat(score) >= 90 ? '[PASS]' : parseFloat(score) >= 70 ? '[WARN]' : '[FAIL]';
+
+            const body = `## ${scoreEmoji} Linting Dashboard Results
+
+            **Quality Score**: ${score}%
+
+            | Metric | Count |
+            |--------|-------|
+            | Total Files | ${total} |
+            | Passed | ${passed} |
+            | Failed | ${failed} |
+            | Errors | ${errors} |
+            | Warnings | ${warnings} |
+
+            ${parseFloat(score) < 90 ? 'WARNING: Quality score below 90%. Please address linting issues.' : 'All linting checks passed!'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Upload linting metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linting-metrics
+          path: |
+            tests/quality-metrics.json
+            lint-output.txt
+          retention-days: 90
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Linting Dashboard Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Quality Score**: ${{ steps.lint.outputs.score }}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Files | ${{ steps.lint.outputs.total }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Passed | ${{ steps.lint.outputs.passed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Failed | ${{ steps.lint.outputs.failed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Errors | ${{ steps.lint.outputs.errors }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Warnings | ${{ steps.lint.outputs.warnings }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Quality gate check
+        # TODO: Raise threshold incrementally as technical debt is reduced
+        # Current baseline: 44.9% | Target: 80%
+        run: |
+          SCORE=${{ steps.lint.outputs.score }}
+          THRESHOLD=40
+          if (( $(echo "$SCORE < $THRESHOLD" | bc -l) )); then
+            echo "Quality score (${SCORE}%) is below threshold (${THRESHOLD}%)"
+            exit 1
+          fi
+          echo "Quality score (${SCORE}%) passed threshold check"

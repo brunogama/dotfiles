@@ -18,7 +18,7 @@ setup() {
     export HOOKS_DIR="$dotfiles_root/bin/git/hooks"
 
     # Create initial commit
-    create_test_file "README.md" "# Test"
+    create_file_with_content "README.md" "# Test"
     git add README.md
     git commit -m "Initial commit"
 }
@@ -31,7 +31,7 @@ teardown() {
 
 @test "check-lowercase-dirs: passes with lowercase directories" {
     mkdir -p src/components
-    create_test_file "src/components/button.js" "export default {}"
+    create_file_with_content "src/components/button.js" "export default {}"
     git add src/
 
     run "$HOOKS_DIR/check-lowercase-dirs"
@@ -40,7 +40,7 @@ teardown() {
 
 @test "check-lowercase-dirs: fails with uppercase directory" {
     mkdir -p SRC
-    create_test_file "SRC/file.js" "content"
+    create_file_with_content "SRC/file.js" "content"
     git add SRC/
 
     run "$HOOKS_DIR/check-lowercase-dirs"
@@ -50,7 +50,7 @@ teardown() {
 
 @test "check-lowercase-dirs: fails with mixed case directory" {
     mkdir -p Src/Components
-    create_test_file "Src/Components/button.js" "content"
+    create_file_with_content "Src/Components/button.js" "content"
     git add Src/
 
     run "$HOOKS_DIR/check-lowercase-dirs"
@@ -59,7 +59,7 @@ teardown() {
 
 @test "check-lowercase-dirs: checks nested directories" {
     mkdir -p lowercase/UpperCase/nested
-    create_test_file "lowercase/UpperCase/nested/file.txt" "content"
+    create_file_with_content "lowercase/UpperCase/nested/file.txt" "content"
     git add lowercase/
 
     run "$HOOKS_DIR/check-lowercase-dirs"
@@ -74,7 +74,7 @@ teardown() {
 # Check-no-emojis Hook Tests
 
 @test "check-no-emojis: passes without emojis" {
-    create_test_file "test.txt" "No emojis here"
+    create_file_with_content "test.txt" "No emojis here"
     git add test.txt
 
     run "$HOOKS_DIR/check-no-emojis"
@@ -82,7 +82,7 @@ teardown() {
 }
 
 @test "check-no-emojis: fails with emoji in file content" {
-    create_test_file "emoji.txt" "Hello 👋 world"
+    create_file_with_content "emoji.txt" "Hello 👋 world"
     git add emoji.txt
 
     run "$HOOKS_DIR/check-no-emojis"
@@ -96,9 +96,9 @@ teardown() {
 
 @test "check-no-emojis: detects various emoji types" {
     # Test different emoji categories
-    create_test_file "test1.txt" "Smiling face 😀"
-    create_test_file "test2.txt" "Heart ❤️"
-    create_test_file "test3.txt" "Rocket 🚀"
+    create_file_with_content "test1.txt" "Smiling face 😀"
+    create_file_with_content "test2.txt" "Heart ❤️"
+    create_file_with_content "test3.txt" "Rocket 🚀"
     git add test1.txt test2.txt test3.txt
 
     run "$HOOKS_DIR/check-no-emojis"
@@ -158,7 +158,7 @@ EOF
 }
 
 @test "validate-manifest: skips when manifest not changed" {
-    create_test_file "other.txt" "content"
+    create_file_with_content "other.txt" "content"
     git add other.txt
 
     run "$HOOKS_DIR/validate-manifest"
@@ -168,7 +168,7 @@ EOF
 # Validate-openspec Hook Tests
 
 @test "validate-openspec: skips when no openspec changes" {
-    create_test_file "regular.txt" "content"
+    create_file_with_content "regular.txt" "content"
     git add regular.txt
 
     run "$HOOKS_DIR/validate-openspec"
@@ -198,7 +198,7 @@ EOF
 @test "hooks: can be bypassed with --no-verify" {
     # Create uppercase directory
     mkdir -p UPPERCASE
-    create_test_file "UPPERCASE/file.txt" "content"
+    create_file_with_content "UPPERCASE/file.txt" "content"
     git add UPPERCASE/
 
     # Commit with --no-verify should succeed
@@ -210,7 +210,7 @@ EOF
 
 @test "check-lowercase-dirs: exits 0 when passing" {
     mkdir -p lowercase
-    create_test_file "lowercase/file.txt" "content"
+    create_file_with_content "lowercase/file.txt" "content"
     git add lowercase/
 
     run "$HOOKS_DIR/check-lowercase-dirs"
@@ -219,7 +219,7 @@ EOF
 
 @test "check-lowercase-dirs: exits non-zero when failing" {
     mkdir -p UPPERCASE
-    create_test_file "UPPERCASE/file.txt" "content"
+    create_file_with_content "UPPERCASE/file.txt" "content"
     git add UPPERCASE/
 
     run "$HOOKS_DIR/check-lowercase-dirs"
@@ -227,7 +227,7 @@ EOF
 }
 
 @test "check-no-emojis: exits 0 when passing" {
-    create_test_file "clean.txt" "No emojis"
+    create_file_with_content "clean.txt" "No emojis"
     git add clean.txt
 
     run "$HOOKS_DIR/check-no-emojis"
@@ -235,7 +235,7 @@ EOF
 }
 
 @test "check-no-emojis: exits non-zero when failing" {
-    create_test_file "emoji.txt" "Has emoji 😀"
+    create_file_with_content "emoji.txt" "Has emoji 😀"
     git add emoji.txt
 
     run "$HOOKS_DIR/check-no-emojis"
@@ -246,7 +246,7 @@ EOF
 
 @test "check-lowercase-dirs: provides helpful error message" {
     mkdir -p BadDirectory
-    create_test_file "BadDirectory/file.txt" "content"
+    create_file_with_content "BadDirectory/file.txt" "content"
     git add BadDirectory/
 
     run "$HOOKS_DIR/check-lowercase-dirs"
@@ -255,7 +255,7 @@ EOF
 }
 
 @test "check-no-emojis: identifies emoji locations" {
-    create_test_file "emoji-file.txt" "Content with emoji 🚀"
+    create_file_with_content "emoji-file.txt" "Content with emoji 🚀"
     git add emoji-file.txt
 
     run "$HOOKS_DIR/check-no-emojis"
@@ -271,7 +271,7 @@ EOF
     # Create many files
     for i in {1..100}; do
         mkdir -p "dir$i"
-        create_test_file "dir$i/file.txt" "content $i"
+        create_file_with_content "dir$i/file.txt" "content $i"
     done
     git add .
 
