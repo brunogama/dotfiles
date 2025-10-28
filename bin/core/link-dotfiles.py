@@ -105,6 +105,9 @@ class LinkManager:
         """Check if link matches current platform."""
         if not platforms:
             return True
+        # Handle both "platform" (string) and "platforms" (array) from manifest
+        if isinstance(platforms, str):
+            platforms = [platforms]
         return self.platform in platforms
 
     def create_link(self, source: str, target: str, description: str = "") -> int:
@@ -133,7 +136,7 @@ class LinkManager:
         if target_path.is_symlink():
             current_source = target_path.resolve()
             if current_source == source_path:
-                self.log_verbose(f"Already linked correctly: {target_path}")
+                self.log_info(f"Already linked: {target_path}")
                 return 2
 
             if not self.force and not self.yes and not self.dry_run:
@@ -198,7 +201,7 @@ class LinkManager:
         with open(self.manifest_file) as f:
             manifest = json.load(f)
 
-        # Extract all links recursively
+        # Extract all links from complex manifest structure
         links = []
 
         def extract_links(obj):
@@ -221,7 +224,7 @@ class LinkManager:
             source = link["source"]
             target = link["target"]
             link_type = link.get("type", "file")
-            platforms = link.get("platforms")
+            platforms = link.get("platforms") or link.get("platform")  # Handle both formats
             optional = link.get("optional", False)
             executable = link.get("executable", False)
             description = link.get("description", "")
@@ -232,6 +235,18 @@ class LinkManager:
                 self.count_platform_skip += 1
                 continue
 
+            # Check if source exists for optional links
+            source_path = self.dotfiles_root / source
+            if not source_path.exists():
+                if optional:
+                    self.log_verbose(f"Skipped (optional, source missing): {target}")
+                    self.count_optional_skip += 1
+                    continue
+                else:
+                    self.log_error(f"Source not found: {target}")
+                    self.count_errors += 1
+                    continue
+
             # Handle different link types
             if link_type in ("file", "directory"):
                 ret = self.create_link(source, target, description)
@@ -240,12 +255,8 @@ class LinkManager:
                 elif ret == 2:
                     self.count_skipped += 1
                 else:
-                    if optional:
-                        self.log_verbose(f"Skipped (optional, source missing): {target}")
-                        self.count_optional_skip += 1
-                    else:
-                        self.log_error(f"Failed to link: {target}")
-                        self.count_errors += 1
+                    self.log_error(f"Failed to link: {target}")
+                    self.count_errors += 1
 
             elif link_type == "directory-contents":
                 self.process_directory_contents(source, target, executable)
