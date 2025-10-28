@@ -156,11 +156,10 @@ jobs:
       - name: Run mypy strict type checking
         run: |
           cd bin/core/home_sync
-          source .venv/bin/activate
           uv run mypy home_sync --strict
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./bin/core/home_sync/coverage.xml
           flags: home-sync
@@ -242,8 +241,9 @@ jobs:
 
       - name: Set execute permissions
         run: |
-          # Set permissions for all scripts in bin/ subdirectories
-          find bin/ -type f ! -path '*/\.*' 2>/dev/null | xargs chmod +x 2>/dev/null || true
+          # Set permissions for shell scripts only
+          find bin/ -type f \( -name "*.sh" -o -name "*.bash" -o -name "*.zsh" \) -exec chmod +x {} \; 2>/dev/null || true
+          find bin/ -type f -executable ! -path '*/\.*' | xargs chmod +x 2>/dev/null || true
           chmod +x tests/helpers/*.bash install 2>/dev/null || true
 
       - name: Run integration tests
@@ -255,7 +255,9 @@ jobs:
         if: always()
         with:
           name: integration-test-results-macos
-          path: test-results/
+          path: |
+            test-results/
+            reports/
 
   test-integration-linux:
     name: Integration Tests (Linux)
@@ -282,8 +284,9 @@ jobs:
 
       - name: Set execute permissions
         run: |
-          # Set permissions for all scripts in bin/ subdirectories
-          find bin/ -type f ! -path '*/\.*' 2>/dev/null | xargs chmod +x 2>/dev/null || true
+          # Set permissions for shell scripts only
+          find bin/ -type f \( -name "*.sh" -o -name "*.bash" -o -name "*.zsh" \) -exec chmod +x {} \; 2>/dev/null || true
+          find bin/ -type f -executable ! -path '*/\.*' | xargs chmod +x 2>/dev/null || true
           chmod +x tests/helpers/*.bash install 2>/dev/null || true
 
       - name: Run integration tests
@@ -295,7 +298,9 @@ jobs:
         if: always()
         with:
           name: integration-test-results-linux
-          path: test-results/
+          path: |
+            test-results/
+            reports/
 
   documentation:
     name: Check Documentation
