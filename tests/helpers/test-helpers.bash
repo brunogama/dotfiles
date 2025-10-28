@@ -2,8 +2,54 @@
 # Core test helper functions for bats integration tests
 
 # Get the dotfiles root directory
+# This function works in both local development and CI environments
 get_dotfiles_root() {
-    echo "${BATS_TEST_DIRNAME}/../../.."
+    local dotfiles_root=""
+
+    # Method 1: Try the original relative path (works when run directly)
+    if [[ -n "${BATS_TEST_DIRNAME}" ]]; then
+        local candidate="${BATS_TEST_DIRNAME}/../../.."
+        if [[ -d "$candidate/bin" ]] && [[ -d "$candidate/tests" ]]; then
+            dotfiles_root="$(cd "$candidate" && pwd)"
+            echo "$dotfiles_root"
+            return 0
+        fi
+    fi
+
+    # Method 2: Check if we're already in the repository root (test runner changes to root)
+    if [[ -f "./LinkingManifest.json" ]] && [[ -d "./bin" ]] && [[ -d "./tests" ]]; then
+        dotfiles_root="$(pwd)"
+        echo "$dotfiles_root"
+        return 0
+    fi
+
+    # Method 3: Look for git repository root
+    if command -v git >/dev/null 2>&1; then
+        local git_root
+        git_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+        if [[ -n "$git_root" ]] && [[ -d "$git_root/bin" ]] && [[ -d "$git_root/tests" ]]; then
+            dotfiles_root="$git_root"
+            echo "$dotfiles_root"
+            return 0
+        fi
+    fi
+
+    # Method 4: Fallback to searching parent directories
+    local current_dir="$(pwd)"
+    while [[ "$current_dir" != "/" ]]; do
+        if [[ -f "$current_dir/LinkingManifest.json" ]] && [[ -d "$current_dir/bin" ]] && [[ -d "$current_dir/tests" ]]; then
+            dotfiles_root="$current_dir"
+            echo "$dotfiles_root"
+            return 0
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+
+    # If all methods fail, error out
+    echo "ERROR: Could not determine dotfiles root directory" >&2
+    echo "BATS_TEST_DIRNAME: ${BATS_TEST_DIRNAME:-not set}" >&2
+    echo "Current directory: $(pwd)" >&2
+    return 1
 }
 
 # Run a script from bin/core/
