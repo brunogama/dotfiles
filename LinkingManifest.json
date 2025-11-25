@@ -117,7 +117,7 @@
       "core": [
         {
           "source": "bin/core/",
-          "target": "~/.local/bin",
+          "target": "~/local/bin",
           "description": "Core utility scripts",
           "type": "directory-contents",
           "executable": true,
@@ -127,7 +127,7 @@
       "credentials": [
         {
           "source": "bin/credentials/",
-          "target": "~/.local/bin",
+          "target": "~/local/bin",
           "description": "Credential management scripts",
           "type": "directory-contents",
           "executable": true
@@ -136,14 +136,14 @@
       "git": [
         {
           "source": "bin/git/",
-          "target": "~/.local/bin",
+          "target": "~/local/bin",
           "description": "Git utility scripts",
           "type": "directory-contents",
           "executable": true
         },
         {
           "source": "bin/git/lib/",
-          "target": "~/.local/bin/git/lib",
+          "target": "~/local/bin/git/lib",
           "description": "Git library modules",
           "type": "directory"
         }
@@ -151,7 +151,7 @@
       "lib": [
         {
           "source": "bin/lib/",
-          "target": "~/.local/bin/lib",
+          "target": "~/local/bin/lib",
           "description": "Shared library modules",
           "type": "directory"
         }
@@ -159,7 +159,7 @@
       "ide": [
         {
           "source": "bin/ide/",
-          "target": "~/.local/bin",
+          "target": "~/local/bin",
           "description": "IDE integration scripts",
           "type": "directory-contents",
           "executable": true
@@ -168,7 +168,7 @@
       "ios": [
         {
           "source": "bin/ios/",
-          "target": "~/.local/bin",
+          "target": "~/local/bin",
           "description": "iOS development scripts",
           "type": "directory-contents",
           "executable": true,
@@ -178,7 +178,7 @@
       "macos": [
         {
           "source": "bin/macos/",
-          "target": "~/.local/bin",
+          "target": "~/local/bin",
           "description": "macOS-specific utility scripts",
           "type": "directory-contents",
           "executable": true,
