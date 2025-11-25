@@ -235,3 +235,47 @@ path=(
 
 # To customize prompt, run `p10k configure` or edit ~/.config/zsh/.p10k.zsh.
 [[ ! -f ~/.config/zsh/.p10k.zsh ]] || source ~/.config/zsh/.p10k.zsh
+
+# Context Window Manager Aliases
+# =============================================================================
+export CTX_MANAGER_PATH="/Users/bruno/Developer/deep-researchs/commands/context-window-management-command"
+export CTX_STORAGE_BASE="/Users/bruno/ai_data"
+
+# Context Window Management aliases
+alias ctx-manager='python3 $CTX_MANAGER_PATH/context_storage_manager.py'
+alias ctx-stats='python3 $CTX_MANAGER_PATH/context_storage_manager.py stats'
+alias ctx-search='python3 $CTX_MANAGER_PATH/context_storage_manager.py search'
+alias ctx-store='python3 $CTX_MANAGER_PATH/context_storage_manager.py store'
+alias ctx-examples='python3 $CTX_MANAGER_PATH/examples.py'
+alias ctx-setup='bash $CTX_MANAGER_PATH/setup.sh'
+
+# PromptKit Aliases
+# =============================================================================
+export PROMPTKIT_PATH="/Users/bruno/Developer/Inbox/PromptKit"
+export PROMPTKIT_STORAGE_BASE="/Users/bruno/ai_data"
+
+# Context Window Management aliases
+alias pk-manager='python3 $PROMPTKIT_PATH/promptkit.py'
+alias pk-stats='python3 $PROMPTKIT_PATH/promptkit.py stats'
+alias pk-search='python3 $PROMPTKIT_PATH/promptkit.py search'
+alias pk-store='python3 $PROMPTKIT_PATH/promptkit.py store'
+alias pk-examples='python3 $PROMPTKIT_PATH/promptkit_examples.py'
+alias pk-setup='bash $PROMPTKIT_PATH/setup.sh'
+
+kimi-cc() {
+    export ANTHROPIC_AUTH_TOKEN=$(get-api-key KIMI_API_KEY)
+	export ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic
+	export ANTHROPIC_MODEL=kimi-k2-thinking
+	export ANTHROPIC_DEFAULT_OPUS_MODEL=kimi-k2-thinking-turbo
+	export ANTHROPIC_DEFAULT_SONNET_MODEL=kimi-k2-thinking-turbo
+	export ANTHROPIC_DEFAULT_HAIKU_MODEL=kimi-k2-thinking-turbo
+	export CLAUDE_CODE_SUBAGENT_MODEL=kimi-k2-thinking-turbo
+	claude $@
+}
+
+set-default-shell() {
+	brew install zsh
+	echo "/opt/homebrew/bin/zsh" | sudo tee -a /etc/shells
+	chsh -s $(which zsh)
+	echo "Default shell set to $(which zsh)"
+}
