@@ -464,9 +464,38 @@ phase_pyenv() {
 
     local pyenv_root="$HOME/.pyenv"
 
-    if [[ -d "$pyenv_root" ]]; then
+    # Check if pyenv is properly installed (has libexec directory with pyenv executable)
+    if [[ -d "$pyenv_root" ]] && [[ -f "$pyenv_root/libexec/pyenv" ]]; then
         log_success "pyenv is already installed"
+        
+        # Add to PATH and initialize for this session
+        export PYENV_ROOT="$pyenv_root"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)"
+        
+        # Check if any Python version is installed
+        if pyenv versions --bare 2>/dev/null | grep -q .; then
+            log_info "Python versions: $(pyenv versions --bare | tr '\n' ' ')"
+        else
+            log_warning "No Python versions installed via pyenv"
+            if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest Python version?"; then
+                local latest_python
+                latest_python=$(pyenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
+                if [[ -n "$latest_python" ]]; then
+                    log_info "Installing Python $latest_python..."
+                    if pyenv install "$latest_python" && pyenv global "$latest_python"; then
+                        log_success "Python $latest_python installed and set as default"
+                    fi
+                fi
+            fi
+        fi
         return 0
+    fi
+
+    # Remove incomplete installation if it exists
+    if [[ -d "$pyenv_root" ]]; then
+        log_warning "Found incomplete pyenv installation, removing..."
+        rm -rf "$pyenv_root"
     fi
 
     log_warning "pyenv is not installed"
@@ -507,7 +536,8 @@ phase_pyenv() {
     log_info "Installing Python $latest_python (this may take a few minutes)..."
     if pyenv install "$latest_python" && pyenv global "$latest_python"; then
         log_success "Python $latest_python installed and set as global default"
-        python --version 2>/dev/null && log_info "Verified: $(python --version)"
+        pyenv rehash
+        log_info "Verified: $(pyenv version)"
     else
         log_warning "Failed to install Python version"
     fi
@@ -519,9 +549,44 @@ phase_rbenv() {
 
     local rbenv_root="$HOME/.rbenv"
 
-    if [[ -d "$rbenv_root" ]]; then
+    # Check if rbenv is properly installed (has libexec directory with rbenv executable)
+    if [[ -d "$rbenv_root" ]] && [[ -f "$rbenv_root/libexec/rbenv" ]]; then
         log_success "rbenv is already installed"
+        
+        # Add to PATH and initialize for this session
+        export PATH="$rbenv_root/bin:$PATH"
+        eval "$(rbenv init - bash)"
+        
+        # Check if any Ruby version is installed
+        if rbenv versions --bare 2>/dev/null | grep -q .; then
+            log_info "Ruby versions: $(rbenv versions --bare | tr '\n' ' ')"
+        else
+            log_warning "No Ruby versions installed via rbenv"
+            if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest Ruby version?"; then
+                # Ensure ruby-build plugin exists
+                if [[ ! -d "$rbenv_root/plugins/ruby-build" ]]; then
+                    log_info "Installing ruby-build plugin..."
+                    git clone https://github.com/rbenv/ruby-build.git "$rbenv_root/plugins/ruby-build"
+                fi
+                
+                local latest_ruby
+                latest_ruby=$(rbenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
+                if [[ -n "$latest_ruby" ]]; then
+                    log_info "Installing Ruby $latest_ruby..."
+                    if rbenv install "$latest_ruby" && rbenv global "$latest_ruby"; then
+                        log_success "Ruby $latest_ruby installed and set as default"
+                        gem install bundler && rbenv rehash
+                    fi
+                fi
+            fi
+        fi
         return 0
+    fi
+
+    # Remove incomplete installation if it exists
+    if [[ -d "$rbenv_root" ]]; then
+        log_warning "Found incomplete rbenv installation, removing..."
+        rm -rf "$rbenv_root"
     fi
 
     log_warning "rbenv is not installed"
@@ -574,7 +639,7 @@ phase_rbenv() {
         gem install bundler && rbenv rehash
         log_success "bundler installed"
 
-        ruby --version 2>/dev/null && log_info "Verified: $(ruby --version)"
+        log_info "Verified: $(rbenv version)"
     else
         log_warning "Failed to install Ruby version"
     fi
@@ -586,9 +651,35 @@ phase_nvm() {
 
     local nvm_dir="$HOME/.nvm"
 
-    if [[ -d "$nvm_dir" ]]; then
+    # Check if nvm is properly installed (has nvm.sh script)
+    if [[ -d "$nvm_dir" ]] && [[ -f "$nvm_dir/nvm.sh" ]]; then
         log_success "nvm is already installed"
+        
+        # Source nvm for this session
+        export NVM_DIR="$nvm_dir"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        
+        # Check if any Node version is installed
+        if nvm ls 2>/dev/null | grep -q 'v[0-9]'; then
+            local current_version
+            current_version=$(nvm current 2>/dev/null || echo "none")
+            log_info "Node.js versions installed, current: $current_version"
+        else
+            log_warning "No Node.js versions installed via nvm"
+            if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest LTS Node.js?"; then
+                log_info "Installing latest LTS Node.js..."
+                if nvm install --lts && nvm alias default 'lts/*'; then
+                    log_success "Node.js $(nvm current) installed and set as default"
+                fi
+            fi
+        fi
         return 0
+    fi
+
+    # Remove incomplete installation if it exists
+    if [[ -d "$nvm_dir" ]]; then
+        log_warning "Found incomplete nvm installation, removing..."
+        rm -rf "$nvm_dir"
     fi
 
     log_warning "nvm is not installed"
@@ -604,7 +695,7 @@ phase_nvm() {
         return 0
     fi
 
-    log_info "Installing nvm..."
+    log_info "Installing nvm via official installer..."
     if curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash; then
         log_success "nvm installed to $nvm_dir"
     else
