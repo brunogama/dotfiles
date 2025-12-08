@@ -165,16 +165,6 @@
           "executable": true
         }
       ],
-      "ios": [
-        {
-          "source": "bin/ios/",
-          "target": "~/local/bin",
-          "description": "iOS development scripts",
-          "type": "directory-contents",
-          "executable": true,
-          "platforms": ["darwin"]
-        }
-      ],
       "macos": [
         {
           "source": "bin/macos/",

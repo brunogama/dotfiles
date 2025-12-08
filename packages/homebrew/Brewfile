@@ -25,17 +25,18 @@ brew "ripgrep"
 brew "bat"
 brew "eza"
 brew "fd"
+brew "dust"
+brew "zoxide"
+brew "git-delta"
 brew "ncdu"
 brew "tldr"
 brew "httpie"
-brew "tree"
 
 # Testing Tools
 brew "bats-core"  # Bash Automated Testing System
 brew "kcov"       # Code coverage for shell scripts
 
 # Git Tools
-brew "git-lfs"
 brew "git-secrets"
 brew "git-extras"  # Includes git-ignore and git-standup
 brew "git-flow"
