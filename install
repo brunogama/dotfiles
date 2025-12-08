@@ -475,7 +475,10 @@ phase_pyenv() {
         
         # Check if any Python version is installed
         if pyenv versions --bare 2>/dev/null | grep -q .; then
+            local current_python
+            current_python=$(pyenv version 2>/dev/null | cut -d' ' -f1)
             log_info "Python versions: $(pyenv versions --bare | tr '\n' ' ')"
+            log_success "Current global Python: $current_python"
         else
             log_warning "No Python versions installed via pyenv"
             if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest Python version?"; then
@@ -559,7 +562,10 @@ phase_rbenv() {
         
         # Check if any Ruby version is installed
         if rbenv versions --bare 2>/dev/null | grep -q .; then
+            local current_ruby
+            current_ruby=$(rbenv version 2>/dev/null | cut -d' ' -f1)
             log_info "Ruby versions: $(rbenv versions --bare | tr '\n' ' ')"
+            log_success "Current global Ruby: $current_ruby"
         else
             log_warning "No Ruby versions installed via rbenv"
             if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest Ruby version?"; then
@@ -663,7 +669,8 @@ phase_nvm() {
         if nvm ls 2>/dev/null | grep -q 'v[0-9]'; then
             local current_version
             current_version=$(nvm current 2>/dev/null || echo "none")
-            log_info "Node.js versions installed, current: $current_version"
+            log_info "Node.js versions installed"
+            log_success "Current global Node: $current_version"
         else
             log_warning "No Node.js versions installed via nvm"
             if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest LTS Node.js?"; then
