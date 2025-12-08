@@ -7,7 +7,7 @@
 # AUTO-UPDATE (Background, cached daily)
 # ============================================================================
 # Check once per day - runs in background to not block startup
-if [[ -d "$HOME/.config-fixing-dot-files-bugs" ]]; then
+if [[ -d "$HOME/.dotfiles" ]]; then
     # Create cache directory
     mkdir -p ~/.cache/zsh 2>/dev/null
 

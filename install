@@ -36,21 +36,21 @@ esac
 # Detect dotfiles root
 DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Logging functions
+# Logging functions (ASCII-safe, no unicode/emoji)
 log_info() {
-    echo -e "${BLUE}ℹ${NC}  $*"
+    echo -e "${BLUE}[i]${NC} $*"
 }
 
 log_success() {
-    echo -e "${GREEN}✓${NC}  $*"
+    echo -e "${GREEN}[+]${NC} $*"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠${NC}  $*"
+    echo -e "${YELLOW}[!]${NC} $*"
 }
 
 log_error() {
-    echo -e "${RED}✗${NC}  $*"
+    echo -e "${RED}[x]${NC} $*"
 }
 
 log_phase() {
@@ -296,16 +296,169 @@ phase_bundle() {
     fi
 }
 
-# Phase 5: Version Manager Setup (pyenv, rbenv, nvm)
+# Phase 5: Version Manager Setup (pyenv, rbenv, nvm, mise)
 phase_version_managers() {
     log_phase "Phase 5: Version Manager Setup"
 
+    # First, migrate away from Homebrew-managed runtimes
+    phase_migrate_from_homebrew
+
+    # Then install version managers
+    phase_mise
     phase_pyenv
     phase_rbenv
     phase_nvm
 }
 
-# Phase 5a: pyenv (Python version manager)
+# Phase 5-pre: Migrate from Homebrew-managed language runtimes
+phase_migrate_from_homebrew() {
+    log_info "Checking for Homebrew-managed language runtimes..."
+
+    if ! command_exists brew; then
+        log_info "Homebrew not installed, skipping migration check"
+        return 0
+    fi
+
+    local brew_packages_to_remove=()
+    local has_conflicts=false
+
+    # Check for Homebrew Python
+    if brew list python &>/dev/null || brew list python@3.11 &>/dev/null || brew list python@3.12 &>/dev/null; then
+        brew_packages_to_remove+=("python" "python@3.11" "python@3.12" "python@3.10" "python@3.9")
+        has_conflicts=true
+        log_warning "Found Homebrew Python (conflicts with pyenv)"
+    fi
+
+    # Check for Homebrew Node
+    if brew list node &>/dev/null || brew list node@20 &>/dev/null || brew list node@18 &>/dev/null; then
+        brew_packages_to_remove+=("node" "node@20" "node@18" "node@16")
+        has_conflicts=true
+        log_warning "Found Homebrew Node.js (conflicts with nvm)"
+    fi
+
+    # Check for Homebrew Ruby
+    if brew list ruby &>/dev/null || brew list ruby@3.1 &>/dev/null; then
+        brew_packages_to_remove+=("ruby" "ruby@3.1" "ruby@3.0")
+        has_conflicts=true
+        log_warning "Found Homebrew Ruby (conflicts with rbenv)"
+    fi
+
+    # Check for Homebrew-installed version managers (we want git-cloned versions)
+    if brew list pyenv &>/dev/null; then
+        brew_packages_to_remove+=("pyenv" "pyenv-virtualenv")
+        has_conflicts=true
+        log_warning "Found Homebrew pyenv (will replace with git clone)"
+    fi
+
+    if brew list rbenv &>/dev/null; then
+        brew_packages_to_remove+=("rbenv" "ruby-build")
+        has_conflicts=true
+        log_warning "Found Homebrew rbenv (will replace with git clone)"
+    fi
+
+    if brew list nvm &>/dev/null; then
+        brew_packages_to_remove+=("nvm")
+        has_conflicts=true
+        log_warning "Found Homebrew nvm (will replace with official installer)"
+    fi
+
+    if [[ "$has_conflicts" != "true" ]]; then
+        log_success "No Homebrew language runtimes found - clean slate"
+        return 0
+    fi
+
+    echo ""
+    log_warning "Homebrew-managed language runtimes can conflict with version managers."
+    log_info "Recommended: Uninstall them and use pyenv/rbenv/nvm instead."
+    echo ""
+    echo "Packages to remove:"
+    for pkg in "${brew_packages_to_remove[@]}"; do
+        echo "  - $pkg"
+    done
+    echo ""
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would uninstall: ${brew_packages_to_remove[*]}"
+        return 0
+    fi
+
+    if ! confirm "Uninstall these Homebrew packages to avoid conflicts?"; then
+        log_warning "Skipped Homebrew cleanup - you may experience conflicts"
+        log_info "To manually clean up later: brew uninstall --ignore-dependencies <package>"
+        return 0
+    fi
+
+    log_info "Uninstalling Homebrew language runtimes..."
+
+    for pkg in "${brew_packages_to_remove[@]}"; do
+        if brew list "$pkg" &>/dev/null; then
+            log_info "Uninstalling $pkg..."
+            if brew uninstall --ignore-dependencies "$pkg" 2>/dev/null; then
+                log_success "Uninstalled $pkg"
+            else
+                log_warning "Could not uninstall $pkg (may not be installed)"
+            fi
+        fi
+    done
+
+    # Clean up any leftover node_modules from global npm
+    if [[ -d "/usr/local/lib/node_modules" ]]; then
+        log_info "Cleaning up global node_modules..."
+        sudo rm -rf /usr/local/lib/node_modules 2>/dev/null || true
+    fi
+
+    # Remove Homebrew's shims from PATH for this session
+    # This prevents conflicts during version manager installation
+    local cleaned_path
+    cleaned_path=$(echo "$PATH" | tr ':' '\n' | grep -v '/usr/local/opt/python' | grep -v '/usr/local/opt/node' | grep -v '/usr/local/opt/ruby' | tr '\n' ':' | sed 's/:$//')
+    export PATH="$cleaned_path"
+
+    log_success "Homebrew language runtimes removed"
+    log_info "Version managers will be installed next"
+}
+
+# Phase 5a: mise (polyglot version manager - optional)
+phase_mise() {
+    log_info "Setting up mise (polyglot version manager)..."
+
+    # Check if mise is already installed
+    if command_exists mise; then
+        log_success "mise is already installed ($(mise --version))"
+        return 0
+    fi
+
+    # Check if user wants mise
+    log_info "mise can manage Python, Node, Ruby, and 100+ other tools"
+    log_info "It's optional - you can use pyenv/rbenv/nvm individually instead"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would install mise via official installer"
+        return 0
+    fi
+
+    if ! confirm "Install mise (optional polyglot version manager)?"; then
+        log_info "Skipped mise - will use individual version managers"
+        return 0
+    fi
+
+    log_info "Installing mise..."
+    if curl https://mise.run | sh; then
+        log_success "mise installed"
+
+        # Add mise to PATH for this session
+        export PATH="$HOME/.local/bin:$PATH"
+
+        # Verify installation
+        if command_exists mise; then
+            log_info "Verified: mise $(mise --version)"
+            log_info "mise will be lazy-loaded in your shell"
+        fi
+    else
+        log_warning "Failed to install mise (non-critical)"
+    fi
+}
+
+# Phase 5b: pyenv (Python version manager)
 phase_pyenv() {
     log_info "Setting up pyenv (Python version manager)..."
 
@@ -319,7 +472,7 @@ phase_pyenv() {
     log_warning "pyenv is not installed"
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would install pyenv from https://pyenv.run"
+        log_info "Would install pyenv from GitHub (git clone)"
         log_info "Would install latest stable Python version"
         return 0
     fi
@@ -329,11 +482,11 @@ phase_pyenv() {
         return 0
     fi
 
-    log_info "Installing pyenv..."
-    if curl -fsSL https://pyenv.run | bash; then
-        log_success "pyenv installed to $pyenv_root"
+    log_info "Installing pyenv via git clone..."
+    if git clone https://github.com/pyenv/pyenv.git "$pyenv_root"; then
+        log_success "pyenv cloned to $pyenv_root"
     else
-        log_error "Failed to install pyenv"
+        log_error "Failed to clone pyenv"
         return 1
     fi
 
@@ -360,7 +513,7 @@ phase_pyenv() {
     fi
 }
 
-# Phase 5b: rbenv (Ruby version manager)
+# Phase 5c: rbenv (Ruby version manager)
 phase_rbenv() {
     log_info "Setting up rbenv (Ruby version manager)..."
 
@@ -374,7 +527,8 @@ phase_rbenv() {
     log_warning "rbenv is not installed"
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would install rbenv via official rbenv-installer"
+        log_info "Would install rbenv from GitHub (git clone)"
+        log_info "Would install ruby-build plugin"
         log_info "Would install latest stable Ruby version"
         return 0
     fi
@@ -384,12 +538,19 @@ phase_rbenv() {
         return 0
     fi
 
-    log_info "Installing rbenv..."
-    if curl -fsSL https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-installer | bash; then
-        log_success "rbenv installed to $rbenv_root"
+    log_info "Installing rbenv via git clone..."
+    if git clone https://github.com/rbenv/rbenv.git "$rbenv_root"; then
+        log_success "rbenv cloned to $rbenv_root"
     else
-        log_error "Failed to install rbenv"
+        log_error "Failed to clone rbenv"
         return 1
+    fi
+
+    log_info "Installing ruby-build plugin for rbenv..."
+    if git clone https://github.com/rbenv/ruby-build.git "$rbenv_root/plugins/ruby-build"; then
+        log_success "ruby-build plugin installed"
+    else
+        log_warning "Failed to install ruby-build plugin (non-fatal)"
     fi
 
     # Add rbenv to PATH for this session
@@ -419,7 +580,7 @@ phase_rbenv() {
     fi
 }
 
-# Phase 5c: nvm (Node.js version manager)
+# Phase 5d: nvm (Node.js version manager)
 phase_nvm() {
     log_info "Setting up nvm (Node.js version manager)..."
 
@@ -444,7 +605,7 @@ phase_nvm() {
     fi
 
     log_info "Installing nvm..."
-    if curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash; then
+    if curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash; then
         log_success "nvm installed to $nvm_dir"
     else
         log_error "Failed to install nvm"
@@ -675,10 +836,11 @@ phase_performance() {
     # Show performance info
     echo ""
     log_info "Performance features enabled:"
-    echo "  • Lazy loading (mise, rbenv, nvm, sdkman)"
-    echo "  • Compiled bytecode configs"
-    echo "  • Smart completion caching"
-    echo "  • Optimized history (10k entries)"
+    echo "  - Lazy loading via Prezto: nvm (node module with --no-use)"
+    echo "  - Lazy loading via lazy-load.zsh: pyenv, rbenv, mise, sdkman"
+    echo "  - Compiled bytecode configs (.zwc files)"
+    echo "  - Smart completion caching (24-hour refresh)"
+    echo "  - Optimized history (10k entries)"
     echo ""
     log_info "To benchmark: zsh-benchmark"
 }
@@ -699,34 +861,33 @@ show_summary() {
     echo "  3. Verify git config: git config --list"
     echo ""
 
-    # Check for Homebrew-installed language runtimes
-    local has_brew_langs=false
-    if command_exists brew; then
-        if brew list python &>/dev/null || brew list node &>/dev/null || brew list rbenv &>/dev/null; then
-            has_brew_langs=true
-        fi
-    fi
+    # Show version manager verification commands
+    echo "Verify Version Managers:"
+    echo "  - pyenv: pyenv versions"
+    echo "  - rbenv: rbenv versions"
+    echo "  - nvm: nvm list"
+    echo "  - mise: mise list (if installed)"
+    echo ""
 
-    if [[ "$has_brew_langs" == "true" ]]; then
-        echo "Migration Note:"
-        echo "  Homebrew-installed language runtimes detected."
-        echo "  To complete migration to pyenv/rbenv/nvm, run:"
-        echo "    brew uninstall python python@3.9 node rbenv 2>/dev/null"
-        echo "  Then verify version managers:"
-        echo "    which python  # Should point to ~/.pyenv/shims/python"
-        echo "    which ruby    # Should point to ~/.rbenv/shims/ruby"
-        echo "    which node    # Should point to ~/.nvm/versions/node/..."
-        echo ""
-    fi
+    echo "Verify Paths (after shell restart):"
+    echo "  - which python  # Should point to ~/.pyenv/shims/python"
+    echo "  - which ruby    # Should point to ~/.rbenv/shims/ruby"
+    echo "  - which node    # Should point to ~/.nvm/versions/node/..."
+    echo ""
 
     # Zsh-specific tips
     if [[ "${SHELL##*/}" == "zsh" ]]; then
         echo ""
         echo "Zsh Performance Tips:"
-        echo "  • Benchmark startup: zsh-benchmark"
-        echo "  • After config changes: zsh-compile && exec zsh"
-        echo "  • Trim history: zsh-trim-history"
-        echo "  • Target: < 500ms startup time"
+        echo "  - Benchmark startup: zsh-benchmark"
+        echo "  - After config changes: zsh-compile && exec zsh"
+        echo "  - Trim history: zsh-trim-history"
+        echo "  - Target: < 500ms startup time"
+        echo ""
+        echo "Lazy Loading Info:"
+        echo "  - Version managers load on first use (pyenv, rbenv, nvm, mise)"
+        echo "  - First 'python', 'ruby', 'node' command may have ~100ms delay"
+        echo "  - Subsequent commands are instant"
     fi
 
     echo ""

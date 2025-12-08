@@ -24,6 +24,9 @@ zstyle ':prezto:load' pmodule \
   'utility' \
   'completion' \
   'git' \
+  'node' \
+  'python' \
+  'ruby' \
   'syntax-highlighting' \
   'history-substring-search' \
   'autosuggestions' \
@@ -51,7 +54,7 @@ zstyle ':prezto:module:git:status:ignore' submodules 'all'
 #
 
 # Set the file to save the history in when an interactive shell exits.
-zstyle ':prezto:module:history' histfile "${ZDOTDIR:-$HOME}/.config/zsh/.zsh_history"
+zstyle ':prezto:module:history' histfile "${ZDOTDIR:-$HOME/.config/zsh}/.zsh_history"
 
 # Set the maximum number of events stored in the internal history list.
 # Reduced from 100,000 to 10,000 for faster startup
@@ -102,6 +105,27 @@ zstyle ':prezto:module:terminal:window-title' format '%n@%m: %s'
 
 # Set the tab title format.
 zstyle ':prezto:module:terminal:tab-title' format '%m: %s'
+
+#
+# Node (nvm)
+#
+# Prezto's node module uses --no-use flag for lazy loading automatically.
+# This defers Node.js version loading until nvm/node/npm is first called.
+
+#
+# Python (pyenv)
+#
+# Skip pyenv init - we handle lazy loading in lazy-load.zsh for better performance.
+# Prezto's python module loads pyenv eagerly which adds ~100-200ms to startup.
+zstyle ':prezto:module:python:virtualenv' auto-switch 'yes'
+zstyle ':prezto:module:python' skip-init 'yes'
+
+#
+# Ruby (rbenv)
+#
+# Skip rbenv init - we handle lazy loading in lazy-load.zsh for better performance.
+# Prezto's ruby module loads rbenv eagerly which adds ~50-100ms to startup.
+zstyle ':prezto:module:ruby' skip-init 'yes'
 
 #
 # Utility

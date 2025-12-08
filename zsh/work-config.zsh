@@ -7,7 +7,7 @@
 # AUTO-UPDATE (Background, cached daily)
 # ============================================================================
 # Check once per day - runs in background to not block startup
-if [[ -d "$HOME/.config-fixing-dot-files-bugs" ]]; then
+if [[ -d "$HOME/.dotfiles" ]]; then
     # Create cache directory
     mkdir -p ~/.cache/zsh 2>/dev/null
 
@@ -43,8 +43,8 @@ fi
 # WORK SECRETS (Lazy load)
 # ============================================================================
 # Source work secrets functions (but don't auto-load)
-if [[ -f "$HOME/.config-fixing-dot-files-bugs/zsh/.zsh_functions/work-secrets" ]]; then
-    source "$HOME/.config-fixing-dot-files-bugs/zsh/.zsh_functions/work-secrets"
+if [[ -f "$HOME/.dotfiles/zsh/.zsh_functions/work-secrets" ]]; then
+    source "$HOME/.dotfiles/zsh/.zsh_functions/work-secrets"
 fi
 
 # Note: Auto-load disabled for performance
@@ -52,12 +52,10 @@ fi
 # load-work-secrets "" "true" &>/dev/null
 
 # ============================================================================
-# WELCOME MESSAGE (Interactive only)
+# WELCOME MESSAGE - Removed to comply with Powerlevel10k instant prompt
 # ============================================================================
-if [[ -o interactive ]]; then
-    echo "Work environment loaded (prompt shows: WORK)"
-    echo "  Available commands: sync, ws/load-work-secrets, work-profile"
-fi
+# Console output during zsh initialization interferes with instant prompt.
+# The prompt indicator already shows WORK, so this message is redundant.
 
 # ============================================================================
 # WORK-SPECIFIC ALIASES

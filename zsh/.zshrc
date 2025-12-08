@@ -131,6 +131,8 @@ deadcode() {
 # ============================================================================
 # 7. LAZY LOADING (Defer expensive tools until first use)
 # ============================================================================
+# Lazy loading for pyenv, rbenv, mise, and SDKMAN.
+# Note: nvm lazy loading is handled by Prezto's node module (--no-use flag).
 if [[ -f ~/.config/zsh/lib/lazy-load.zsh ]]; then
     source ~/.config/zsh/lib/lazy-load.zsh
 fi
@@ -218,13 +220,16 @@ typeset -U path
 # 14. ENVIRONMENT VARIABLES (Non-blocking)
 # ============================================================================
 export PYENV_ROOT="$HOME/.pyenv"
+export RBENV_ROOT="$HOME/.rbenv"
 export NVM_DIR="$HOME/.nvm"
 export SDKMAN_DIR="$HOME/.sdkman"
 
 # Add version manager bin paths to PATH (for lazy-loading detection)
+# Note: PATH is deduplicated by typeset -U above
 path=(
     $PYENV_ROOT/bin(N)
-    $HOME/.rbenv/bin(N)
+    $RBENV_ROOT/bin(N)
+    $SDKMAN_DIR/bin(N)
     $path
 )
 
@@ -278,4 +283,14 @@ set-default-shell() {
 	echo "/opt/homebrew/bin/zsh" | sudo tee -a /etc/shells
 	chsh -s $(which zsh)
 	echo "Default shell set to $(which zsh)"
+}
+
+# rbenv initialization handled by lazy-load.zsh
+
+
+# Primary Agent Launcher
+primary() {
+  echo "Waking up the Primary Agent..."
+  # "$@" automatically passes ALL arguments (text) you type to the agent
+  claude --agent primary-agent "$@"
 }
