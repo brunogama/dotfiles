@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ${HOME}/.local/bin/prints
+source ${HOME}/local/bin/prints
 GIT_DIR="$1"
 HOOKS_DIR=="$GIT_DIR/.git/hooks"
     

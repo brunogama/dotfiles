@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ~/.local/bin/prints
+source ~/local/bin/prints
 GIT_DIR=$1
 
 # Check if hooks directory alreaqdy exists
@@ -17,9 +17,9 @@ echo "#!/usr/bin/env bash" > $GIT_DIR/hooks/pre-commit
 
 chmod +x $GIT_DIR/hooks/pre-commit
 
-chown -R $USER:$USER $HOME/.local/bin/*
+chown -R $USER:$USER $HOME/local/bin/*
 
-chmod +x $HOME/.local/bin/*
+chmod +x $HOME/local/bin/*
 
 pgreen "Making all scripts executable in $DIR"
 

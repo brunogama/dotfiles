@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-source ${HOME}/.local/bin/prints
+source ${HOME}/local/bin/prints
 pgreen "Starting ${BLUE}${0}"
-$HOME/.local/bin/check-dependency sourcery
+$HOME/local/bin/check-dependency sourcery
 
 # # Check if sourcery.yml exists in the root directory
 # if [ ! -f "sourcery.yml" ] && [ ! -f ".sourcery.yml" ]; then

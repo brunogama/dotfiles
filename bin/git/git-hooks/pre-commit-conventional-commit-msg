@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ${HOME}/.local/bin/prints
+source ${HOME}/local/bin/prints
 pgreen "Starting ${BLUE}${0}"
 
 # Get the commit message file

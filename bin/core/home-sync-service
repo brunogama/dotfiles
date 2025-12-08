@@ -51,7 +51,7 @@ detect_dotfiles_root() {
 DOTFILES_ROOT="$(detect_dotfiles_root)"
 readonly PLIST_SOURCE="$DOTFILES_ROOT/packages/syncservice/$SERVICE_NAME.plist"
 readonly PLIST_TARGET="$HOME/Library/LaunchAgents/$SERVICE_NAME.plist"
-readonly HOME_SYNC_BIN="$HOME/.local/bin/home-sync"
+readonly HOME_SYNC_BIN="$HOME/local/bin/home-sync"
 readonly LOG_DIR="$HOME/.config/sync-service/logs"
 
 # Function to log messages (output to stderr to avoid conflicts with macOS log command)

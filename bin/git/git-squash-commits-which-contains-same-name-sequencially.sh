@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ~/.local/bin/prints
+source ~/local/bin/prints
 
 last_changes=$(git pull)
 

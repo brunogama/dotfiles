@@ -205,12 +205,12 @@ fi
 # 13. PATHS (Consolidated)
 # ============================================================================
 # Add custom paths (avoid duplicates)
-# Note: .local/bin is added LAST so system tools take precedence
+# Note: local/bin is added LAST so system tools take precedence
 path=(
     $HOME/.claude/local(N)
     $HOME/.cache/lm-studio/bin(N)
     $path
-    $HOME/.local/bin(N)
+    $HOME/local/bin(N)
 )
 
 # Deduplicate PATH

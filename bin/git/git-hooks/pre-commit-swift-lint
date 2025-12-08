@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ${HOME}/.local/bin/prints
+source ${HOME}/local/bin/prints
 pgreen "Starting ${BLUE}${0}"
 
 # Get list of Swift files that are staged for commit
@@ -12,7 +12,7 @@ if [ -z "$SWIFT_FILES" ]; then
 fi
 
 # Check if swiftlint is installed
-$HOME/.local/bin/check-dependency swiftlint
+$HOME/local/bin/check-dependency swiftlint
 
 # Run SwiftLint
 

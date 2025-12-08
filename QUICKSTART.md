@@ -86,7 +86,7 @@ sudo yum install jq  # CentOS/RHEL
 **Problem:** `link-dotfiles not found`
 **Solution:** Add to your PATH:
 ```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="$HOME/local/bin:$PATH"' >> ~/.zshrc
 exec zsh
 ```
 
@@ -104,7 +104,7 @@ The installation:
 2. **Installed packages** defined in `packages/homebrew/Brewfile` (macOS)
 3. **Configured git** with aliases and hooks
 4. **Set up your shell** with zsh configuration
-5. **Added utilities** to `~/.local/bin/` (available in PATH)
+5. **Added utilities** to `~/local/bin/` (available in PATH)
 
 ## Installed Scripts
 

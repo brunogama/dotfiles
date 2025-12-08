@@ -446,7 +446,7 @@ phase_mise() {
         log_success "mise installed"
 
         # Add mise to PATH for this session
-        export PATH="$HOME/.local/bin:$PATH"
+        export PATH="$HOME/local/bin:$PATH"
 
         # Verify installation
         if command_exists mise; then

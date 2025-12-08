@@ -17,7 +17,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 DOTFILES_REPO="${DOTFILES_REPO:-$HOME/.config-fixing-dot-files-bugs}"
-LOCAL_BIN="${LOCAL_BIN:-$HOME/.local/bin}"
+LOCAL_BIN="${LOCAL_BIN:-$HOME/local/bin}"
 
 if [[ ! -d "$DOTFILES_REPO" ]]; then
     echo -e "${RED}Error: Dotfiles repository not found: $DOTFILES_REPO${NC}" >&2

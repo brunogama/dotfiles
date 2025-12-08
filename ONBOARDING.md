@@ -2279,7 +2279,7 @@ export ZDOTDIR="${HOME}/.config/zsh"
 **What:** Custom paths added to PATH in .zprofile
 
 **Additions:**
-- `~/.local/bin` - Custom scripts
+- `~/local/bin` - Custom scripts
 - `/opt/homebrew/bin` - Homebrew (Apple Silicon)
 - `/usr/local/bin` - Homebrew (Intel)
 
@@ -2292,13 +2292,13 @@ export ZDOTDIR="${HOME}/.config/zsh"
 # Check current PATH
 echo $PATH
 
-# Should include: ~/.local/bin, /opt/homebrew/bin
+# Should include: ~/local/bin, /opt/homebrew/bin
 
 # If missing, source .zprofile
 source ~/.zprofile
 
 # Or manually add
-export PATH="${HOME}/.local/bin:/opt/homebrew/bin:$PATH"
+export PATH="${HOME}/local/bin:/opt/homebrew/bin:$PATH"
 ```
 
 ### External Service Dependencies
