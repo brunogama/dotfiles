@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+LOG_FILE_NAME="$(date +'%Y_%m_%d_%H_%M_%S').log"
+LOG_FILE_PATH="/tmp/${LOG_FILE_NAME}"
+pbpaste >| "${LOG_FILE_PATH}"
+
+# Copia o arquivo para a área de transferência do Finder
+osascript -e "set the clipboard to (POSIX file \"${LOG_FILE_PATH}\")"
