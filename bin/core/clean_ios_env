@@ -1,0 +1,6 @@
+#! /usr/bin/env bash
+
+set -euo pipefail
+
+tuist clean
+fd -t d 'Inter\.xc.*' Apps/Inter -x rm -rf
