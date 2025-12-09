@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
-if [ -z "$1" ]; then
-    code .
-  else
-    code $1
-  fi
+
+preferred_editors_sequence=(cursor code-insiders code textmate)
+
+for editor in "${preferred_editors_sequence[@]}"; do
+    if command -v $editor >/dev/null 2>&1; then
+
+      if [ -z "$1" ]; then
+          $editor .
+          break
+        else
+          $editor $1
+          break
+        fi
+
+        exit 0
+    fi
+done

@@ -8,6 +8,85 @@
 # See .zpreztorc for configuration.
 
 # ============================================================================
+# Lazy Load: NVM (Node Version Manager)
+# ============================================================================
+# Prezto already sources NVM with --no-use flag, which means:
+# - NVM functions are available but no Node version is activated
+# - We need to actually activate the default version for full functionality
+# - This includes .nvmrc auto-switching and proper version management
+
+if [[ -s "$NVM_DIR/nvm.sh" ]] && (( $+functions[nvm] )); then
+    # Prezto already loaded NVM with --no-use
+    # Now activate the default version (fast, ~10-20ms)
+    # This enables:
+    # - Immediate tab completion
+    # - Proper nvm current tracking
+    # - .nvmrc auto-switching support
+    
+    # Use the default version if it exists
+    local default_node_version
+    default_node_version="$(nvm version default 2>/dev/null)"
+    
+    if [[ -n "$default_node_version" && "$default_node_version" != "N/A" ]]; then
+        # Actually activate the version (sets PATH and environment properly)
+        nvm use default --silent >/dev/null 2>&1
+    fi
+    
+    unset default_node_version
+    
+    # Set up automatic version switching for .nvmrc files
+    # This hook runs every time you change directories
+    autoload -U add-zsh-hook
+    
+    load-nvmrc() {
+        local nvmrc_path
+        nvmrc_path="$(nvm_find_nvmrc)"
+        
+        if [[ -n "$nvmrc_path" ]]; then
+            local nvmrc_node_version
+            nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+            
+            if [[ "$nvmrc_node_version" = "N/A" ]]; then
+                nvm install
+            elif [[ "$nvmrc_node_version" != "$(nvm version)" ]]; then
+                nvm use --silent
+            fi
+        elif [[ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ]] && [[ "$(nvm version)" != "$(nvm version default)" ]]; then
+            # Left directory with .nvmrc, revert to default
+            nvm use default --silent
+        fi
+    }
+    
+    add-zsh-hook chpwd load-nvmrc
+    load-nvmrc  # Load on shell startup
+elif [[ -s "$NVM_DIR/nvm.sh" ]] && ! (( $+functions[nvm] )); then
+    # Prezto didn't load NVM (shouldn't happen), fall back to wrapper functions
+    nvm() {
+        unfunction nvm node npm npx 2>/dev/null
+        source "$NVM_DIR/nvm.sh"
+        nvm "$@"
+    }
+
+    node() {
+        unfunction nvm node npm npx 2>/dev/null
+        source "$NVM_DIR/nvm.sh"
+        node "$@"
+    }
+
+    npm() {
+        unfunction nvm node npm npx 2>/dev/null
+        source "$NVM_DIR/nvm.sh"
+        npm "$@"
+    }
+
+    npx() {
+        unfunction nvm node npm npx 2>/dev/null
+        source "$NVM_DIR/nvm.sh"
+        npx "$@"
+    }
+fi
+
+# ============================================================================
 # Lazy Load: mise (polyglot version manager)
 # ============================================================================
 if command -v mise &>/dev/null; then
