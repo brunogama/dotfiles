@@ -296,6 +296,147 @@ phase_bundle() {
     fi
 }
 
+# Phase 4.5: Migrate ~/.local to ~/local
+phase_migrate_local_directory() {
+    log_phase "Phase 4.5: Directory Migration"
+
+    local old_local="$HOME/.local"
+    local new_local="$HOME/local"
+
+    # Check if old .local directory exists
+    if [[ ! -d "$old_local" ]]; then
+        log_info "No ~/.local directory found - nothing to migrate"
+        # Ensure new directory exists
+        if [[ ! -d "$new_local" ]]; then
+            mkdir -p "$new_local/bin"
+            log_success "Created ~/local/bin directory"
+        fi
+        return 0
+    fi
+
+    log_warning "Found ~/.local directory"
+    log_info "The dotfiles system now uses ~/local instead of ~/.local"
+    echo ""
+    echo "Migration options:"
+    echo "  1. Rename ~/.local to ~/local (preserves all your existing scripts)"
+    echo "  2. Create new ~/local and copy missing scripts (keeps both directories)"
+    echo "  3. Skip migration (keep ~/.local as-is, may cause conflicts)"
+    echo ""
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would prompt for migration strategy"
+        return 0
+    fi
+
+    local choice
+    if [[ "$YES" == "true" ]]; then
+        # Non-interactive: default to option 2 (safest)
+        choice="2"
+        log_info "Non-interactive mode: choosing option 2 (create new, copy missing)"
+    else
+        echo -n "Enter choice (1/2/3): "
+        read -r choice
+    fi
+
+    case "$choice" in
+        1)
+            # Rename strategy
+            if [[ -d "$new_local" ]]; then
+                log_error "~/local already exists - cannot rename ~/.local"
+                log_info "Please manually handle the conflict or choose option 2"
+                return 1
+            fi
+
+            log_info "Renaming ~/.local to ~/local..."
+            if mv "$old_local" "$new_local"; then
+                log_success "Successfully renamed ~/.local to ~/local"
+                log_info "All your existing scripts are now in ~/local/bin"
+            else
+                log_error "Failed to rename directory"
+                return 1
+            fi
+            ;;
+
+        2)
+            # Copy missing strategy
+            log_info "Creating ~/local directory structure..."
+            mkdir -p "$new_local/bin"
+
+            if [[ -d "$old_local/bin" ]]; then
+                log_info "Checking for scripts to migrate from ~/.local/bin..."
+                
+                local copied_count=0
+                local skipped_count=0
+                
+                for script in "$old_local/bin"/*; do
+                    if [[ ! -f "$script" ]]; then
+                        continue
+                    fi
+                    
+                    local script_name=$(basename "$script")
+                    local new_script="$new_local/bin/$script_name"
+                    
+                    # Check if script will be installed by dotfiles
+                    local dotfiles_script="$DOTFILES_ROOT/bin/core/$script_name"
+                    if [[ ! -f "$dotfiles_script" ]]; then
+                        dotfiles_script="$DOTFILES_ROOT/bin/credentials/$script_name"
+                    fi
+                    if [[ ! -f "$dotfiles_script" ]]; then
+                        dotfiles_script="$DOTFILES_ROOT/bin/git/$script_name"
+                    fi
+                    if [[ ! -f "$dotfiles_script" ]]; then
+                        dotfiles_script="$DOTFILES_ROOT/bin/macos/$script_name"
+                    fi
+                    
+                    # Copy if not in dotfiles and not already in new location
+                    if [[ ! -f "$dotfiles_script" ]] && [[ ! -f "$new_script" ]]; then
+                        if cp "$script" "$new_script"; then
+                            chmod +x "$new_script" 2>/dev/null || true
+                            log_success "Copied: $script_name"
+                            ((copied_count++))
+                        fi
+                    else
+                        ((skipped_count++))
+                    fi
+                done
+                
+                if [[ $copied_count -gt 0 ]]; then
+                    log_success "Migrated $copied_count custom script(s) to ~/local/bin"
+                fi
+                if [[ $skipped_count -gt 0 ]]; then
+                    log_info "Skipped $skipped_count script(s) (will be installed by dotfiles)"
+                fi
+                
+                echo ""
+                log_info "Your ~/.local directory is still intact"
+                log_warning "You can manually review and delete ~/.local when ready"
+                log_info "Command: rm -rf ~/.local"
+            else
+                log_info "No ~/.local/bin directory found"
+            fi
+            
+            log_success "Created ~/local directory with migrated scripts"
+            ;;
+
+        3)
+            # Skip migration
+            log_warning "Skipping migration - keeping ~/.local as-is"
+            log_warning "Note: This may cause PATH conflicts"
+            
+            # Still create new directory if it doesn't exist
+            if [[ ! -d "$new_local" ]]; then
+                mkdir -p "$new_local/bin"
+                log_success "Created ~/local/bin directory"
+            fi
+            ;;
+
+        *)
+            log_error "Invalid choice"
+            return 1
+            ;;
+    esac
+}
+
 # Phase 5: Version Manager Setup (pyenv, rbenv, nvm, mise)
 phase_version_managers() {
     log_phase "Phase 5: Version Manager Setup"
@@ -1015,6 +1156,7 @@ main() {
     phase_homebrew
     phase_dependencies
     phase_bundle
+    phase_migrate_local_directory
     phase_version_managers
     phase_prezto
     phase_symlinks
