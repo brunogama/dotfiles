@@ -23,6 +23,7 @@ YES=false
 SKIP_BREW=false
 SKIP_PACKAGES=false
 SKIP_LINKS=false
+SCRIPTS_ONLY=false
 VERBOSE=false
 
 # Detect platform
@@ -82,6 +83,7 @@ OPTIONS:
     --skip-brew        Skip Homebrew installation/bundle
     --skip-packages    Skip package installation
     --skip-links       Skip symlink creation
+    --scripts-only     Only link scripts to ~/local/bin (skip everything else)
     --verbose          Show detailed output
     --help             Show this help message
 
@@ -94,6 +96,9 @@ EXAMPLES:
 
     # Preview only
     ./install --dry-run
+    
+    # Only update scripts in ~/local/bin
+    ./install --scripts-only
 
 EXIT CODES:
     0    Success
@@ -126,6 +131,10 @@ parse_args() {
                 ;;
             --skip-links)
                 SKIP_LINKS=true
+                shift
+                ;;
+            --scripts-only)
+                SCRIPTS_ONLY=true
                 shift
                 ;;
             --verbose)
@@ -988,6 +997,140 @@ phase_symlinks() {
     fi
 }
 
+# Phase 7-alt: Scripts-only linking
+phase_scripts_only() {
+    log_phase "Phase 7: Scripts Linking (~/local/bin only)"
+
+    local target_dir="$HOME/local/bin"
+    
+    # Ensure target directory exists
+    if [[ ! -d "$target_dir" ]]; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "Would create directory: $target_dir"
+        else
+            mkdir -p "$target_dir"
+            log_success "Created directory: $target_dir"
+        fi
+    fi
+
+    local bin_dirs=("core" "credentials" "git" "ide" "macos")
+    local linked_count=0
+    local skipped_count=0
+    local error_count=0
+
+    for dir in "${bin_dirs[@]}"; do
+        local source_dir="$DOTFILES_ROOT/bin/$dir"
+        
+        # Skip if directory doesn't exist
+        if [[ ! -d "$source_dir" ]]; then
+            log_verbose "Skipping $dir (directory not found)"
+            continue
+        fi
+        
+        # Skip macos on non-darwin platforms
+        if [[ "$dir" == "macos" ]] && [[ "$PLATFORM" != "darwin" ]]; then
+            log_verbose "Skipping $dir (not on macOS)"
+            continue
+        fi
+
+        log_info "Processing bin/$dir/..."
+        
+        # Link each file in the directory
+        for source_file in "$source_dir"/*; do
+            # Skip if not a file
+            if [[ ! -f "$source_file" ]]; then
+                continue
+            fi
+            
+            # Skip subdirectories like home_sync/, lib/, git-hooks/
+            if [[ -d "$source_file" ]]; then
+                continue
+            fi
+            
+            local filename=$(basename "$source_file")
+            local target_file="$target_dir/$filename"
+            
+            # Check if already linked correctly
+            if [[ -L "$target_file" ]] && [[ "$(readlink "$target_file")" == "$source_file" ]]; then
+                log_verbose "Already linked: $filename"
+                ((skipped_count++))
+                continue
+            fi
+            
+            # Create or update symlink
+            if [[ "$DRY_RUN" == "true" ]]; then
+                log_info "Would link: $filename -> bin/$dir/$filename"
+                ((linked_count++))
+            else
+                if ln -sf "$source_file" "$target_file"; then
+                    # Make executable
+                    chmod +x "$target_file" 2>/dev/null || true
+                    log_success "Linked: $filename"
+                    ((linked_count++))
+                else
+                    log_error "Failed to link: $filename"
+                    ((error_count++))
+                fi
+            fi
+        done
+    done
+
+    # Also link lib directories
+    local lib_dirs=("bin/lib" "bin/git/lib")
+    for lib_dir in "${lib_dirs[@]}"; do
+        local source_lib="$DOTFILES_ROOT/$lib_dir"
+        if [[ -d "$source_lib" ]]; then
+            local target_lib="$target_dir/$(basename $(dirname "$lib_dir"))/lib"
+            local target_parent=$(dirname "$target_lib")
+            
+            if [[ ! -d "$target_parent" ]]; then
+                if [[ "$DRY_RUN" != "true" ]]; then
+                    mkdir -p "$target_parent"
+                fi
+            fi
+            
+            if [[ -L "$target_lib" ]] && [[ "$(readlink "$target_lib")" == "$source_lib" ]]; then
+                log_verbose "Already linked: $(basename $(dirname "$lib_dir"))/lib/"
+                ((skipped_count++))
+            elif [[ "$DRY_RUN" == "true" ]]; then
+                log_info "Would link: $(basename $(dirname "$lib_dir"))/lib/ -> $lib_dir/"
+                ((linked_count++))
+            else
+                if ln -sf "$source_lib" "$target_lib"; then
+                    log_success "Linked: $(basename $(dirname "$lib_dir"))/lib/"
+                    ((linked_count++))
+                else
+                    log_error "Failed to link: $(basename $(dirname "$lib_dir"))/lib/"
+                    ((error_count++))
+                fi
+            fi
+        fi
+    done
+
+    # Summary
+    echo ""
+    log_success "Linked: $linked_count scripts/libraries"
+    log_info "Skipped: $skipped_count (already linked)"
+    if [[ $error_count -gt 0 ]]; then
+        log_error "Errors: $error_count"
+        return 1
+    fi
+
+    # Fix permissions and ownership for all files in ~/local
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would set executable permissions on all scripts in ~/local/bin"
+        log_info "Would set ownership to $(whoami) for ~/local"
+    else
+        log_info "Setting executable permissions on scripts..."
+        find "$target_dir" -type f -exec chmod +x {} \; 2>/dev/null || true
+        
+        log_info "Setting ownership to $(whoami) for ~/local..."
+        chown -R "$(whoami)" "$HOME/local" 2>/dev/null || true
+        
+        log_success "Permissions and ownership updated"
+    fi
+}
+
 # Phase 8: Shell configuration
 phase_shell() {
     log_phase "Phase 8: Shell Configuration"
@@ -1152,18 +1295,28 @@ main() {
     trap 'log_error "Installation failed"; exit 1' ERR
 
     # Execute phases
-    phase_preflight
-    phase_homebrew
-    phase_dependencies
-    phase_bundle
-    phase_migrate_local_directory
-    phase_version_managers
-    phase_prezto
-    phase_symlinks
-    phase_shell
-    phase_performance
-
-    show_summary
+    if [[ "$SCRIPTS_ONLY" == "true" ]]; then
+        # Scripts-only mode: skip everything except scripts linking
+        log_info "Scripts-only mode: skipping full installation"
+        phase_preflight
+        phase_scripts_only
+        log_phase "Scripts Update Complete!"
+        log_info "Scripts in ~/local/bin have been updated"
+        log_info "Run './install' without --scripts-only for full installation"
+    else
+        # Full installation
+        phase_preflight
+        phase_homebrew
+        phase_dependencies
+        phase_bundle
+        phase_migrate_local_directory
+        phase_version_managers
+        phase_prezto
+        phase_symlinks
+        phase_shell
+        phase_performance
+        show_summary
+    fi
 
     exit 0
 }
