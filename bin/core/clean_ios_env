@@ -2,5 +2,22 @@
 
 set -euo pipefail
 
-tuist clean
-fd -t d 'Inter\.xc.*' Apps/Inter -x rm -rf
+pkill -9 -fi "Xcode" 2>/dev/null
+
+CLEAN_DERIVED_DATA=false
+for arg in "$@"; do
+  case "$arg" in
+    -c|--clean-derived-data)
+      CLEAN_DERIVED_DATA=true
+      break
+      ;;
+  esac
+done
+
+if [[ "$CLEAN_DERIVED_DATA" == "true" ]]; then
+  echo "Cleaning Derived Data..."
+  yes | /bin/rm -rf ~/Library/Developer/Xcode/DerivedData 2>/dev/null
+fi
+
+tuist clean 2>/dev/null
+fd -t d 'Inter\.xc.*' Apps/Inter -x rm -rf 2>/dev/null
