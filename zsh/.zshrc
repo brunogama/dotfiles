@@ -96,7 +96,6 @@ alias old-cat='/bin/cat'
 
 # Claude CLI
 alias ccy='claude --dangerously-skip-permissions'
-alias claude="/Users/bruno/.claude/local/claude"
 
 # ============================================================================
 # 6. FUNCTIONS (Fast utility functions)
@@ -129,7 +128,15 @@ deadcode() {
 }
 
 # ============================================================================
-# 7. LAZY LOADING (Defer expensive tools until first use)
+# 7. NVM PATH SETUP (Add default node to PATH without full initialization)
+# ============================================================================
+# This provides immediate access to global npm modules without lazy loading overhead
+if [[ -f ~/.config/zsh/lib/nvm-path.zsh ]]; then
+    source ~/.config/zsh/lib/nvm-path.zsh
+fi
+
+# ============================================================================
+# 8. LAZY LOADING (Defer expensive tools until first use)
 # ============================================================================
 # Lazy loading for pyenv, rbenv, mise, and SDKMAN.
 # Note: nvm lazy loading is handled by Prezto's node module (--no-use flag).
@@ -138,7 +145,7 @@ if [[ -f ~/.config/zsh/lib/lazy-load.zsh ]]; then
 fi
 
 # ============================================================================
-# 8. ESSENTIAL FAST TOOLS (< 50ms each - keep immediate)
+# 9. ESSENTIAL FAST TOOLS (< 50ms each - keep immediate)
 # ============================================================================
 # Zoxide (fast, essential for navigation)
 if command -v zoxide &>/dev/null; then
@@ -146,7 +153,7 @@ if command -v zoxide &>/dev/null; then
 fi
 
 # ============================================================================
-# 9. KEY BINDINGS
+# 10. KEY BINDINGS
 # ============================================================================
 # Word navigation (multiple bindings for compatibility)
 bindkey "^[[1;3D" backward-word  # Option+Left
@@ -159,7 +166,7 @@ bindkey "\eb" backward-word      # Option+b
 bindkey "\ef" forward-word       # Option+f
 
 # ============================================================================
-# 10. COMPLETION (Consolidated - called only once!)
+# 11. COMPLETION (Consolidated - called only once!)
 # ============================================================================
 # Add completion directories to fpath
 fpath=(
@@ -181,7 +188,7 @@ fi
 unsetopt EXTENDEDGLOB
 
 # ============================================================================
-# 11. POWERLEVEL10K CONFIGURATION
+# 12. POWERLEVEL10K CONFIGURATION
 # ============================================================================
 # Note: Prezto's prompt module automatically sources ~/.config/zsh/.p10k.zsh
 # when the powerlevel10k theme is loaded. Do not manually source it here as
@@ -191,7 +198,7 @@ unsetopt EXTENDEDGLOB
 # zsh/.p10k.zsh -> ~/.config/zsh/.p10k.zsh
 
 # ============================================================================
-# 12. FZF (Load in background for responsiveness)
+# 13. FZF (Load in background for responsiveness)
 # ============================================================================
 if [[ -o interactive ]] && command -v fzf &>/dev/null; then
     # Background load to not block startup
@@ -202,7 +209,7 @@ if [[ -o interactive ]] && command -v fzf &>/dev/null; then
 fi
 
 # ============================================================================
-# 13. PATHS (Consolidated)
+# 14. PATHS (Consolidated)
 # ============================================================================
 # Add custom paths (avoid duplicates)
 # Note: local/bin is added LAST so system tools take precedence
@@ -217,7 +224,7 @@ path=(
 typeset -U path
 
 # ============================================================================
-# 14. ENVIRONMENT VARIABLES (Non-blocking)
+# 15. ENVIRONMENT VARIABLES (Non-blocking)
 # ============================================================================
 export PYENV_ROOT="$HOME/.pyenv"
 export RBENV_ROOT="$HOME/.rbenv"

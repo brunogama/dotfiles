@@ -170,10 +170,12 @@ ipython_config.py
 *.mdc.local
 
 ## Claude Code / Claude Desktop
-.claude/
 .claudeignore
 .claude/settings.local.json
 .claude/commands/personal/
+.claude/projects/
+.claude/todos/
+.claude/ide/
 CLAUDE.local.md
 
 ## Aider

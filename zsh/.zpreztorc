@@ -24,7 +24,6 @@ zstyle ':prezto:load' pmodule \
   'utility' \
   'completion' \
   'git' \
-  'node' \
   'python' \
   'ruby' \
   'syntax-highlighting' \
@@ -109,8 +108,9 @@ zstyle ':prezto:module:terminal:tab-title' format '%m: %s'
 #
 # Node (nvm)
 #
-# Prezto's node module uses --no-use flag for lazy loading automatically.
-# This defers Node.js version loading until nvm/node/npm is first called.
+# Removed from pmodule list - Prezto's node module sources nvm.sh eagerly
+# (even with --no-use flag, adds ~100-200ms). True lazy loading handled
+# by lazy-load.zsh which only sources nvm.sh on first use of nvm/node/npm.
 
 #
 # Python (pyenv)

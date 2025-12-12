@@ -1,0 +1,737 @@
+#!/usr/bin/env python3
+"""UV Dependency Resolver - Convert pip packages to Git repository URLs.
+
+This script resolves a pip package and all its transitive dependencies, then
+discovers their Git repository URLs to generate a UV install command. This is
+designed to bypass network restrictions (e.g., Zscaler) that block PyPI access
+while allowing direct Git repository access.
+
+Repository Discovery Strategies (in order):
+1. PyPI package metadata (project_urls)
+2. Manual mapping file (user-provided overrides)
+3. GitHub API search (with rate limiting)
+
+Cache: Stores discovered repositories in ~/.cache/dotfiles/uv-resolver/ with
+7-day TTL to avoid repeated API calls and rate limits.
+
+Examples:
+    # Basic usage
+    uv-resolve-repos requests
+
+    # With verbose output
+    uv-resolve-repos django --verbose
+
+    # Clear cache and re-discover
+    uv-resolve-repos flask --clear-cache
+
+    # Use custom manual mappings
+    uv-resolve-repos pandas --config-file ~/.custom-mappings.json
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Optional, Dict, List, Tuple
+from urllib.request import urlopen, Request
+from urllib.error import URLError, HTTPError
+
+# Import shared libraries from bin/lib/
+sys.path.insert(0, str(Path(__file__).parent.parent / "lib"))
+from colors import format_error, format_success, format_warning, format_info
+from common import ensure_directory, read_json_file, write_json_file
+from validation import validate_non_empty
+
+# Exit codes
+EXIT_SUCCESS = 0
+EXIT_ERROR = 1
+EXIT_USAGE_ERROR = 2
+
+# Cache configuration
+CACHE_DIR = Path.home() / ".cache" / "dotfiles" / "uv-resolver"
+REPO_CACHE_FILE = CACHE_DIR / "repository_cache.json"
+MANUAL_MAPPINGS_FILE = CACHE_DIR / "manual_mappings.json"
+CACHE_TTL_DAYS = 7
+CACHE_TTL_SECONDS = CACHE_TTL_DAYS * 24 * 60 * 60
+
+# API configuration
+PYPI_JSON_URL = "https://pypi.org/pypi/{package}/json"
+GITHUB_API_SEARCH_URL = "https://api.github.com/search/repositories"
+REQUEST_TIMEOUT = 10  # seconds
+
+
+@dataclass
+class RepositoryInfo:
+    """Repository information for a package."""
+
+    package: str
+    repo_url: str
+    platform: str  # github|gitlab|bitbucket
+    discovery_method: str  # pypi|manual|github_api
+    timestamp: float
+    pip_version: str
+
+    @classmethod
+    def from_cache_entry(cls, package: str, version: str, cache_entry: 'CacheEntry') -> 'RepositoryInfo':
+        """Create RepositoryInfo from a CacheEntry."""
+        return cls(
+            package=package,
+            repo_url=cache_entry.repo_url,
+            platform=cache_entry.platform,
+            discovery_method=cache_entry.discovery_method,
+            timestamp=cache_entry.timestamp,
+            pip_version=version
+        )
+
+
+@dataclass
+class CacheEntry:
+    """Cache entry for repository lookup."""
+
+    repo_url: str
+    platform: str
+    discovery_method: str
+    timestamp: float
+    pip_version: str
+
+
+class CacheManager:
+    """Manages persistent JSON cache with TTL."""
+
+    def __init__(self, cache_file: Path = REPO_CACHE_FILE):
+        """Initialize cache manager.
+
+        Args:
+            cache_file: Path to cache file
+        """
+        self.cache_file = cache_file
+        self._cache: Optional[Dict] = None  # In-memory cache
+
+    def _load(self) -> Dict:
+        """Lazy load cache from disk.
+
+        Returns:
+            Cache dictionary
+        """
+        if self._cache is None:
+            if self.cache_file.exists():
+                try:
+                    self._cache = read_json_file(self.cache_file)
+                except (json.JSONDecodeError, OSError) as e:
+                    print(format_warning(f"Cache file corrupted, starting fresh: {e}"), file=sys.stderr)
+                    self._cache = {}
+            else:
+                self._cache = {}
+        return self._cache
+
+    def get(self, package: str) -> Optional[CacheEntry]:
+        """Get cached entry if exists and not expired.
+
+        Args:
+            package: Package name (case-insensitive)
+
+        Returns:
+            CacheEntry if found and fresh, None otherwise
+        """
+        cache = self._load()
+        key = package.lower()
+
+        if key not in cache:
+            return None
+
+        entry_data = cache[key]
+        timestamp = entry_data.get("timestamp", 0)
+
+        # Check TTL
+        if time.time() - timestamp > CACHE_TTL_SECONDS:
+            return None  # Expired
+
+        return CacheEntry(**entry_data)
+
+    def set(self, package: str, repo_info: RepositoryInfo) -> None:
+        """Store cache entry and write to disk immediately.
+
+        Args:
+            package: Package name
+            repo_info: Repository information to cache
+        """
+        cache = self._load()
+        key = package.lower()
+
+        cache[key] = {
+            "repo_url": repo_info.repo_url,
+            "platform": repo_info.platform,
+            "discovery_method": repo_info.discovery_method,
+            "timestamp": time.time(),
+            "pip_version": repo_info.pip_version
+        }
+
+        # Write to disk
+        ensure_directory(self.cache_file.parent)
+        write_json_file(self.cache_file, cache)
+
+    def clear(self) -> None:
+        """Clear all cache files."""
+        if self.cache_file.exists():
+            self.cache_file.unlink()
+        self._cache = None
+
+
+class DependencyResolver:
+    """Resolves package dependencies using UV."""
+
+    def __init__(self, verbose: bool = False):
+        """Initialize dependency resolver.
+
+        Args:
+            verbose: Enable verbose output
+        """
+        self.verbose = verbose
+
+    def resolve(self, package: str) -> List[Tuple[str, str]]:
+        """Resolve all transitive dependencies using UV pip compile.
+
+        Args:
+            package: Package name to resolve
+
+        Returns:
+            List of (package_name, version) tuples
+
+        Raises:
+            FileNotFoundError: If UV is not installed
+            subprocess.CalledProcessError: If UV command fails
+        """
+        # Check UV is installed
+        try:
+            subprocess.run(
+                ["uv", "--version"],
+                capture_output=True,
+                check=True,
+                timeout=5
+            )
+        except FileNotFoundError:
+            print(format_error("Error: UV not found. Please install UV first:"), file=sys.stderr)
+            print("  curl -LsSf https://astral.sh/uv/install.sh | sh", file=sys.stderr)
+            print("\nOr via Homebrew:", file=sys.stderr)
+            print("  brew install uv", file=sys.stderr)
+            raise
+
+        if self.verbose:
+            print(format_info(f"Resolving dependencies for {package}..."), file=sys.stderr)
+
+        # Run uv pip compile
+        try:
+            result = subprocess.run(
+                ["uv", "pip", "compile", "--quiet", "--no-header", "-"],
+                input=package,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=60
+            )
+        except subprocess.CalledProcessError as e:
+            print(format_error(f"Error: Failed to resolve dependencies for {package}"), file=sys.stderr)
+            print(f"UV output: {e.stderr}", file=sys.stderr)
+            raise
+        except subprocess.TimeoutExpired:
+            print(format_error(f"Error: Dependency resolution timed out after 60 seconds"), file=sys.stderr)
+            raise
+
+        # Parse output (requirements.txt format)
+        dependencies = []
+        package_pattern = re.compile(r'^([a-zA-Z0-9_-]+)==([0-9.]+)')
+
+        for line in result.stdout.splitlines():
+            line = line.strip()
+
+            # Skip comments and empty lines
+            if not line or line.startswith('#'):
+                continue
+
+            # Match package==version
+            match = package_pattern.match(line)
+            if match:
+                pkg_name, version = match.groups()
+                dependencies.append((pkg_name, version))
+
+        if self.verbose:
+            print(format_info(f"Found {len(dependencies)} dependencies"), file=sys.stderr)
+
+        return dependencies
+
+
+class RepositoryDiscovery:
+    """Discovers Git repository URLs for Python packages."""
+
+    def __init__(
+        self,
+        cache_manager: CacheManager,
+        manual_mappings_file: Optional[Path] = None,
+        verbose: bool = False
+    ):
+        """Initialize repository discovery.
+
+        Args:
+            cache_manager: Cache manager instance
+            manual_mappings_file: Path to manual mappings file
+            verbose: Enable verbose output
+        """
+        self.cache = cache_manager
+        self.manual_mappings_file = manual_mappings_file or MANUAL_MAPPINGS_FILE
+        self.verbose = verbose
+        self.github_api_calls = 0  # Track rate limiting
+        self._manual_mappings: Optional[Dict] = None  # Cached mappings
+
+    def discover(self, package: str, version: str) -> Optional[RepositoryInfo]:
+        """Try all discovery strategies in order.
+
+        Args:
+            package: Package name
+            version: Package version
+
+        Returns:
+            RepositoryInfo if found, None otherwise
+        """
+        # 1. Check cache
+        cached = self.cache.get(package)
+        if cached:
+            if self.verbose:
+                print(format_info(f"  {package}: Found in cache ({cached.discovery_method})"), file=sys.stderr)
+            return RepositoryInfo.from_cache_entry(package, version, cached)
+
+        # 2. Try PyPI metadata (PRIMARY)
+        if self.verbose:
+            print(format_info(f"  {package}: Querying PyPI metadata..."), file=sys.stderr)
+        result = self._try_pypi_metadata(package, version)
+        if result:
+            self.cache.set(package, result)
+            return result
+
+        # 3. Try manual mappings (FALLBACK)
+        if self.verbose:
+            print(format_info(f"  {package}: Checking manual mappings..."), file=sys.stderr)
+        result = self._try_manual_mapping(package, version)
+        if result:
+            return result
+
+        # 4. Try GitHub API (LAST RESORT)
+        if self.verbose:
+            print(format_info(f"  {package}: Searching GitHub API..."), file=sys.stderr)
+        result = self._try_github_api(package, version)
+        if result:
+            self.cache.set(package, result)
+            return result
+
+        if self.verbose:
+            print(format_warning(f"  {package}: No repository found"), file=sys.stderr)
+        return None
+
+    def _try_pypi_metadata(self, package: str, version: str) -> Optional[RepositoryInfo]:
+        """Query PyPI JSON API for repository URL.
+
+        Args:
+            package: Package name
+            version: Package version
+
+        Returns:
+            RepositoryInfo if found, None otherwise
+        """
+        url = PYPI_JSON_URL.format(package=package)
+
+        try:
+            with urlopen(url, timeout=REQUEST_TIMEOUT) as response:
+                data = json.loads(response.read())
+
+            # Try multiple fields in order
+            project_urls = data.get("info", {}).get("project_urls") or {}
+            home_page = data.get("info", {}).get("home_page")
+
+            # Check project_urls first
+            for field in ["Source", "Repository", "Homepage"]:
+                if field in project_urls:
+                    repo_url = self._validate_repo_url(project_urls[field])
+                    if repo_url:
+                        platform = self._detect_platform(repo_url)
+                        return RepositoryInfo(
+                            package=package,
+                            repo_url=repo_url,
+                            platform=platform,
+                            discovery_method="pypi",
+                            timestamp=time.time(),
+                            pip_version=version
+                        )
+
+            # Check legacy home_page field
+            if home_page:
+                repo_url = self._validate_repo_url(home_page)
+                if repo_url:
+                    platform = self._detect_platform(repo_url)
+                    return RepositoryInfo(
+                        package=package,
+                        repo_url=repo_url,
+                        platform=platform,
+                        discovery_method="pypi",
+                        timestamp=time.time(),
+                        pip_version=version
+                    )
+
+        except (URLError, HTTPError, json.JSONDecodeError, OSError) as e:
+            if self.verbose:
+                print(format_warning(f"    PyPI query failed: {e}"), file=sys.stderr)
+
+        return None
+
+    def _try_manual_mapping(self, package: str, version: str) -> Optional[RepositoryInfo]:
+        """Load user-provided manual mappings.
+
+        Args:
+            package: Package name
+            version: Package version
+
+        Returns:
+            RepositoryInfo if found, None otherwise
+        """
+        # Load mappings once
+        if self._manual_mappings is None:
+            if self.manual_mappings_file.exists():
+                try:
+                    self._manual_mappings = read_json_file(self.manual_mappings_file)
+                except (json.JSONDecodeError, OSError) as e:
+                    if self.verbose:
+                        print(format_warning(f"    Manual mappings file error: {e}"), file=sys.stderr)
+                    self._manual_mappings = {}
+            else:
+                self._manual_mappings = {}
+
+        # Case-insensitive lookup
+        key = package.lower()
+        if key in self._manual_mappings:
+            mapping = self._manual_mappings[key]
+            repo_url = mapping.get("repo", "")
+            platform = mapping.get("platform", self._detect_platform(repo_url))
+
+            return RepositoryInfo(
+                package=package,
+                repo_url=repo_url,
+                platform=platform,
+                discovery_method="manual",
+                timestamp=time.time(),
+                pip_version=version
+            )
+
+        return None
+
+    def _try_github_api(self, package: str, version: str) -> Optional[RepositoryInfo]:
+        """Search GitHub for repository matching package name.
+
+        Args:
+            package: Package name
+            version: Package version
+
+        Returns:
+            RepositoryInfo if found, None otherwise
+        """
+        # Check rate limit
+        self.github_api_calls += 1
+        if self.github_api_calls > 50:  # Conservative limit
+            print(format_warning("Warning: Approaching GitHub API rate limit"), file=sys.stderr)
+
+        # Build search query
+        query = f"{package}+in:name+language:python"
+        url = f"{GITHUB_API_SEARCH_URL}?q={query}&sort=stars&order=desc&per_page=3"
+
+        try:
+            # Add GitHub token if available
+            request = Request(url)
+            github_token = os.environ.get("GITHUB_TOKEN")
+            if github_token:
+                request.add_header("Authorization", f"token {github_token}")
+
+            with urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+                # Check rate limit headers
+                remaining = response.headers.get("X-RateLimit-Remaining")
+                if remaining and int(remaining) < 10:
+                    print(format_warning(f"Warning: GitHub API rate limit low ({remaining} remaining)"), file=sys.stderr)
+
+                data = json.loads(response.read())
+
+            # Get first result with minimum stars
+            items = data.get("items", [])
+            for item in items:
+                stars = item.get("stargazers_count", 0)
+                if stars >= 10:  # Minimum stars filter
+                    html_url = item.get("html_url", "")
+                    repo_url = f"git+{html_url}.git"
+                    return RepositoryInfo(
+                        package=package,
+                        repo_url=repo_url,
+                        platform="github",
+                        discovery_method="github_api",
+                        timestamp=time.time(),
+                        pip_version=version
+                    )
+
+        except (URLError, HTTPError, json.JSONDecodeError, OSError) as e:
+            if self.verbose:
+                print(format_warning(f"    GitHub API search failed: {e}"), file=sys.stderr)
+
+        return None
+
+    def _validate_repo_url(self, url: str) -> Optional[str]:
+        """Validate that URL is a Git hosting platform.
+
+        Args:
+            url: URL to validate
+
+        Returns:
+            Formatted git+https URL if valid, None otherwise
+        """
+        if not url:
+            return None
+
+        # Check for known hosting platforms
+        platforms = ["github.com", "gitlab.com", "bitbucket.org"]
+        if not any(platform in url.lower() for platform in platforms):
+            return None
+
+        # Normalize to git+https format
+        url = url.rstrip("/")
+        if not url.startswith("git+"):
+            if url.startswith("http://"):
+                url = "git+" + url.replace("http://", "https://", 1)
+            elif url.startswith("https://"):
+                url = "git+" + url
+            else:
+                url = f"git+https://{url}"
+
+        # Ensure .git extension
+        if not url.endswith(".git"):
+            url += ".git"
+
+        return url
+
+    def _detect_platform(self, url: str) -> str:
+        """Detect hosting platform from URL.
+
+        Args:
+            url: Repository URL
+
+        Returns:
+            Platform name (github|gitlab|bitbucket)
+        """
+        url_lower = url.lower()
+        if "github.com" in url_lower:
+            return "github"
+        elif "gitlab.com" in url_lower:
+            return "gitlab"
+        elif "bitbucket.org" in url_lower:
+            return "bitbucket"
+        return "unknown"
+
+
+def generate_uv_command(repos: List[RepositoryInfo]) -> str:
+    """Generate UV install command with git URLs.
+
+    Args:
+        repos: List of repository information
+
+    Returns:
+        UV install command string
+    """
+    if not repos:
+        return ""
+
+    # Sort by package name for deterministic output
+    sorted_repos = sorted(repos, key=lambda r: r.package.lower())
+
+    # Format each repository
+    git_urls = []
+    for repo in sorted_repos:
+        # Convert version to git tag (add 'v' prefix if missing)
+        version = repo.pip_version
+        if version and not version.startswith('v'):
+            version = f"v{version}"
+
+        # Format: git+https://github.com/owner/repo.git@v2.32.5
+        if version:
+            url = f"{repo.repo_url}@{version}"
+        else:
+            url = repo.repo_url
+
+        git_urls.append(url)
+
+    # Build command with line continuations
+    if len(git_urls) == 1:
+        return f"uv pip install {git_urls[0]}"
+
+    # Multi-line format
+    command_lines = ["uv pip install \\"]
+    for i, url in enumerate(git_urls):
+        if i < len(git_urls) - 1:
+            command_lines.append(f"  {url} \\")
+        else:
+            command_lines.append(f"  {url}")
+
+    return "\n".join(command_lines)
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        Parsed arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="Resolve pip packages to Git repository URLs",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s requests
+  %(prog)s django --verbose
+  %(prog)s flask --clear-cache
+  %(prog)s pandas --config-file ~/.uv-mappings.json
+
+Exit Codes:
+  0 - Success
+  1 - Runtime error (package not found, network error, missing repos)
+  2 - Usage error (invalid arguments)
+
+Environment Variables:
+  GITHUB_TOKEN - GitHub API token (increases rate limit from 60/hr to 5000/hr)
+        """
+    )
+
+    parser.add_argument(
+        "package",
+        help="Pip package name to resolve"
+    )
+
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose output showing discovery process"
+    )
+
+    parser.add_argument(
+        "--clear-cache",
+        action="store_true",
+        help="Clear all caches before resolving dependencies"
+    )
+
+    parser.add_argument(
+        "--config-file",
+        type=Path,
+        help="Custom manual mappings file (default: ~/.cache/dotfiles/uv-resolver/manual_mappings.json)"
+    )
+
+    return parser.parse_args()
+
+
+def main() -> int:
+    """Main entry point.
+
+    Returns:
+        Exit code
+    """
+    args = parse_args()
+
+    try:
+        # Validate package name
+        validate_non_empty(args.package, "package name")
+
+        # Initialize components
+        cache_manager = CacheManager()
+        repository_discovery = RepositoryDiscovery(
+            cache_manager=cache_manager,
+            manual_mappings_file=args.config_file,
+            verbose=args.verbose
+        )
+        dependency_resolver = DependencyResolver(verbose=args.verbose)
+
+        # Clear cache if requested
+        if args.clear_cache:
+            cache_manager.clear()
+            if args.verbose:
+                print(format_info("Cache cleared"), file=sys.stderr)
+
+        # Resolve dependencies
+        if args.verbose:
+            print(format_info(f"Resolving dependencies for {args.package}..."), file=sys.stderr)
+
+        try:
+            dependencies = dependency_resolver.resolve(args.package)
+        except FileNotFoundError:
+            return EXIT_ERROR
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return EXIT_ERROR
+
+        if not dependencies:
+            print(format_error(f"Error: No dependencies found for {args.package}"), file=sys.stderr)
+            return EXIT_ERROR
+
+        if args.verbose:
+            print(format_info(f"Discovering repositories for {len(dependencies)} dependencies..."), file=sys.stderr)
+
+        # Discover repositories for each dependency
+        repos: List[RepositoryInfo] = []
+        missing: List[Tuple[str, str]] = []
+
+        for pkg_name, version in dependencies:
+            repo_info = repository_discovery.discover(pkg_name, version)
+            if repo_info:
+                repos.append(repo_info)
+            else:
+                missing.append((pkg_name, version))
+
+        # Check if any dependencies are missing repositories
+        if missing:
+            print(format_error(f"\nError: Failed to find repositories for {len(missing)} package(s):"), file=sys.stderr)
+            for pkg_name, version in missing:
+                print(f"  - {pkg_name}=={version}", file=sys.stderr)
+
+            print("\nSuggestions:", file=sys.stderr)
+            print("1. Add manual mappings to:", file=sys.stderr)
+            print(f"   {MANUAL_MAPPINGS_FILE}", file=sys.stderr)
+            print("   Example:", file=sys.stderr)
+            print("   {", file=sys.stderr)
+            if missing:
+                pkg_name, _ = missing[0]
+                print(f'     "{pkg_name}": {{', file=sys.stderr)
+                print(f'       "repo": "git+https://github.com/org/repo.git",', file=sys.stderr)
+                print(f'       "platform": "github"', file=sys.stderr)
+                print('     }', file=sys.stderr)
+            print("   }", file=sys.stderr)
+            print("\n2. Check if packages are available on PyPI", file=sys.stderr)
+            print("3. Some packages may not have public Git repositories", file=sys.stderr)
+
+            return EXIT_ERROR
+
+        # Success - generate UV command
+        print()
+        print(format_success(f"Success! Found repositories for all {len(repos)} dependencies"))
+        print()
+        print("UV install command:")
+        print()
+        print(generate_uv_command(repos))
+        print()
+
+        return EXIT_SUCCESS
+
+    except KeyboardInterrupt:
+        print(format_warning("\nCancelled by user"), file=sys.stderr)
+        return EXIT_ERROR
+    except Exception as e:
+        print(format_error(f"Unexpected error: {e}"), file=sys.stderr)
+        if args.verbose if 'args' in locals() else False:
+            import traceback
+            traceback.print_exc()
+        return EXIT_ERROR
+
+
+if __name__ == "__main__":
+    sys.exit(main())

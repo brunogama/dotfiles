@@ -1,0 +1,34 @@
+{
+  "_comment": "Manual repository mappings for packages with non-standard naming",
+  "_usage": "Copy to ~/.cache/dotfiles/uv-resolver/manual_mappings.json and customize",
+
+  "PIL": {
+    "repo": "git+https://github.com/python-pillow/Pillow.git",
+    "platform": "github"
+  },
+
+  "opencv-python": {
+    "repo": "git+https://github.com/opencv/opencv-python.git",
+    "platform": "github"
+  },
+
+  "PyYAML": {
+    "repo": "git+https://github.com/yaml/pyyaml.git",
+    "platform": "github"
+  },
+
+  "beautifulsoup4": {
+    "repo": "git+https://code.launchpad.net/beautifulsoup.git",
+    "platform": "other"
+  },
+
+  "msgpack": {
+    "repo": "git+https://github.com/msgpack/msgpack-python.git",
+    "platform": "github"
+  },
+
+  "python-dateutil": {
+    "repo": "git+https://github.com/dateutil/dateutil.git",
+    "platform": "github"
+  }
+}
