@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Script metadata
-readonly VERSION="1.0.0"
+readonly INSTALL_SCRIPT_VERSION="1.0.0"
 
 # Colors
 readonly RED='\033[0;31m'
@@ -71,7 +71,7 @@ log_verbose() {
 # Show usage
 usage() {
     cat << EOF
-install v${VERSION}
+install v${INSTALL_SCRIPT_VERSION}
 One-command dotfiles installation
 
 USAGE:
@@ -96,7 +96,7 @@ EXAMPLES:
 
     # Preview only
     ./install --dry-run
-    
+
     # Only update scripts in ~/local/bin
     ./install --scripts-only
 
@@ -373,18 +373,18 @@ phase_migrate_local_directory() {
 
             if [[ -d "$old_local/bin" ]]; then
                 log_info "Checking for scripts to migrate from ~/.local/bin..."
-                
+
                 local copied_count=0
                 local skipped_count=0
-                
+
                 for script in "$old_local/bin"/*; do
                     if [[ ! -f "$script" ]]; then
                         continue
                     fi
-                    
+
                     local script_name=$(basename "$script")
                     local new_script="$new_local/bin/$script_name"
-                    
+
                     # Check if script will be installed by dotfiles
                     local dotfiles_script="$DOTFILES_ROOT/bin/core/$script_name"
                     if [[ ! -f "$dotfiles_script" ]]; then
@@ -396,26 +396,26 @@ phase_migrate_local_directory() {
                     if [[ ! -f "$dotfiles_script" ]]; then
                         dotfiles_script="$DOTFILES_ROOT/bin/macos/$script_name"
                     fi
-                    
+
                     # Copy if not in dotfiles and not already in new location
                     if [[ ! -f "$dotfiles_script" ]] && [[ ! -f "$new_script" ]]; then
                         if cp "$script" "$new_script"; then
                             chmod +x "$new_script" 2>/dev/null || true
                             log_success "Copied: $script_name"
-                            ((copied_count++))
+                            ((copied_count++)) || true
                         fi
                     else
-                        ((skipped_count++))
+                        ((skipped_count++)) || true
                     fi
                 done
-                
+
                 if [[ $copied_count -gt 0 ]]; then
                     log_success "Migrated $copied_count custom script(s) to ~/local/bin"
                 fi
                 if [[ $skipped_count -gt 0 ]]; then
                     log_info "Skipped $skipped_count script(s) (will be installed by dotfiles)"
                 fi
-                
+
                 echo ""
                 log_info "Your ~/.local directory is still intact"
                 log_warning "You can manually review and delete ~/.local when ready"
@@ -423,7 +423,7 @@ phase_migrate_local_directory() {
             else
                 log_info "No ~/.local/bin directory found"
             fi
-            
+
             log_success "Created ~/local directory with migrated scripts"
             ;;
 
@@ -431,7 +431,7 @@ phase_migrate_local_directory() {
             # Skip migration
             log_warning "Skipping migration - keeping ~/.local as-is"
             log_warning "Note: This may cause PATH conflicts"
-            
+
             # Still create new directory if it doesn't exist
             if [[ ! -d "$new_local" ]]; then
                 mkdir -p "$new_local/bin"
@@ -617,12 +617,12 @@ phase_pyenv() {
     # Check if pyenv is properly installed (has libexec directory with pyenv executable)
     if [[ -d "$pyenv_root" ]] && [[ -f "$pyenv_root/libexec/pyenv" ]]; then
         log_success "pyenv is already installed"
-        
+
         # Add to PATH and initialize for this session
         export PYENV_ROOT="$pyenv_root"
         export PATH="$PYENV_ROOT/bin:$PATH"
         eval "$(pyenv init -)"
-        
+
         # Check if any Python version is installed
         if pyenv versions --bare 2>/dev/null | grep -q .; then
             local current_python
@@ -705,11 +705,11 @@ phase_rbenv() {
     # Check if rbenv is properly installed (has libexec directory with rbenv executable)
     if [[ -d "$rbenv_root" ]] && [[ -f "$rbenv_root/libexec/rbenv" ]]; then
         log_success "rbenv is already installed"
-        
+
         # Add to PATH and initialize for this session
         export PATH="$rbenv_root/bin:$PATH"
         eval "$(rbenv init - bash)"
-        
+
         # Check if any Ruby version is installed
         if rbenv versions --bare 2>/dev/null | grep -q .; then
             local current_ruby
@@ -724,7 +724,7 @@ phase_rbenv() {
                     log_info "Installing ruby-build plugin..."
                     git clone https://github.com/rbenv/ruby-build.git "$rbenv_root/plugins/ruby-build"
                 fi
-                
+
                 local latest_ruby
                 latest_ruby=$(rbenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
                 if [[ -n "$latest_ruby" ]]; then
@@ -810,11 +810,11 @@ phase_nvm() {
     # Check if nvm is properly installed (has nvm.sh script)
     if [[ -d "$nvm_dir" ]] && [[ -f "$nvm_dir/nvm.sh" ]]; then
         log_success "nvm is already installed"
-        
+
         # Source nvm for this session
         export NVM_DIR="$nvm_dir"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        
+
         # Check if any Node version is installed
         if nvm ls 2>/dev/null | grep -q 'v[0-9]'; then
             local current_version
@@ -1002,7 +1002,7 @@ phase_scripts_only() {
     log_phase "Phase 7: Scripts Linking (~/local/bin only)"
 
     local target_dir="$HOME/local/bin"
-    
+
     # Ensure target directory exists
     if [[ ! -d "$target_dir" ]]; then
         if [[ "$DRY_RUN" == "true" ]]; then
@@ -1020,13 +1020,13 @@ phase_scripts_only() {
 
     for dir in "${bin_dirs[@]}"; do
         local source_dir="$DOTFILES_ROOT/bin/$dir"
-        
+
         # Skip if directory doesn't exist
         if [[ ! -d "$source_dir" ]]; then
             log_verbose "Skipping $dir (directory not found)"
             continue
         fi
-        
+
         # Skip macos on non-darwin platforms
         if [[ "$dir" == "macos" ]] && [[ "$PLATFORM" != "darwin" ]]; then
             log_verbose "Skipping $dir (not on macOS)"
@@ -1034,42 +1034,42 @@ phase_scripts_only() {
         fi
 
         log_info "Processing bin/$dir/..."
-        
+
         # Link each file in the directory
         for source_file in "$source_dir"/*; do
             # Skip if not a file
             if [[ ! -f "$source_file" ]]; then
                 continue
             fi
-            
+
             # Skip subdirectories like home_sync/, lib/, git-hooks/
             if [[ -d "$source_file" ]]; then
                 continue
             fi
-            
+
             local filename=$(basename "$source_file")
             local target_file="$target_dir/$filename"
-            
+
             # Check if already linked correctly
             if [[ -L "$target_file" ]] && [[ "$(readlink "$target_file")" == "$source_file" ]]; then
                 log_verbose "Already linked: $filename"
-                ((skipped_count++))
+                ((skipped_count++)) || true
                 continue
             fi
-            
+
             # Create or update symlink
             if [[ "$DRY_RUN" == "true" ]]; then
                 log_info "Would link: $filename -> bin/$dir/$filename"
-                ((linked_count++))
+                ((linked_count++)) || true
             else
                 if ln -sf "$source_file" "$target_file"; then
                     # Make executable
                     chmod +x "$target_file" 2>/dev/null || true
                     log_success "Linked: $filename"
-                    ((linked_count++))
+                    ((linked_count++)) || true
                 else
                     log_error "Failed to link: $filename"
-                    ((error_count++))
+                    ((error_count++)) || true
                 fi
             fi
         done
@@ -1082,26 +1082,26 @@ phase_scripts_only() {
         if [[ -d "$source_lib" ]]; then
             local target_lib="$target_dir/$(basename $(dirname "$lib_dir"))/lib"
             local target_parent=$(dirname "$target_lib")
-            
+
             if [[ ! -d "$target_parent" ]]; then
                 if [[ "$DRY_RUN" != "true" ]]; then
                     mkdir -p "$target_parent"
                 fi
             fi
-            
+
             if [[ -L "$target_lib" ]] && [[ "$(readlink "$target_lib")" == "$source_lib" ]]; then
                 log_verbose "Already linked: $(basename $(dirname "$lib_dir"))/lib/"
-                ((skipped_count++))
+                ((skipped_count++)) || true
             elif [[ "$DRY_RUN" == "true" ]]; then
                 log_info "Would link: $(basename $(dirname "$lib_dir"))/lib/ -> $lib_dir/"
-                ((linked_count++))
+                ((linked_count++)) || true
             else
                 if ln -sf "$source_lib" "$target_lib"; then
                     log_success "Linked: $(basename $(dirname "$lib_dir"))/lib/"
-                    ((linked_count++))
+                    ((linked_count++)) || true
                 else
                     log_error "Failed to link: $(basename $(dirname "$lib_dir"))/lib/"
-                    ((error_count++))
+                    ((error_count++)) || true
                 fi
             fi
         fi
@@ -1123,10 +1123,10 @@ phase_scripts_only() {
     else
         log_info "Setting executable permissions on scripts..."
         find "$target_dir" -type f -exec chmod +x {} \; 2>/dev/null || true
-        
+
         log_info "Setting ownership to $(whoami) for ~/local..."
         chown -R "$(whoami)" "$HOME/local" 2>/dev/null || true
-        
+
         log_success "Permissions and ownership updated"
     fi
 }
