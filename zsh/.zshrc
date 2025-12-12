@@ -294,3 +294,8 @@ primary() {
   # "$@" automatically passes ALL arguments (text) you type to the agent
   claude --agent primary-agent "$@"
 }
+
+# Add these lines at the end
+export UV_NATIVE_TLS=1
+export NEXUS_USER="$(get-api-key NEXUS_USER)"
+export NEXUS_PASS="$(get-api-key NEXUS_PASS)"

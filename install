@@ -1305,17 +1305,17 @@ main() {
         log_info "Run './install' without --scripts-only for full installation"
     else
         # Full installation
-        phase_preflight
-        phase_homebrew
-        phase_dependencies
-        phase_bundle
+    phase_preflight
+    phase_homebrew
+    phase_dependencies
+    phase_bundle
         phase_migrate_local_directory
-        phase_version_managers
-        phase_prezto
-        phase_symlinks
-        phase_shell
-        phase_performance
-        show_summary
+    phase_version_managers
+    phase_prezto
+    phase_symlinks
+    phase_shell
+    phase_performance
+    show_summary
     fi
 
     exit 0

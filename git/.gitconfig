@@ -5,3 +5,5 @@
 	excludesfile = /Users/bruno/.gitignore_global
 [include]
 	path = ~/.config/git/github-flow-aliases.gitconfig
+[push]
+	autoSetupRemote = true

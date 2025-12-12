@@ -173,6 +173,12 @@
           "type": "directory-contents",
           "executable": true,
           "platforms": ["darwin"]
+        },
+        {
+          "source": "bin/folder-action-scripts/compress-video-automation.scpt",
+          "target": "~/Library/Scripts/Folder Action Scripts/compress-video-automation.scptn",
+          "description": "Folder Action Script to compress videos",
+          "platforms": ["darwin"]
         }
       ]
     }
