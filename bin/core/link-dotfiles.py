@@ -32,6 +32,58 @@ CYAN = "\033[0;36m"
 NC = "\033[0m"
 
 
+def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
+    """
+    Find the project root by looking for LinkingManifest.json or .git directory.
+    
+    Search strategy:
+    1. Check if LinkingManifest.json exists in current directory (relative path)
+    2. Walk up directory tree looking for:
+       - LinkingManifest.json (definitive indicator)
+       - .git directory (then verify LinkingManifest.json exists in same directory)
+    
+    Args:
+        start_path: Path to start searching from (default: current working directory)
+        
+    Returns:
+        Path to project root if found, None otherwise
+    """
+    if start_path is None:
+        start_path = Path.cwd()
+    else:
+        start_path = Path(start_path).resolve()
+    
+    # First, check if manifest exists in current directory (relative path)
+    current_manifest = start_path / "LinkingManifest.json"
+    if current_manifest.exists():
+        return start_path
+    
+    # Walk up the directory tree
+    current = start_path
+    while current != current.parent:  # Stop at filesystem root
+        manifest_file = current / "LinkingManifest.json"
+        git_dir = current / ".git"
+        
+        # If manifest exists, this is the project root
+        if manifest_file.exists():
+            return current
+        
+        # If .git exists, check for manifest in same directory
+        # This helps identify project root when starting from subdirectories
+        if git_dir.exists():
+            if manifest_file.exists():
+                return current
+        
+        current = current.parent
+    
+    # Final check at filesystem root
+    root_manifest = current / "LinkingManifest.json"
+    if root_manifest.exists():
+        return current
+    
+    return None
+
+
 class LinkManager:
     def __init__(
         self,
@@ -59,8 +111,20 @@ class LinkManager:
         elif self.platform.startswith("linux"):
             self.platform = "linux"
 
-        # Paths
-        self.dotfiles_root = Path(os.environ.get("DOTFILES_ROOT", Path(__file__).parent.parent.parent)).resolve()
+        # Find project root
+        # Priority: 1. DOTFILES_ROOT env var, 2. Auto-detect from current location
+        env_root = os.environ.get("DOTFILES_ROOT")
+        if env_root:
+            self.dotfiles_root = Path(env_root).resolve()
+        else:
+            # Try to find project root automatically
+            project_root = find_project_root()
+            if project_root:
+                self.dotfiles_root = project_root
+            else:
+                # Fallback to old behavior (3 levels up from script)
+                self.dotfiles_root = Path(__file__).parent.parent.parent.resolve()
+        
         self.manifest_file = self.dotfiles_root / "LinkingManifest.json"
 
     def log_info(self, msg: str):

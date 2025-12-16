@@ -29,12 +29,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Environment-aware syncing (work vs personal)
   - Beautiful CLI with rich output, spinners, and progress
   - Comprehensive error handling with actionable guidance
+- Video processing toolkit
+  - `dedupe-video-frames.py`: Smart frame deduplication script that removes repetitive frames by comparing to frames N seconds earlier
+    - Supports perceptual hash and correlation comparison methods
+    - Chunk mode for processing large videos efficiently
+    - Parallel processing with configurable job count
+    - Configurable sampling rate for performance optimization
+  - `clip-video`: Video clipping tool for extracting segments from videos
+  - Prompt documentation for video tools in `prompts/` directory
 
 ### Fixed
 - Makefile color escaping - ANSI colors now render correctly in terminal output
 - home-sync missing dependency error (store-api-key) - automatically resolved on shell startup
 - home-sync git repository detection - now auto-detects correct location
 - home-sync sync.sh dependencies - replaced with direct git commands
+
+### Changed
+- `compress-video`: Optimized processing workflow
+  - Reorder operations: compress first when downscaling, then dedupe (reduces deduplication processing time)
+  - Enhanced dedupe integration with all updated parameters (sample rate, jobs, phash, chunk mode)
+  - Added helper functions for video resolution detection (get_video_height, get_target_height, will_downscale)
+- `link-dotfiles.py`: Added `find_project_root()` function for flexible project root detection
+  - Searches for LinkingManifest.json or .git directory
+  - Supports running from subdirectories
 
 ## [1.0.0] - 2025-01-23
 

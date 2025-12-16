@@ -1,0 +1,480 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "ffmpeg-python>=0.2.0",
+# ]
+# ///
+
+"""
+Video Clipping Tool
+
+Extracts a segment from a video file by specifying start and end times.
+Uses FFmpeg for efficient video processing with stream copy when possible.
+
+Usage:
+    clip-video -i input_file -s START_TIME -e END_TIME [options]
+    clip-video -i input_file -s START_TIME -d DURATION [options]
+
+Options:
+    -i, --input FILE          Input video file (required)
+    -o, --output FILE         Output video file (optional, auto-generated if not specified)
+    -s, --start TIME          Start time in format: HH:MM:SS, MM:SS, or seconds (required)
+    -e, --end TIME            End time in format: HH:MM:SS, MM:SS, or seconds
+    -d, --duration TIME       Duration from start time (alternative to -e)
+    --re-encode               Force re-encoding instead of stream copy
+    --info                    Show video information and exit
+    -h, --help               Show this help message
+
+Time Format Examples:
+    00:05:30    (5 minutes 30 seconds)
+    5:30        (5 minutes 30 seconds)
+    330         (330 seconds)
+    330.5       (330.5 seconds)
+
+Examples:
+    clip-video -i video.mp4 -s 00:01:30 -e 00:02:00
+    clip-video -i video.mp4 -s 90 -d 30
+    clip-video -i video.mp4 -s 1:30 --info
+"""
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
+
+try:
+    import ffmpeg
+except ImportError as e:
+    print(f"Error: Missing required dependency: {e}", file=sys.stderr)
+    print("Please ensure all dependencies are installed via UV.", file=sys.stderr)
+    sys.exit(1)
+
+
+# Default FFmpeg paths (macOS Homebrew)
+FFMPEG_PATH = "/opt/homebrew/bin/ffmpeg"
+FFPROBE_PATH = "/opt/homebrew/bin/ffprobe"
+
+
+def parse_time(time_str: str) -> float:
+    """Parse time string into seconds.
+    
+    Supports formats:
+    - HH:MM:SS (e.g., "01:30:45")
+    - MM:SS (e.g., "5:30")
+    - SS or SS.SSS (e.g., "90" or "90.5")
+    
+    Args:
+        time_str: Time string in various formats
+        
+    Returns:
+        Time in seconds as float
+        
+    Raises:
+        ValueError: If time format is invalid
+    """
+    time_str = time_str.strip()
+    
+    if not time_str:
+        raise ValueError("Time string cannot be empty")
+    
+    # Try parsing as decimal seconds first
+    try:
+        return float(time_str)
+    except ValueError:
+        pass
+    
+    # Try parsing as MM:SS or HH:MM:SS
+    parts = time_str.split(":")
+    if len(parts) == 2:
+        # MM:SS format
+        try:
+            minutes = int(parts[0])
+            seconds = float(parts[1])
+            return minutes * 60 + seconds
+        except ValueError:
+            raise ValueError(f"Invalid time format: {time_str}")
+    elif len(parts) == 3:
+        # HH:MM:SS format
+        try:
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            seconds = float(parts[2])
+            return hours * 3600 + minutes * 60 + seconds
+        except ValueError:
+            raise ValueError(f"Invalid time format: {time_str}")
+    else:
+        raise ValueError(f"Invalid time format: {time_str}. Use HH:MM:SS, MM:SS, or seconds")
+
+
+def format_time(seconds: float) -> str:
+    """Format seconds into HH:MM:SS string.
+    
+    Args:
+        seconds: Time in seconds
+        
+    Returns:
+        Formatted time string (HH:MM:SS)
+    """
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = seconds % 60
+    
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{secs:05.2f}"
+    else:
+        return f"{minutes:02d}:{secs:05.2f}"
+
+
+def sanitize_time_for_filename(seconds: float) -> str:
+    """Convert time to filename-safe string.
+    
+    Args:
+        seconds: Time in seconds
+        
+    Returns:
+        Filename-safe time string (e.g., "00-01-30-50" for 90.5 seconds)
+    """
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = seconds % 60
+    
+    if hours > 0:
+        return f"{hours:02d}-{minutes:02d}-{secs:05.2f}".replace(".", "-")
+    else:
+        return f"{minutes:02d}-{secs:05.2f}".replace(".", "-")
+
+
+def get_video_info(video_path: Path) -> dict:
+    """Extract video information using ffprobe.
+    
+    Args:
+        video_path: Path to video file
+        
+    Returns:
+        Dictionary with duration, width, height, fps, codec, has_audio
+        
+    Raises:
+        SystemExit: If video cannot be probed
+    """
+    try:
+        probe = ffmpeg.probe(str(video_path), cmd=FFPROBE_PATH)
+        video_stream = next(
+            (s for s in probe["streams"] if s["codec_type"] == "video"), None
+        )
+        
+        if not video_stream:
+            raise ValueError("No video stream found")
+        
+        # Get duration
+        duration = float(probe["format"].get("duration", 0))
+        
+        # Get dimensions
+        width = int(video_stream.get("width", 0))
+        height = int(video_stream.get("height", 0))
+        
+        # Get FPS
+        fps_str = video_stream.get("r_frame_rate", "30/1")
+        if "/" in fps_str:
+            num, den = map(int, fps_str.split("/"))
+            fps = num / den if den > 0 else 30.0
+        else:
+            fps = float(fps_str)
+        
+        # Get codec
+        codec = video_stream.get("codec_name", "unknown")
+        
+        # Check for audio
+        has_audio = any(s["codec_type"] == "audio" for s in probe["streams"])
+        
+        return {
+            "duration": duration,
+            "width": width,
+            "height": height,
+            "fps": fps,
+            "codec": codec,
+            "has_audio": has_audio,
+        }
+    except ffmpeg.Error as e:
+        error_msg = e.stderr.decode() if e.stderr else str(e)
+        print(f"Error extracting video info: {error_msg}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error extracting video info: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def generate_output_filename(input_file: Path, start_time: float, end_time: float) -> Path:
+    """Generate output filename based on input and time range.
+    
+    Args:
+        input_file: Input video file path
+        start_time: Start time in seconds
+        end_time: End time in seconds
+        
+    Returns:
+        Output file path
+    """
+    stem = input_file.stem
+    ext = input_file.suffix
+    start_str = sanitize_time_for_filename(start_time)
+    end_str = sanitize_time_for_filename(end_time)
+    return input_file.parent / f"{stem}_clip_{start_str}_{end_str}{ext}"
+
+
+def clip_video(
+    input_path: Path,
+    output_path: Path,
+    start_time: float,
+    end_time: float,
+    force_reencode: bool = False,
+) -> None:
+    """Clip video from start_time to end_time.
+    
+    Args:
+        input_path: Path to input video
+        output_path: Path to output video
+        start_time: Start time in seconds
+        end_time: End time in seconds
+        force_reencode: Force re-encoding instead of stream copy
+        
+    Raises:
+        SystemExit: If clipping fails
+    """
+    duration = end_time - start_time
+    
+    if duration <= 0:
+        print(f"Error: Invalid time range. Start time ({start_time}s) must be less than end time ({end_time}s)", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        # Build FFmpeg command
+        # Use -ss before -i for faster input seeking
+        input_video = ffmpeg.input(str(input_path), ss=start_time)
+        
+        if force_reencode:
+            # Re-encode mode
+            output = ffmpeg.output(
+                input_video,
+                str(output_path),
+                t=duration,
+                vcodec="libx264",
+                acodec="aac",
+                movflags="+faststart",
+            )
+        else:
+            # Try stream copy first (faster, no quality loss)
+            output = ffmpeg.output(
+                input_video,
+                str(output_path),
+                t=duration,
+                c="copy",
+                avoid_negative_ts="make_zero",
+            )
+        
+        # Run FFmpeg
+        print(f"Clipping video from {format_time(start_time)} to {format_time(end_time)}...")
+        print(f"Duration: {format_time(duration)}")
+        
+        ffmpeg.run(output, cmd=FFMPEG_PATH, overwrite_output=True, quiet=False)
+        
+    except ffmpeg.Error as e:
+        error_msg = e.stderr.decode() if e.stderr else str(e)
+        
+        # If stream copy failed and we weren't forcing re-encode, try re-encoding
+        if not force_reencode and "copy" in str(error_msg).lower():
+            print("Stream copy failed, falling back to re-encoding...", file=sys.stderr)
+            try:
+                input_video = ffmpeg.input(str(input_path), ss=start_time)
+                output = ffmpeg.output(
+                    input_video,
+                    str(output_path),
+                    t=duration,
+                    vcodec="libx264",
+                    acodec="aac",
+                    movflags="+faststart",
+                )
+                ffmpeg.run(output, cmd=FFMPEG_PATH, overwrite_output=True, quiet=False)
+            except ffmpeg.Error as e2:
+                error_msg2 = e2.stderr.decode() if e2.stderr else str(e2)
+                print(f"Error clipping video: {error_msg2}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(f"Error clipping video: {error_msg}", file=sys.stderr)
+            sys.exit(1)
+
+
+def get_file_size(path: Path) -> int:
+    """Get file size in bytes.
+    
+    Args:
+        path: File path
+        
+    Returns:
+        File size in bytes
+    """
+    return path.stat().st_size
+
+
+def format_file_size(size_bytes: int) -> str:
+    """Format file size in human-readable format.
+    
+    Args:
+        size_bytes: Size in bytes
+        
+    Returns:
+        Formatted size string (e.g., "1.5 MB")
+    """
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.2f} TB"
+
+
+def main() -> None:
+    """Main function."""
+    parser = argparse.ArgumentParser(
+        description="Extract a segment from a video file by specifying start and end times",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "-i", "--input", required=True, type=Path, help="Input video file (required)"
+    )
+    parser.add_argument(
+        "-o", "--output", type=Path, help="Output video file (optional, auto-generated if not specified)"
+    )
+    parser.add_argument(
+        "-s", "--start", type=str, help="Start time in format: HH:MM:SS, MM:SS, or seconds (required)"
+    )
+    parser.add_argument(
+        "-e", "--end", type=str, help="End time in format: HH:MM:SS, MM:SS, or seconds"
+    )
+    parser.add_argument(
+        "-d", "--duration", type=str, help="Duration from start time (alternative to -e)"
+    )
+    parser.add_argument(
+        "--re-encode", action="store_true", help="Force re-encoding instead of stream copy"
+    )
+    parser.add_argument(
+        "--info", action="store_true", help="Show video information and exit"
+    )
+    
+    args = parser.parse_args()
+    
+    # Validate input file
+    if not args.input.exists():
+        print(f"Error: Input file '{args.input}' does not exist!", file=sys.stderr)
+        sys.exit(1)
+    
+    # Get video information
+    print("Analyzing input video...")
+    video_info = get_video_info(args.input)
+    
+    print(f"Duration: {format_time(video_info['duration'])}")
+    print(f"Resolution: {video_info['width']}x{video_info['height']}")
+    print(f"FPS: {video_info['fps']:.2f}")
+    print(f"Codec: {video_info['codec']}")
+    print(f"Audio: {'Yes' if video_info['has_audio'] else 'No'}")
+    
+    # If --info flag, exit here
+    if args.info:
+        return
+    
+    # Validate start time is provided
+    if not args.start:
+        print("Error: Start time (-s/--start) is required", file=sys.stderr)
+        sys.exit(1)
+    
+    # Parse start time
+    try:
+        start_time = parse_time(args.start)
+    except ValueError as e:
+        print(f"Error: Invalid start time format: {e}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Validate start time is within video duration
+    if start_time < 0:
+        print(f"Error: Start time cannot be negative", file=sys.stderr)
+        sys.exit(1)
+    
+    if start_time >= video_info["duration"]:
+        print(
+            f"Error: Start time ({format_time(start_time)}) is beyond video duration ({format_time(video_info['duration'])})",
+            file=sys.stderr
+        )
+        sys.exit(1)
+    
+    # Parse end time or duration
+    if args.end and args.duration:
+        print("Error: Cannot specify both --end and --duration", file=sys.stderr)
+        sys.exit(1)
+    
+    if not args.end and not args.duration:
+        print("Error: Must specify either --end or --duration", file=sys.stderr)
+        sys.exit(1)
+    
+    if args.end:
+        try:
+            end_time = parse_time(args.end)
+        except ValueError as e:
+            print(f"Error: Invalid end time format: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:  # args.duration
+        try:
+            duration = parse_time(args.duration)
+            if duration <= 0:
+                print("Error: Duration must be greater than 0", file=sys.stderr)
+                sys.exit(1)
+            end_time = start_time + duration
+        except ValueError as e:
+            print(f"Error: Invalid duration format: {e}", file=sys.stderr)
+            sys.exit(1)
+    
+    # Validate end time
+    if end_time <= start_time:
+        print(
+            f"Error: End time ({format_time(end_time)}) must be greater than start time ({format_time(start_time)})",
+            file=sys.stderr
+        )
+        sys.exit(1)
+    
+    if end_time > video_info["duration"]:
+        print(
+            f"Warning: End time ({format_time(end_time)}) exceeds video duration ({format_time(video_info['duration'])}). "
+            f"Will clip to end of video.",
+            file=sys.stderr
+        )
+        end_time = video_info["duration"]
+    
+    # Generate output filename if not provided
+    if not args.output:
+        args.output = generate_output_filename(args.input, start_time, end_time)
+    
+    # Get input file size
+    input_size = get_file_size(args.input)
+    
+    # Clip the video
+    clip_video(args.input, args.output, start_time, end_time, args.re_encode)
+    
+    # Get output file size
+    output_size = get_file_size(args.output)
+    
+    # Display results
+    print("\n=== Clipping Complete ===")
+    print(f"Input file: {args.input}")
+    print(f"Output file: {args.output}")
+    print(f"Time range: {format_time(start_time)} - {format_time(end_time)}")
+    print(f"Duration: {format_time(end_time - start_time)}")
+    print(f"Input size: {format_file_size(input_size)}")
+    print(f"Output size: {format_file_size(output_size)}")
+    reduction_pct = ((input_size - output_size) / input_size * 100) if input_size > 0 else 0
+    print(f"Size reduction: {reduction_pct:.1f}%")
+    print("========================")
+
+
+if __name__ == "__main__":
+    main()
+

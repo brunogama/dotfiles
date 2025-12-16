@@ -1,462 +1,1017 @@
-#!/bin/bash
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "rich>=13.0.0",
+#     "ffmpeg-python>=0.2.0",
+# ]
+# ///
 
-# Generic Video Compression Script using FFmpeg
-# Compatible with all common video formats
+"""
+Generic Video Compression Script using FFmpeg
+Compatible with all common video formats
+"""
 
-set -euo pipefail  # Exit on error, undefined vars, pipe failures
+import argparse
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
+
+try:
+    from rich.console import Console
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
+        TimeElapsedColumn,
+    )
+    from rich.panel import Panel
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+try:
+    import ffmpeg
+    FFMPEG_PYTHON_AVAILABLE = True
+except ImportError:
+    FFMPEG_PYTHON_AVAILABLE = False
 
 # Default values
-readonly DEFAULT_SCALE="720p"
-readonly DEFAULT_QUALITY=75
-readonly DEFAULT_PRESET="medium"
-readonly DEFAULT_NORMALIZE_FPS=true
-readonly DEFAULT_TARGET_FPS=24
+DEFAULT_SCALE = "480p"
+DEFAULT_QUALITY = 75
+DEFAULT_PRESET = "medium"
+DEFAULT_NORMALIZE_FPS = True
+DEFAULT_TARGET_FPS = 24
+DEFAULT_DEDUPE = False
+DEFAULT_DEDUPE_THRESHOLD = 0.95
+DEFAULT_DEDUPE_WINDOW = 3
+DEFAULT_DEDUPE_SAMPLE_RATE = 1
+DEFAULT_DEDUPE_CHUNK_DURATION = 60.0
 
-# Function to display usage
-usage() {
-    cat << 'EOF'
-Usage: compress-video.sh -i input_file [options]
+# FFmpeg paths (can be customized)
+FFMPEG = os.environ.get("FFMPEG_PATH", "ffmpeg")
+FFPROBE = os.environ.get("FFPROBE_PATH", "ffprobe")
 
-Options:
-  -i, --input FILE      Input video file (required)
-  -o, --output FILE     Output video file (optional, auto-generated if not specified)
-  -s, --scale SCALE     Target resolution: 480p, 720p, 1080p (default: 1080p)
-  -q, --quality NUM     Quality level 1-100, higher is better (default: 75)
-  -p, --preset PRESET   Encoding preset: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow (default: medium)
-  -f, --fps FPS         Target frame rate (default: 30)
-  --no-normalize-fps    Disable frame rate normalization (keep original fps)
-  -h, --help           Show this help message
+# Global verbose flag
+VERBOSE = False
 
-Frame Rate Behavior:
-  - By default, videos with fps > 30 are normalized to 30fps
-  - Videos with fps ≤ 30 keep their original frame rate
-  - Use --no-normalize-fps to always keep original frame rate
-  - Use -f to set a custom target frame rate
 
-Quality Guide:
-  90-100: Excellent quality (CRF 18-21)
-  75-89:  High quality (CRF 22-26)
-  50-74:  Good quality (CRF 27-32)
-  25-49:  Fair quality (CRF 33-40)
-  1-24:   Low quality (CRF 41-51)
+def setup_console():
+    """Setup console output with or without rich."""
+    return Console() if RICH_AVAILABLE else None
 
-Examples:
-  compress-video.sh -i video.mp4
-  compress-video.sh -i video.avi -s 720p -q 85
-  compress-video.sh -i video.mov -o compressed.mp4 -s 480p -q 60 -f 24
-  compress-video.sh -i video.mkv --no-normalize-fps -q 80
-EOF
-}
 
-# Function to validate video file
-validate_video_file() {
-    local file="$1"
-    
-    if ! ffprobe -v error -select_streams v:0 -show_entries stream=codec_type -of csv=p=0 "$file" 2>/dev/null | grep -q "video"; then
-        echo "Error: '$file' is not a valid video file or has no video stream!" >&2
-        exit 1
-    fi
-}
+def print_message(message: str, style: str = "", console: Optional[object] = None):
+    """Print message with optional rich styling."""
+    if console and RICH_AVAILABLE:
+        console.print(message, style=style)
+    else:
+        print(message)
 
-# Function to convert quality (1-100) to CRF (51-18)
-# Higher quality number = lower CRF = better quality
-quality_to_crf() {
-    local quality="$1"
-    
-    # Clamp quality to valid range
-    if (( quality < 1 )); then 
-        quality=1
-    elif (( quality > 100 )); then 
-        quality=100
-    fi
-    
-    # Map 1-100 to 51-18 (33 point range)
-    local crf=$(( 51 - ((quality - 1) * 33 / 99) ))
-    
-    # Ensure CRF is within valid range
-    if (( crf < 18 )); then
-        crf=18
-    elif (( crf > 51 )); then
-        crf=51
-    fi
-    
-    echo "$crf"
-}
 
-# Function to get quality description from CRF
-get_quality_description() {
-    local crf="$1"
-    
-    if (( crf <= 21 )); then
-        echo "Excellent"
-    elif (( crf <= 26 )); then
-        echo "High"
-    elif (( crf <= 32 )); then
-        echo "Good"
-    elif (( crf <= 40 )); then
-        echo "Fair"
-    else
-        echo "Low"
-    fi
-}
+def print_verbose(message: str, console: Optional[object] = None):
+    """Print verbose message if verbose mode is enabled."""
+    if VERBOSE:
+        if console and RICH_AVAILABLE:
+            console.print(f"[dim]{message}[/dim]")
+        else:
+            print(f"[VERBOSE] {message}")
 
-# Function to get video frame rate
-get_video_fps() {
-    local file="$1"
-    local fps
-    
-    # Try avg_frame_rate first, then r_frame_rate as fallback
-    fps=$(ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate -of csv=p=0 "$file" 2>/dev/null || echo "0/0")
-    
-    if [[ "$fps" == "0/0" || -z "$fps" ]]; then
-        fps=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "$file" 2>/dev/null || echo "30/1")
-    fi
-    
-    # Convert fraction to integer
-    local int_fps=30  # default fallback
-    if [[ "$fps" =~ ^([0-9]+)/([0-9]+)$ ]]; then
-        local numerator="${BASH_REMATCH[1]}"
-        local denominator="${BASH_REMATCH[2]}"
+
+def print_error(message: str, console: Optional[object] = None):
+    """Print error message to stderr."""
+    if console and RICH_AVAILABLE:
+        console.print(f"[red bold]Error:[/red bold] {message}", style="red")
+    else:
+        print(f"Error: {message}", file=sys.stderr)
+
+
+def print_command(cmd: list, console: Optional[object] = None):
+    """Print command being executed in verbose mode."""
+    if VERBOSE:
+        cmd_str = " ".join(str(c) for c in cmd)
+        if console and RICH_AVAILABLE:
+            console.print(Panel(cmd_str, title="[cyan]Command[/cyan]", border_style="cyan"))
+        else:
+            print(f"\n[COMMAND] {cmd_str}\n")
+
+
+def validate_video_file(file_path: str) -> bool:
+    """Validate that the file is a valid video file."""
+    try:
+        if FFMPEG_PYTHON_AVAILABLE:
+            probe = ffmpeg.probe(file_path)
+            video_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'video']
+            is_valid = len(video_streams) > 0
+            print_verbose(f"Video validation for '{file_path}': {is_valid} (found {len(video_streams)} video stream(s))")
+            return is_valid
+        else:
+            result = subprocess.run(
+                [FFPROBE, "-v", "error", "-select_streams", "v:0",
+                 "-show_entries", "stream=codec_type", "-of", "csv=p=0", file_path],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            is_valid = "video" in result.stdout.lower()
+            print_verbose(f"Video validation for '{file_path}': {is_valid}")
+            if not is_valid and result.stderr:
+                print_verbose(f"FFprobe stderr: {result.stderr}")
+            return is_valid
+    except Exception as e:
+        print_verbose(f"Exception during video validation: {e}")
+        return False
+
+
+def get_video_duration(file_path: str) -> Optional[float]:
+    """Get video duration in seconds."""
+    try:
+        if FFMPEG_PYTHON_AVAILABLE:
+            probe = ffmpeg.probe(file_path)
+            duration = float(probe['format'].get('duration', 0))
+            print_verbose(f"Video duration for '{file_path}': {duration}s")
+            return duration if duration > 0 else None
+        else:
+            result = subprocess.run(
+                [FFPROBE, "-v", "error", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", file_path],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            duration_str = result.stdout.strip()
+            duration = float(duration_str) if duration_str else None
+            print_verbose(f"Video duration for '{file_path}': {duration}s")
+            return duration
+    except Exception as e:
+        print_verbose(f"Exception getting video duration: {e}")
+        return None
+
+
+def get_video_frame_count(file_path: str) -> Optional[int]:
+    """Get total frame count."""
+    try:
+        print_verbose(f"Counting frames in '{file_path}'...")
         
-        if (( denominator > 0 )); then
-            int_fps=$(( numerator / denominator ))
-            # Handle very low frame rates or calculation errors
-            if (( int_fps <= 0 )); then
-                int_fps=30
-            fi
-        fi
-    elif [[ "$fps" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-        # Handle decimal fps (remove decimal part)
-        int_fps="${fps%.*}"
-        if (( int_fps <= 0 )); then
-            int_fps=30
-        fi
-    fi
-    
-    echo "$int_fps"
-}
+        if FFMPEG_PYTHON_AVAILABLE:
+            probe = ffmpeg.probe(file_path)
+            video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+            if video_stream:
+                # Try to get nb_frames
+                count = video_stream.get('nb_frames')
+                if count:
+                    count = int(count)
+                    print_verbose(f"Frame count from probe: {count}")
+                    return count
+                
+                # Calculate from duration and fps
+                duration = float(probe['format'].get('duration', 0))
+                fps_str = video_stream.get('avg_frame_rate', '0/1')
+                if '/' in fps_str:
+                    num, denom = map(int, fps_str.split('/'))
+                    if denom > 0:
+                        fps = num / denom
+                        count = int(duration * fps)
+                        print_verbose(f"Frame count calculated: {count} (duration: {duration}s, fps: {fps})")
+                        return count
+        
+        # Fallback to subprocess
+        result = subprocess.run(
+            [FFPROBE, "-v", "error", "-select_streams", "v:0",
+             "-count_frames", "-show_entries", "stream=nb_read_frames",
+             "-of", "csv=p=0", file_path],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        count_str = result.stdout.strip()
+        count = int(count_str) if count_str.isdigit() else None
+        print_verbose(f"Frame count: {count}")
+        return count
+    except Exception as e:
+        print_verbose(f"Exception getting frame count: {e}")
+        return None
 
-# Function to determine target frame rate
-determine_target_fps() {
-    local input_fps="$1"
-    local normalize_fps="$2"
-    local target_fps="$3"
-    
-    if [[ "$normalize_fps" == "false" ]]; then
-        echo "$input_fps"
-        return
-    fi
-    
-    if (( input_fps > target_fps )); then
-        echo "$target_fps"
-    else
-        echo "$input_fps"
-    fi
-}
 
-# Function to get resolution parameters
-get_resolution() {
-    case "$1" in
-        "480p")
-            echo "scale=-2:480"
-            ;;
-        "720p")
-            echo "scale=-2:720"
-            ;;
-        "1080p")
-            echo "scale=-2:1080"
-            ;;
-        *)
-            echo "scale=-2:1080"  # Default to 1080p
-            ;;
-    esac
-}
+def quality_to_crf(quality: int) -> int:
+    """Convert quality (1-100) to CRF (51-18). Higher quality = lower CRF."""
+    quality = max(1, min(100, quality))
+    crf = 51 - ((quality - 1) * 33 // 99)
+    return max(18, min(51, crf))
 
-# Function to generate output filename
-generate_output_filename() {
-    local input_file="$1"
-    local scale="$2"
-    local quality="$3"
-    local fps="$4"
-    
-    local basename filename
-    basename=$(basename "$input_file")
-    filename="${basename%.*}"
-    
-    echo "${filename}_compressed_${scale}_q${quality}_${fps}fps.mp4"
-}
 
-# Function to get audio codec
-get_audio_codec() {
-    local file="$1"
-    ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$file" 2>/dev/null | head -n1
-}
+def get_quality_description(crf: int) -> str:
+    """Get quality description from CRF value."""
+    if crf <= 21:
+        return "Excellent"
+    elif crf <= 26:
+        return "High"
+    elif crf <= 32:
+        return "Good"
+    elif crf <= 40:
+        return "Fair"
+    else:
+        return "Low"
 
-# Function to check required tools
-check_dependencies() {
-    local missing_tools=()
-    
-    for tool in ffmpeg ffprobe; do
-        if ! command -v "$tool" &>/dev/null; then
-            missing_tools+=("$tool")
-        fi
-    done
-    
-    if (( ${#missing_tools[@]} > 0 )); then
-        echo "Error: Missing required tools: ${missing_tools[*]}" >&2
-        echo "Please install FFmpeg package." >&2
-        exit 1
-    fi
-}
 
-# Function to validate numeric input
-validate_number() {
-    local value="$1"
-    local min="$2"
-    local max="$3"
-    local name="$4"
-    
-    if ! [[ "$value" =~ ^[0-9]+$ ]]; then
-        echo "Error: $name must be a positive integer." >&2
-        exit 1
-    fi
-    
-    if (( value < min || value > max )); then
-        echo "Error: $name must be between $min and $max." >&2
-        exit 1
-    fi
-}
+def get_video_fps(file_path: str) -> int:
+    """Get video frame rate."""
+    try:
+        if FFMPEG_PYTHON_AVAILABLE:
+            probe = ffmpeg.probe(file_path)
+            video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+            if video_stream:
+                fps_str = video_stream.get('avg_frame_rate', video_stream.get('r_frame_rate', '30/1'))
+                if '/' in fps_str:
+                    num, denom = map(int, fps_str.split('/'))
+                    if denom > 0:
+                        fps = max(1, num // denom) if num // denom > 0 else 30
+                        print_verbose(f"Video FPS for '{file_path}': {fps} (from {fps_str})")
+                        return fps
+        
+        # Fallback to subprocess
+        result = subprocess.run(
+            [FFPROBE, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=avg_frame_rate", "-of", "csv=p=0", file_path],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        fps_str = result.stdout.strip()
+        
+        if not fps_str or fps_str == "0/0":
+            result = subprocess.run(
+                [FFPROBE, "-v", "error", "-select_streams", "v:0",
+                 "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", file_path],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            fps_str = result.stdout.strip()
+        
+        if "/" in fps_str:
+            num, denom = map(int, fps_str.split("/"))
+            if denom > 0:
+                fps = num // denom
+                fps = max(1, fps) if fps > 0 else 30
+                print_verbose(f"Video FPS for '{file_path}': {fps} (from {fps_str})")
+                return fps
+        elif fps_str.replace(".", "").isdigit():
+            fps = max(1, int(float(fps_str)))
+            print_verbose(f"Video FPS for '{file_path}': {fps}")
+            return fps
+        
+        print_verbose(f"Could not parse FPS '{fps_str}', using default: 30")
+        return 30
+    except Exception as e:
+        print_verbose(f"Exception getting video FPS: {e}")
+        return 30
 
-# Main function
-main() {
-    # Initialize variables
-    local input_file=""
-    local output_file=""
-    local scale="$DEFAULT_SCALE"
-    local quality="$DEFAULT_QUALITY"
-    local preset="$DEFAULT_PRESET"
-    local normalize_fps="$DEFAULT_NORMALIZE_FPS"
-    local target_fps="$DEFAULT_TARGET_FPS"
+
+def determine_target_fps(input_fps: int, normalize_fps: bool, target_fps: int) -> int:
+    """Determine target frame rate based on settings."""
+    if not normalize_fps:
+        result = input_fps
+    else:
+        result = target_fps if input_fps > target_fps else input_fps
     
-    # Parse command line arguments
-    while (( $# > 0 )); do
-        case "$1" in
-            -i|--input)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --input requires a value." >&2
-                    exit 1
-                fi
-                input_file="$2"
-                shift 2
-                ;;
-            -o|--output)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --output requires a value." >&2
-                    exit 1
-                fi
-                output_file="$2"
-                shift 2
-                ;;
-            -s|--scale)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --scale requires a value." >&2
-                    exit 1
-                fi
-                scale="$2"
-                shift 2
-                ;;
-            -q|--quality)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --quality requires a value." >&2
-                    exit 1
-                fi
-                quality="$2"
-                shift 2
-                ;;
-            -p|--preset)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --preset requires a value." >&2
-                    exit 1
-                fi
-                preset="$2"
-                shift 2
-                ;;
-            -f|--fps)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --fps requires a value." >&2
-                    exit 1
-                fi
-                target_fps="$2"
-                shift 2
-                ;;
-            --no-normalize-fps)
-                normalize_fps="false"
-                shift
-                ;;
-            -h|--help)
-                usage
-                exit 0
-                ;;
-            --)
-                shift
-                break
-                ;;
-            -*)
-                echo "Error: Unknown option '$1'" >&2
-                usage >&2
-                exit 1
-                ;;
-            *)
-                echo "Error: Unexpected argument '$1'" >&2
-                usage >&2
-                exit 1
-                ;;
-        esac
-    done
+    print_verbose(f"Target FPS: {result} (input: {input_fps}, normalize: {normalize_fps}, target: {target_fps})")
+    return result
+
+
+def get_resolution(scale: str) -> str:
+    """Get resolution filter for FFmpeg."""
+    scale_map = {
+        "480p": "scale=-2:480",
+        "720p": "scale=-2:720",
+        "1080p": "scale=-2:1080"
+    }
+    return scale_map.get(scale, "scale=-2:1080")
+
+
+def get_video_height(file_path: str) -> Optional[int]:
+    """Get video height."""
+    try:
+        if FFMPEG_PYTHON_AVAILABLE:
+            probe = ffmpeg.probe(file_path)
+            video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+            if video_stream:
+                height = video_stream.get('height')
+                print_verbose(f"Video height for '{file_path}': {height}")
+                return height
+        
+        # Fallback to subprocess
+        result = subprocess.run(
+            [FFPROBE, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=height", "-of", "csv=p=0", file_path],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        height = result.stdout.strip()
+        height_int = int(height) if height.isdigit() else None
+        print_verbose(f"Video height for '{file_path}': {height_int}")
+        return height_int
+    except Exception as e:
+        print_verbose(f"Exception getting video height: {e}")
+        return None
+
+
+def get_target_height(scale: str) -> int:
+    """Get target height from scale."""
+    height_map = {
+        "480p": 480,
+        "720p": 720,
+        "1080p": 1080
+    }
+    return height_map.get(scale, 1080)
+
+
+def will_downscale(file_path: str, scale: str) -> bool:
+    """Check if video will be downscaled."""
+    input_height = get_video_height(file_path)
+    target_height = get_target_height(scale)
+    will_ds = input_height is not None and input_height > target_height
+    print_verbose(f"Will downscale: {will_ds} (input: {input_height}, target: {target_height})")
+    return will_ds
+
+
+def get_audio_codec(file_path: str) -> Optional[str]:
+    """Get audio codec."""
+    try:
+        if FFMPEG_PYTHON_AVAILABLE:
+            probe = ffmpeg.probe(file_path)
+            audio_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'audio'), None)
+            if audio_stream:
+                codec = audio_stream.get('codec_name')
+                print_verbose(f"Audio codec for '{file_path}': {codec}")
+                return codec
+            print_verbose(f"No audio stream found in '{file_path}'")
+            return None
+        
+        # Fallback to subprocess
+        result = subprocess.run(
+            [FFPROBE, "-v", "error", "-select_streams", "a:0",
+             "-show_entries", "stream=codec_name", "-of", "csv=p=0", file_path],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        codec = result.stdout.strip() or None
+        print_verbose(f"Audio codec for '{file_path}': {codec}")
+        return codec
+    except Exception as e:
+        print_verbose(f"Exception getting audio codec: {e}")
+        return None
+
+
+def generate_output_filename(input_file: str, scale: str, quality: int, fps: int) -> str:
+    """Generate output filename."""
+    path = Path(input_file)
+    stem = path.stem
+    output = f"{stem}_compressed_{scale}_q{quality}_{fps}fps.mp4"
+    print_verbose(f"Generated output filename: {output}")
+    return output
+
+
+def get_file_size_mb(file_path: str) -> float:
+    """Get file size in MB."""
+    size = os.path.getsize(file_path) / (1024 * 1024)
+    print_verbose(f"File size for '{file_path}': {size:.2f} MB")
+    return size
+
+
+def check_dependencies():
+    """Check if required tools are available."""
+    missing = []
     
-    # Validate required parameters
-    if [[ -z "$input_file" ]]; then
-        echo "Error: Input file is required!" >&2
-        usage >&2
-        exit 1
-    fi
+    if not FFMPEG_PYTHON_AVAILABLE:
+        # Check command-line tools as fallback
+        for tool in [FFMPEG, FFPROBE]:
+            try:
+                result = subprocess.run([tool, "-version"], capture_output=True, check=False)
+                print_verbose(f"Found {tool}")
+            except FileNotFoundError:
+                missing.append(tool)
+                print_verbose(f"Missing {tool}")
+        
+        if missing:
+            print_error(f"Missing required tools: {', '.join(missing)}")
+            print_error("Please install FFmpeg package.")
+            sys.exit(1)
+    else:
+        print_verbose("Using ffmpeg-python library")
+
+
+def parse_ffmpeg_progress(line: str) -> Optional[dict]:
+    """Parse FFmpeg progress output."""
+    progress = {}
     
-    # Check if input file exists
-    if [[ ! -f "$input_file" ]]; then
-        echo "Error: Input file '$input_file' does not exist!" >&2
-        exit 1
-    fi
+    # Extract frame number
+    frame_match = re.search(r'frame=\s*(\d+)', line)
+    if frame_match:
+        progress['frame'] = int(frame_match.group(1))
     
-    # Check dependencies
-    check_dependencies
+    # Extract time
+    time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line)
+    if time_match:
+        hours = int(time_match.group(1))
+        minutes = int(time_match.group(2))
+        seconds = float(time_match.group(3))
+        progress['time'] = hours * 3600 + minutes * 60 + seconds
     
-    # Validate video file
-    validate_video_file "$input_file"
+    # Extract speed
+    speed_match = re.search(r'speed=\s*([\d.]+)x', line)
+    if speed_match:
+        progress['speed'] = float(speed_match.group(1))
     
-    # Validate parameters
-    if [[ ! "$scale" =~ ^(480p|720p|1080p)$ ]]; then
-        echo "Error: Invalid scale '$scale'. Use 480p, 720p, or 1080p." >&2
-        exit 1
-    fi
+    return progress if progress else None
+
+
+def run_compression_with_progress(
+    input_file: str,
+    output_file: str,
+    scale: str,
+    quality: int,
+    preset: str,
+    input_fps: int,
+    final_fps: int,
+    audio_codec: Optional[str],
+    console: Optional[object] = None
+) -> bool:
+    """Run FFmpeg compression with progress bar."""
+    crf = quality_to_crf(quality)
+    resolution_filter = get_resolution(scale)
     
-    validate_number "$quality" 1 100 "Quality"
-    validate_number "$target_fps" 1 120 "Target FPS"
+    try:
+        if FFMPEG_PYTHON_AVAILABLE and not VERBOSE:
+            # Use ffmpeg-python for cleaner API
+            print_verbose("Using ffmpeg-python for compression")
+            
+            stream = ffmpeg.input(input_file)
+            
+            # Apply video filters
+            if input_fps != final_fps:
+                video = stream.video.filter('scale', -2, get_target_height(scale)).filter('fps', fps=final_fps)
+            else:
+                video = stream.video.filter('scale', -2, get_target_height(scale))
+            
+            # Handle audio
+            if audio_codec == "aac":
+                audio = stream.audio
+                output_kwargs = {'c:a': 'copy'}
+            else:
+                audio = stream.audio
+                output_kwargs = {'c:a': 'aac', 'b:a': '128k'}
+            
+            # Build output
+            output_kwargs.update({
+                'c:v': 'libx264',
+                'crf': crf,
+                'preset': preset,
+                'movflags': '+faststart'
+            })
+            
+            output = ffmpeg.output(video, audio, output_file, **output_kwargs)
+            
+            # Get command for verbose mode
+            cmd = ffmpeg.compile(output, overwrite_output=True)
+            print_command(cmd, console)
+            
+            # Run with progress
+            duration = get_video_duration(input_file)
+            
+            if RICH_AVAILABLE and console and duration:
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TaskProgressColumn(),
+                    TimeElapsedColumn(),
+                    TimeRemainingColumn(),
+                    console=console,
+                ) as progress:
+                    task = progress.add_task(
+                        "[cyan]Compressing video...",
+                        total=duration
+                    )
+                    
+                    process = ffmpeg.run_async(output, pipe_stdout=True, pipe_stderr=True, overwrite_output=True)
+                    
+                    while True:
+                        line = process.stderr.readline()
+                        if not line:
+                            break
+                        line = line.decode('utf-8', errors='ignore')
+                        
+                        prog = parse_ffmpeg_progress(line)
+                        if prog and 'time' in prog:
+                            current_time = min(prog['time'], duration)
+                            progress.update(task, completed=current_time)
+                            
+                            if 'speed' in prog:
+                                progress.update(
+                                    task,
+                                    description=f"[cyan]Compressing video (speed: {prog['speed']:.2f}x)..."
+                                )
+                    
+                    process.wait()
+                    progress.update(task, completed=duration)
+                    
+                    return process.returncode == 0
+            else:
+                ffmpeg.run(output, overwrite_output=True, quiet=not VERBOSE)
+                return True
+        
+        else:
+            # Fallback to subprocess
+            print_verbose("Using subprocess for compression")
+            
+            if input_fps != final_fps:
+                video_filters = f"{resolution_filter},fps={final_fps}"
+            else:
+                video_filters = resolution_filter
+            
+            cmd = [
+                FFMPEG, "-hide_banner", "-loglevel", "info" if not VERBOSE else "verbose",
+                "-progress", "pipe:1",
+                "-i", input_file,
+                "-c:v", "libx264",
+                "-crf", str(crf),
+                "-preset", preset,
+                "-vf", video_filters,
+                "-movflags", "+faststart"
+            ]
+            
+            if audio_codec == "aac":
+                cmd.extend(["-c:a", "copy"])
+            else:
+                cmd.extend(["-c:a", "aac", "-b:a", "128k"])
+            
+            cmd.extend(["-y", output_file])
+            
+            print_command(cmd, console)
+            
+            duration = get_video_duration(input_file)
+            
+            if RICH_AVAILABLE and console and duration and not VERBOSE:
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TaskProgressColumn(),
+                    TimeElapsedColumn(),
+                    TimeRemainingColumn(),
+                    console=console,
+                ) as progress:
+                    task = progress.add_task(
+                        "[cyan]Compressing video...",
+                        total=duration
+                    )
+                    
+                    process = subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1
+                    )
+                    
+                    for line in process.stdout:
+                        prog = parse_ffmpeg_progress(line)
+                        if prog and 'time' in prog:
+                            current_time = min(prog['time'], duration)
+                            progress.update(task, completed=current_time)
+                            
+                            if 'speed' in prog:
+                                progress.update(
+                                    task,
+                                    description=f"[cyan]Compressing video (speed: {prog['speed']:.2f}x)..."
+                                )
+                    
+                    process.wait()
+                    progress.update(task, completed=duration)
+                    
+                    if process.returncode != 0:
+                        print_verbose(f"FFmpeg exited with code {process.returncode}")
+                    
+                    return process.returncode == 0
+            else:
+                if VERBOSE:
+                    result = subprocess.run(cmd, check=False)
+                else:
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    if result.returncode != 0:
+                        print_verbose(f"FFmpeg stderr: {result.stderr}")
+                
+                return result.returncode == 0
     
-    # Get video information
-    echo "Analyzing input video..."
-    local input_fps final_fps crf quality_desc audio_codec
-    input_fps=$(get_video_fps "$input_file")
-    final_fps=$(determine_target_fps "$input_fps" "$normalize_fps" "$target_fps")
+    except ffmpeg.Error as e:
+        print_error(f"FFmpeg error: {e.stderr.decode() if e.stderr else str(e)}", console)
+        return False
+    except Exception as e:
+        print_error(f"Compression error: {e}", console)
+        if VERBOSE:
+            import traceback
+            print_verbose(traceback.format_exc())
+        return False
+
+
+def parse_dedupe_progress(line: str) -> Optional[dict]:
+    """Parse deduplication script progress output."""
+    progress = {}
     
-    # Convert quality to CRF
-    crf=$(quality_to_crf "$quality")
-    quality_desc=$(get_quality_description "$crf")
+    # Look for patterns like "Processing frame 100/1000"
+    frame_match = re.search(r'frame[s]?\s+(\d+)[/\s]+(\d+)', line, re.IGNORECASE)
+    if frame_match:
+        progress['current'] = int(frame_match.group(1))
+        progress['total'] = int(frame_match.group(2))
+        return progress
     
-    # Generate output filename if not provided
-    if [[ -z "$output_file" ]]; then
-        output_file=$(generate_output_filename "$input_file" "$scale" "$quality" "$final_fps")
-    fi
+    # Look for percentage patterns
+    percent_match = re.search(r'(\d+)%', line)
+    if percent_match:
+        progress['percent'] = int(percent_match.group(1))
+        return progress
     
-    # Get audio codec for smart handling
-    audio_codec=$(get_audio_codec "$input_file")
+    return None
+
+
+def check_dedupe_error(stderr: str) -> tuple[bool, Optional[str]]:
+    """
+    Check if dedupe error is due to FFmpeg expression length limit.
+    Returns (is_recoverable, suggestion).
+    """
+    if "Error while parsing expression" in stderr or "Error initializing filters" in stderr:
+        # Check if it's the select filter expression issue
+        if "Parsed_select" in stderr or "eq(n" in stderr:
+            return True, (
+                "The video has too many duplicate frames for FFmpeg's select filter to handle.\n"
+                "Try one of these solutions:\n"
+                "  1. Use --dedupe-chunk-mode to process in smaller chunks\n"
+                "  2. Increase --dedupe-threshold (e.g., 0.97 or 0.98) to reduce duplicates found\n"
+                "  3. Increase --dedupe-window to group nearby duplicates\n"
+                "  4. Use a higher --dedupe-sample-rate (e.g., 2 or 3) to analyze fewer frames"
+            )
+    return False, None
+
+
+def run_dedupe_with_progress(
+    input_file: str,
+    output_file: str,
+    threshold: float,
+    window: float,
+    sample_rate: int,
+    preset: str,
+    jobs: Optional[int],
+    phash: bool,
+    chunk_mode: bool,
+    chunk_duration: float,
+    script_path: str,
+    console: Optional[object] = None
+) -> bool:
+    """Run frame deduplication script with progress bar.
     
-    # Set audio options
-    local audio_opts
-    if [[ "$audio_codec" == "aac" ]]; then
-        audio_opts="-c:a copy"
-    else
-        audio_opts="-c:a aac -b:a 128k"
-    fi
+    Note: Does not pass FPS to dedupe script since dedupe script analyzes
+    the input video's native FPS automatically.
+    """
+    # Use uv run to execute the dedupe script with its own dependencies
+    cmd = [
+        "uv", "run", "--script", script_path,
+        "-i", input_file,
+        "-o", output_file,
+        "-t", str(threshold),
+        "-w", str(window),
+        "-s", str(sample_rate),  # sample-rate in dedupe script
+        "-p", preset
+    ]
     
-    # Build video filters
-    local resolution_filter video_filters
-    resolution_filter=$(get_resolution "$scale")
+    if jobs:
+        cmd.extend(["-j", str(jobs)])
+    if phash:
+        cmd.append("--phash")
+    if chunk_mode:
+        cmd.extend(["--chunk-mode", "--chunk-duration", str(chunk_duration)])
     
-    if (( input_fps != final_fps )); then
-        video_filters="${resolution_filter},fps=${final_fps}"
-    else
-        video_filters="$resolution_filter"
-    fi
+    print_command(cmd, console)
+    print_verbose(f"Deduplication parameters: threshold={threshold}, window={window}s, sample_rate={sample_rate}")
     
-    # Display compression settings
-    cat << EOF
-=== Video Compression Settings ===
-Input file: $input_file
-Output file: $output_file
-Target resolution: $scale
-Quality: $quality/100 ($quality_desc quality)
-CRF value: $crf
-Preset: $preset
-Input frame rate: ${input_fps} fps
-Output frame rate: ${final_fps} fps
-Audio codec: ${audio_codec:-none}
-Audio handling: ${audio_opts}
-===================================
-EOF
+    # Try to estimate total frames for progress
+    frame_count = get_video_frame_count(input_file)
     
-    # Run FFmpeg compression
-    echo "Starting compression..."
+    if RICH_AVAILABLE and console and not VERBOSE:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+        ) as progress:
+            if frame_count and frame_count > 0:
+                task = progress.add_task(
+                    "[yellow]Deduplicating frames...",
+                    total=frame_count
+                )
+            else:
+                task = progress.add_task(
+                    "[yellow]Deduplicating frames...",
+                    total=100  # Use percentage if frame count unavailable
+                )
+            
+            try:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1
+                )
+                
+                stderr_lines = []
+                stdout_lines = []
+                
+                # Read stdout in real-time
+                for line in process.stdout:
+                    stdout_lines.append(line)
+                    prog = parse_dedupe_progress(line)
+                    if prog:
+                        if 'current' in prog and 'total' in prog:
+                            progress.update(task, completed=prog['current'], total=prog['total'])
+                        elif 'percent' in prog:
+                            progress.update(task, completed=prog['percent'])
+                
+                # Capture stderr
+                stderr_output = process.stderr.read()
+                stderr_lines.append(stderr_output)
+                
+                process.wait()
+                
+                # Ensure progress reaches 100%
+                if frame_count and frame_count > 0:
+                    progress.update(task, completed=frame_count)
+                else:
+                    progress.update(task, completed=100)
+                
+                # Check for errors
+                if process.returncode != 0:
+                    print_verbose(f"Dedupe script exited with code {process.returncode}")
+                    full_stderr = ''.join(stderr_lines)
+                    full_stdout = ''.join(stdout_lines)
+                    
+                    print_verbose("=== Dedupe Script Output ===")
+                    print_verbose(full_stdout)
+                    print_verbose("=== Dedupe Script Errors ===")
+                    print_verbose(full_stderr)
+                    
+                    is_recoverable, suggestion = check_dedupe_error(full_stderr)
+                    if is_recoverable and suggestion:
+                        console.print(f"\n[yellow]{suggestion}[/yellow]")
+                    else:
+                        # Print the actual error for debugging
+                        console.print(f"\n[red]Dedupe script failed. Last error output:[/red]")
+                        console.print(full_stderr[-500:] if len(full_stderr) > 500 else full_stderr)
+                    return False
+                
+                return True
+                
+            except Exception as e:
+                print_error(f"Deduplication error: {e}", console)
+                if VERBOSE:
+                    import traceback
+                    print_verbose(traceback.format_exc())
+                return False
+    else:
+        # Fallback without progress bar or verbose mode
+        try:
+            if VERBOSE:
+                # In verbose mode, show all output in real-time
+                result = subprocess.run(cmd, check=False)
+                success = result.returncode == 0
+            else:
+                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                success = result.returncode == 0
+                
+                if not success:
+                    print_verbose(f"Dedupe script exited with code {result.returncode}")
+                    print_verbose(f"Stdout: {result.stdout}")
+                    print_verbose(f"Stderr: {result.stderr}")
+                    
+                    is_recoverable, suggestion = check_dedupe_error(result.stderr)
+                    if is_recoverable and suggestion:
+                        print(f"\n{suggestion}")
+                    else:
+                        print(f"\nDedupe script failed. Error output:")
+                        print(result.stderr[-500:] if len(result.stderr) > 500 else result.stderr)
+            
+            return success
+        except Exception as e:
+            print_error(f"Deduplication error: {e}", console)
+            if VERBOSE:
+                import traceback
+                print_verbose(traceback.format_exc())
+            return False
+
+
+def main():
+    global VERBOSE
     
-    # Use array for ffmpeg command to handle spaces properly
-    local ffmpeg_cmd=(
-        ffmpeg -hide_banner -loglevel info
-        -i "$input_file"
-        -c:v libx264
-        -crf "$crf"
-        -preset "$preset"
-        -vf "$video_filters"
-        -movflags +faststart
-        -y
-        "$output_file"
+    parser = argparse.ArgumentParser(
+        description="Generic Video Compression Script using FFmpeg",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    # Add audio options to command array
-    if [[ "$audio_opts" == "-c:a copy" ]]; then
-        ffmpeg_cmd+=(-c:a copy)
-    else
-        ffmpeg_cmd+=(-c:a aac -b:a 128k)
-    fi
+    parser.add_argument("-i", "--input", required=True, help="Input video file")
+    parser.add_argument("-o", "--output", help="Output video file")
+    parser.add_argument("-s", "--scale", default=DEFAULT_SCALE,
+                       choices=["480p", "720p", "1080p"], help="Target resolution")
+    parser.add_argument("-q", "--quality", type=int, default=DEFAULT_QUALITY,
+                       help="Quality level 1-100 (default: 75)")
+    parser.add_argument("-p", "--preset", default=DEFAULT_PRESET,
+                       help="Encoding preset (default: medium)")
+    parser.add_argument("-f", "--fps", type=int, default=DEFAULT_TARGET_FPS,
+                       help="Target frame rate (default: 24)")
+    parser.add_argument("--no-normalize-fps", action="store_true",
+                       help="Disable frame rate normalization")
+    parser.add_argument("--dedupe", action="store_true",
+                       help="Enable frame deduplication")
+    parser.add_argument("--dedupe-threshold", type=float, default=DEFAULT_DEDUPE_THRESHOLD,
+                       help="Similarity threshold 0.0-1.0 (default: 0.95)")
+    parser.add_argument("--dedupe-window", type=float, default=DEFAULT_DEDUPE_WINDOW,
+                       help="Time window in seconds (default: 3)")
+    parser.add_argument("--dedupe-sample-rate", type=int, default=DEFAULT_DEDUPE_SAMPLE_RATE,
+                       help="Analyze every Nth frame (default: 1)")
+    parser.add_argument("--dedupe-jobs", type=int, help="Number of parallel jobs")
+    parser.add_argument("--dedupe-phash", action="store_true",
+                       help="Use perceptual hash comparison")
+    parser.add_argument("--dedupe-chunk-mode", action="store_true",
+                       help="Process video in chunks")
+    parser.add_argument("--dedupe-chunk-duration", type=float,
+                       default=DEFAULT_DEDUPE_CHUNK_DURATION,
+                       help="Chunk duration in seconds (default: 60.0)")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                       help="Enable verbose output for debugging")
     
-    # Execute ffmpeg
-    "${ffmpeg_cmd[@]}"
+    args = parser.parse_args()
     
-    # Check if compression was successful and show results
-    if [[ -f "$output_file" ]]; then
-        echo "=== Compression Complete ==="
+    # Set global verbose flag
+    VERBOSE = args.verbose
+    
+    console = setup_console()
+    
+    if VERBOSE:
+        print_verbose("Verbose mode enabled")
+        print_verbose(f"ffmpeg-python available: {FFMPEG_PYTHON_AVAILABLE}")
+        print_verbose(f"Arguments: {vars(args)}")
+    
+    # Validate input file
+    if not os.path.isfile(args.input):
+        print_error(f"Input file '{args.input}' does not exist!", console)
+        sys.exit(1)
+    
+    # Check dependencies
+    check_dependencies()
+    
+    # Validate video file
+    if not validate_video_file(args.input):
+        print_error(f"'{args.input}' is not a valid video file!", console)
+        sys.exit(1)
+    
+    # Validate parameters
+    if not 1 <= args.quality <= 100:
+        print_error("Quality must be between 1 and 100", console)
+        sys.exit(1)
+    
+    # Setup dedupe script path
+    script_dir = Path(__file__).parent
+    dedupe_script = script_dir / "dedupe-video-frames.py"
+    
+    if args.dedupe and not dedupe_script.exists():
+        print_error(f"Dedupe script not found at '{dedupe_script}'", console)
+        sys.exit(1)
+    
+    print_verbose(f"Dedupe script path: {dedupe_script}")
+    
+    # Get video information
+    input_fps = get_video_fps(args.input)
+    normalize_fps = not args.no_normalize_fps
+    final_fps = determine_target_fps(input_fps, normalize_fps, args.fps)
+    
+    # Generate output filename if not provided
+    if not args.output:
+        args.output = generate_output_filename(args.input, args.scale, args.quality, final_fps)
+    
+    # Determine processing order
+    will_ds = will_downscale(args.input, args.scale)
+    
+    if args.dedupe and will_ds:
+        print_message("=== Processing Order: Compress First (Downscaling), Then Deduplicate ===", "cyan", console)
         
-        # Display file size comparison
-        if command -v du &>/dev/null; then
-            local input_size output_size input_bytes output_bytes
-            input_size=$(du -h "$input_file" | cut -f1)
-            output_size=$(du -h "$output_file" | cut -f1)
-            echo "Original file size: $input_size"
-            echo "Compressed file size: $output_size"
-            
-            # Calculate compression ratio
-            input_bytes=$(du -b "$input_file" | cut -f1)
-            output_bytes=$(du -b "$output_file" | cut -f1)
-            if (( input_bytes > 0 )); then
-                local ratio savings
-                ratio=$(( output_bytes * 100 / input_bytes ))
-                savings=$(( 100 - ratio ))
-                echo "Compression ratio: ${ratio}% of original"
-                echo "Space saved: ${savings}%"
-            fi
-        fi
+        # Step 1: Compress
+        temp_compressed = f"{Path(args.input).stem}_compressed_temp_{os.getpid()}.mp4"
+        print_verbose(f"Temporary compressed file: {temp_compressed}")
+        print_message("\nStep 1: Compressing and downscaling video...", "yellow bold", console)
         
-        # Get actual output fps for verification
-        local actual_output_fps
-        actual_output_fps=$(get_video_fps "$output_file")
+        audio_codec = get_audio_codec(args.input)
+        if not run_compression_with_progress(args.input, temp_compressed, args.scale, args.quality,
+                                            args.preset, input_fps, final_fps, audio_codec, console):
+            print_error("Compression failed!", console)
+            sys.exit(1)
         
-        echo "Quality used: $quality/100 ($quality_desc - CRF $crf)"
-        echo "Frame rate: ${input_fps} fps → ${actual_output_fps} fps"
-        echo "Output file: $output_file"
-        echo "============================"
-    else
-        echo "Error: Compression failed - output file not created!" >&2
-        exit 1
-    fi
-}
+        print_message("✓ Compression complete.\n", "green", console)
+        
+        # Step 2: Dedupe (dedupe script auto-detects FPS from input)
+        print_message("Step 2: Deduplicating frames from compressed video...", "yellow bold", console)
+        
+        if not run_dedupe_with_progress(temp_compressed, args.output, args.dedupe_threshold,
+                                       args.dedupe_window, args.dedupe_sample_rate, args.preset,
+                                       args.dedupe_jobs, args.dedupe_phash, args.dedupe_chunk_mode,
+                                       args.dedupe_chunk_duration, str(dedupe_script), console=console):
+            print_error("Frame deduplication failed!", console)
+            if os.path.exists(temp_compressed):
+                print_verbose(f"Cleaning up temporary file: {temp_compressed}")
+                os.remove(temp_compressed)
+            sys.exit(1)
+        
+        print_message("✓ Deduplication complete.", "green", console)
+        
+        # Clean up temp file
+        if os.path.exists(temp_compressed):
+            print_verbose(f"Cleaning up temporary file: {temp_compressed}")
+            os.remove(temp_compressed)
+        
+    elif args.dedupe:
+        print_message("=== Processing Order: Deduplicate First, Then Compress ===", "cyan", console)
+        
+        temp_deduped = f"{Path(args.input).stem}_deduped_temp_{os.getpid()}.mp4"
+        print_verbose(f"Temporary deduped file: {temp_deduped}")
+        
+        # Dedupe (auto-detects FPS from input)
+        print_message("\nStep 1: Deduplicating frames...", "yellow bold", console)
+        if not run_dedupe_with_progress(args.input, temp_deduped, args.dedupe_threshold,
+                                       args.dedupe_window, args.dedupe_sample_rate, args.preset,
+                                       args.dedupe_jobs, args.dedupe_phash, args.dedupe_chunk_mode,
+                                       args.dedupe_chunk_duration, str(dedupe_script), console=console):
+            print_error("Frame deduplication failed!", console)
+            sys.exit(1)
+        
+        print_message("✓ Deduplication complete.\n", "green", console)
+        
+        # Compress deduped file
+        print_message("Step 2: Compressing deduped video...", "yellow bold", console)
+        audio_codec = get_audio_codec(temp_deduped)
+        if not run_compression_with_progress(temp_deduped, args.output, args.scale, args.quality,
+                                            args.preset, input_fps, final_fps, audio_codec, console):
+            print_error("Compression failed!", console)
+            if os.path.exists(temp_deduped):
+                print_verbose(f"Cleaning up temporary file: {temp_deduped}")
+                os.remove(temp_deduped)
+            sys.exit(1)
+        
+        print_message("✓ Compression complete.", "green", console)
+        
+        # Clean up temp file
+        if os.path.exists(temp_deduped):
+            print_verbose(f"Cleaning up temporary file: {temp_deduped}")
+            os.remove(temp_deduped)
+    else:
+        # Standard compression
+        print_message("=== Video Compression ===", "cyan", console)
+        audio_codec = get_audio_codec(args.input)
+        
+        if not run_compression_with_progress(args.input, args.output, args.scale, args.quality,
+                                            args.preset, input_fps, final_fps, audio_codec, console):
+            print_error("Compression failed!", console)
+            sys.exit(1)
+    
+    # Display results
+    if os.path.exists(args.output):
+        input_size = get_file_size_mb(args.input)
+        output_size = get_file_size_mb(args.output)
+        ratio = (output_size / input_size * 100) if input_size > 0 else 0
+        savings = 100 - ratio
+        
+        crf = quality_to_crf(args.quality)
+        quality_desc = get_quality_description(crf)
+        
+        print_message("\n=== Compression Complete ===", "green bold", console)
+        print_message(f"Original size: {input_size:.2f} MB", "", console)
+        print_message(f"Compressed size: {output_size:.2f} MB", "", console)
+        print_message(f"Compression ratio: {ratio:.1f}% of original", "", console)
+        print_message(f"Space saved: {savings:.1f}%", "", console)
+        print_message(f"Quality: {args.quality}/100 ({quality_desc} - CRF {crf})", "", console)
+        print_message(f"Frame rate: {input_fps} fps → {final_fps} fps", "", console)
+        print_message(f"Output file: {args.output}", "cyan", console)
+    else:
+        print_error("Output file was not created!", console)
+        sys.exit(1)
 
-# Run main function with all arguments
-main "$@"
+
+if __name__ == "__main__":
+    main()
