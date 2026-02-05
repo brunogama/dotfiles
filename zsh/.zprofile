@@ -75,8 +75,10 @@ fi
 #
 # Source .zshrc for login shells
 #
-# When ZDOTDIR is set, login shells don't automatically source .zshrc on some systems.
-# Explicitly source it to ensure Prezto and all interactive configurations load.
-if [[ -s "${ZDOTDIR:-$HOME}/.zshrc" ]]; then
-  source "${ZDOTDIR:-$HOME}/.zshrc"
-fi
+# REMOVED: This causes double-loading in some scenarios.
+# Interactive shells automatically source .zshrc, so this is redundant.
+# Commenting out to improve startup performance (~50-100ms savings).
+#
+# if [[ -s "${ZDOTDIR:-$HOME}/.zshrc" ]]; then
+#   source "${ZDOTDIR:-$HOME}/.zshrc"
+# fi

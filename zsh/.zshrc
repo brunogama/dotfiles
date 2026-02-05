@@ -304,5 +304,10 @@ primary() {
 
 # Add these lines at the end
 export UV_NATIVE_TLS=1
-export NEXUS_USER="$(get-api-key NEXUS_USER)"
-export NEXUS_PASS="$(get-api-key NEXUS_PASS)"
+
+# Lazy-load Nexus credentials (saves ~1.1s on startup)
+if [[ -f ~/.config/zsh/lib/nexus-lazy-load.zsh ]]; then
+    source ~/.config/zsh/lib/nexus-lazy-load.zsh
+fi
+
+export PATH="/Users/bi002853/.local/bin:$PATH"

@@ -14,6 +14,8 @@ zstyle ':prezto:*:*' color 'yes'
 
 # Set the Prezto modules to load (browse modules).
 # The order matters.
+# Note: 'python' and 'ruby' modules removed - they don't respect skip-init
+# and cause 6+ seconds of startup delay. We use lazy-load.zsh instead.
 zstyle ':prezto:load' pmodule \
   'environment' \
   'terminal' \
@@ -24,8 +26,6 @@ zstyle ':prezto:load' pmodule \
   'utility' \
   'completion' \
   'git' \
-  'python' \
-  'ruby' \
   'syntax-highlighting' \
   'history-substring-search' \
   'autosuggestions' \
