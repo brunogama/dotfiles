@@ -2,7 +2,10 @@
 	name = Bruno
 	email = bruno@naboo.local
 [core]
-	excludesfile = /Users/bruno/.gitignore_global
+	excludesfile = /Users/bi002853/.gitignore_global
+	filesRefLockTimeout = 10000
+	packedGitWindowSize = 128m
+	packedGitLimit = 256m
 [include]
 	path = ~/.config/git/github-flow-aliases.gitconfig
 [push]
