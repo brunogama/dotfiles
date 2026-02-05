@@ -21,9 +21,7 @@ Temporary Items
 .apdisk
 
 # === Xcode & iOS Development ===
-## Build generated
-build/
-DerivedData/
+## User-specific files (NOT build artifacts - those belong in project .gitignore)
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -38,92 +36,27 @@ xcuserdata/
 *.xcscmblueprint
 *.xcuserstate
 *.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-## Provisioning
-*.mobileprovision
-*.provisionprofile
-
-## Playgrounds
 timeline.xctimeline
 playground.xcworkspace
 
-## Fastlane
+## Provisioning (personal certificates)
+*.mobileprovision
+*.provisionprofile
+
+## Fastlane (personal)
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
-fastlane/README.md
-
-## App Packaging
-*.ipa
-*.app.zip
-*.xcarchive
-
-# === Swift Package Manager ===
-.build/
-.swiftpm/
-Package.resolved
-*.xcworkspace/xcshareddata/swiftpm/
-.package.resolved
-
-# === CocoaPods ===
-Pods/
-Podfile.lock
-*.xcworkspace
-!default.xcworkspace
-
-# === Carthage ===
-Carthage/Build/
-Carthage/Checkouts/
-Cartfile.resolved
-
-# === Accio ===
-Dependencies/
-.accio/
 
 # === Python Development ===
-## Byte-compiled / optimized / DLL files
+## Byte-compiled files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 
-## Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-pip-log.txt
-pip-delete-this-directory.txt
-
-## Virtual environments
-venv/
-env/
-ENV/
-.venv
-.pyenv
-pipenv/
-poetry.lock
-Pipfile.lock
-
-## Testing
+## Testing & coverage
 .tox/
 .nox/
 .coverage
@@ -137,15 +70,11 @@ coverage.xml
 htmlcov/
 .hypothesis/
 
-## MyPy
+## Type checking
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-## Pyre
 .pyre/
-
-## Pytype
 .pytype/
 
 ## Jupyter Notebook
@@ -156,17 +85,11 @@ dmypy.json
 profile_default/
 ipython_config.py
 
-## PyCharm
-.idea/
-*.iml
-
-# === Coding Agents and Context Frameworks ===
-
+# === AI Coding Assistants ===
 ## Cursor IDE
 .cursor/
 .cursorignore
-.cursor/settings.json
-.cursor/rules/personal/
+.cursorindexingignore
 *.mdc.local
 
 ## Claude Code / Claude Desktop
@@ -199,11 +122,11 @@ CLAUDE.local.md
 ## Supermaven
 .supermavenignore
 
-## GitHub Copilot
+## GitHub Copilot (personal instructions)
 .github/copilot-instructions.local.md
 .github/copilot-workspace.yml
 
-## Gemini Code Assist / AI Exclude
+## Gemini Code Assist
 .aiexclude
 .gemini/
 
@@ -229,22 +152,29 @@ CLAUDE.local.md
 .mcp/
 .mcp-local.json
 .mcp-server.json
-context-engineering.json
-context.config.local.json
 mcp-servers.json
 
-## Factory AI
-.factory/droids/personal/
-.factory/commands/personal/
-.factory/local/
+## Context engineering tools
+context.config.local.json
+context.local.*
+context-engineering.json
+
+## Repomix
+.repomix/
+repomix-output.txt
+repomix-output.xml
+
+## AI agent tooling (personal)
+AGENTS.md
+ai/personal/
+.ai/personal/
 
 # === Environment & Secrets ===
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
 .env.*.local
+!.env.example
+!.env.template
 *.key
 *.secret
 *.pem
@@ -254,11 +184,10 @@ secrets/
 keys/
 credentials/
 config.local.*
-context.local.*
 .secrets
 
 # === IDEs and Editors ===
-## VSCode
+## VSCode (user-specific settings)
 .vscode/
 *.code-workspace
 .history/
@@ -268,7 +197,6 @@ context.local.*
 *.iml
 *.iws
 *.ipr
-out/
 
 ## Sublime Text
 *.sublime-project
@@ -298,66 +226,8 @@ tramp
 .org-id-locations
 *_archive
 *_flymake.*
-/eshell/history
-/eshell/lastdir
-/elpa/
-*.rel
-/auto/
-.cask/
-dist/
 flycheck_*.el
-/server/
-.projectile
 .dir-locals.el
-/network-security.data
-
-# === Version Control ===
-.git.bfg-report/
-
-# === Build & Dependency Tools ===
-## General
-*.log
-*.pid
-*.seed
-*.lock
-node_modules/
-bower_components/
-.sass-cache/
-.grunt/
-.npm/
-.yarn/
-.pnp/
-.pnp.js
-
-# === Testing & Coverage ===
-coverage/
-*.cover
-.nyc_output/
-.pytest_cache/
-test_output/
-spec/reports/
-tmp/
-
-# === Documentation ===
-docs/_build/
-site/
-.cache/
-
-# === Database ===
-*.db
-*.sqlite
-*.sqlite3
-*.db-shm
-*.db-wal
-
-# === Logs ===
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
 
 # === Operating System ===
 ## Windows
@@ -368,15 +238,9 @@ ehthumbs_vista.db
 *.stackdump
 [Dd]esktop.ini
 $RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
 *.lnk
 
 ## Linux
-*~
 .fuse_hidden*
 .directory
 .Trash-*
@@ -389,4 +253,64 @@ $RECYCLE.BIN/
 *.swo
 *.bak
 *.old
-*~
+
+# === Personal Logs ===
+*.log
+
+# === Git Tools ===
+.git.bfg-report/
+
+# === Code Analysis & Documentation Tools ===
+## SwiftLint (personal reports only)
+.swiftlint.local.yml
+swiftlint_report.html
+
+## Jazzy docs (personal builds)
+jazzy_docs/
+
+## Sourcery
+.sourcery.local.yml
+
+# === Performance & Profiling ===
+*.trace
+*.instruments
+*.dtps
+
+# === Personal Notes & TODO ===
+TODO.local.md
+NOTES.local.md
+SCRATCH.md
+.notes/
+personal-notes/
+
+# === Backup Files ===
+*.backup
+*.orig
+
+# === Local Development Helpers ===
+.run/
+.devcontainer/local/
+dev-scripts/personal/
+
+# Node.js (if using any JS tooling)
+node_modules/
+package.json
+package-lock.json
+.nvmrc
+
+# AI tooling (project-level)
+ai/
+reviews/
+
+# Spec/design tools
+.specify/
+
+# SwiftLint reports
+swiftlint/
+swiftlint_report.json
+swiftlint_report.html
+
+.github/
+
+.cursor/logs/
+.cursor/.context-cache.json
