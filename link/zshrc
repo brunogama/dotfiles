@@ -10,4 +10,15 @@ export HOMEBREW_HOME=$(brew --prefix)
 source $HOME/.asdf/asdf.sh
 source ${HOMEBREW_HOME}/opt/autojump/etc/autojump.sh
 eval "$(brew command-not-found-init)"; 
+
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+
+set-default-shell() {
+	brew install zsh
+	echo "/opt/homebrew/bin/zsh" | sudo tee -a /etc/shells
+	chsh -s $(which zsh)
+	echo "Default shell set to $(which zsh)"
+}
+
+eval "$(dump-api-keys)" 
