@@ -1,505 +1,264 @@
+<!-- prettier-ignore -->
+<div align="center">
+
 # Modern Dotfiles
 
-> A declarative, high-performance dotfiles system with environment management, secure credential storage, and automated synchronization
+A fast, declarative Unix home environment for shell configuration, secure credentials, Git workflows, package management, and machine-to-machine sync.
 
-**Blazing fast shell startup (< 500ms) with lazy loading, secure credential management, and work/personal environment switching.**
+[![CI](https://img.shields.io/github/actions/workflow/status/brunogama/dotfiles/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/brunogama/dotfiles/actions)
+![Shell](https://img.shields.io/badge/shell-bash%20%2B%20zsh-4eaa25?style=flat-square)
+![Python](https://img.shields.io/badge/python-3.11%2B-3776ab?style=flat-square&logo=python&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-macOS%20%2B%20Linux-555?style=flat-square)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Shell: Bash](https://img.shields.io/badge/Shell-Bash-green.svg)](https://www.gnu.org/software/bash/)
-[![Platform: macOS](https://img.shields.io/badge/Platform-macOS-blue.svg)](https://www.apple.com/macos/)
-[![Platform: Linux](https://img.shields.io/badge/Platform-Linux-orange.svg)](https://www.linux.org/)
+[Overview](#overview) • [Get started](#get-started) • [Daily workflows](#daily-workflows) • [Project map](#project-map) • [Validation](#validation)
+
+<img src="./img/home.png" alt="Modern Dotfiles terminal home banner" width="720" />
+
+</div>
+
+## Overview
+
+This repository turns a home directory into a reproducible, high-performance development environment. It combines declarative symlink management with focused command-line utilities so the same setup can be installed, updated, audited, and synchronized across machines.
+
+The main goals are:
+
+- **Fast shell startup** with optimized zsh, Prezto, Powerlevel10k, and lazy-loaded version managers.
+- **Safe installation** through an idempotent `./install` script and a JSON symlink manifest.
+- **Work/personal environments** with prompt indicators and separate zsh configuration files.
+- **Credential hygiene** using Keychain-backed and encrypted secret storage tools.
+- **Portable automation** with shell, Python, Git, macOS, iOS, and video utilities under `bin/`.
+- **Quality gates** for shell syntax, manifest validation, OpenSpec proposals, Python tests, and integration tests.
+
+> [!IMPORTANT]
+> Dotfiles intentionally create symlinks and can replace existing configuration files. Start with `./install --dry-run` before applying changes on a new machine.
 
 ## Features
 
-- **One-Command Installation** - `./install` sets up everything
-- **Blazing Fast Startup** - Optimized zsh with lazy loading (< 500ms cold start)
-- **Automated Sync** - Keep dotfiles synchronized across machines
-- **Secure Credentials** - macOS Keychain integration for secrets
-- **Environment Switching** - Seamlessly toggle between work and personal configs
-- **Spec-Driven Development** - OpenSpec framework for structured changes
-- **50+ Utility Scripts** - Productivity-focused command-line tools
-- **Declarative Symlinks** - JSON manifest for link management
-- **Modern CLI Tools** - eza, bat, fd, rg, delta, and more
+| Area | What is included |
+| --- | --- |
+| Installation | One-command setup, dry runs, non-interactive mode, scripts-only updates |
+| Shell | Organized zsh config, Prezto, Powerlevel10k, lazy loading, custom completions |
+| Environments | `work-mode` switches between `work` and `personal` profiles |
+| Sync | `syncenv`, `home-sync`, and an optional macOS background sync service |
+| Credentials | `store-api-key`, `get-api-key`, `credmatch`, `credfile`, and history cleanup |
+| Git | Conventional commits, WIP/savepoint helpers, worktree helpers, smart merge tools |
+| Packages | Homebrew bundle, mise config, macOS preferences, sync service config |
+| Testing | Bats integration tests, Python unit tests, CI validation, mypy and coverage for `home-sync` |
 
-## Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
-
-# Install everything (interactive, takes ~5 minutes)
-./install
-
-# Restart your shell
-exec zsh
-```
-
-That's it! Your development environment is ready. See [QUICKSTART.md](QUICKSTART.md) for more details.
-
-## What's Included
-
-### Utilities (50+ Scripts)
-
-This repository includes 50+ productivity scripts. See **[docs/scripts/](docs/scripts/)** for complete documentation.
-
-```bash
-dotfiles-help              # Interactive menu
-dotfiles-help zsh-benchmark    # Help for specific script
-dotfiles-help --search sync    # Search by keyword
-```
-
-**Most Used:**
-- `work-mode` - Switch work/personal environments
-- `syncenv` / `home-sync` - Sync dotfiles across machines
-- `store-api-key` / `get-api-key` - Secure credentials (interactive, no history exposure)
-- `zsh-benchmark` - Measure performance
-- `conventional-commit` - Guided git commits
-- `link-dotfiles` - Apply symlinks from manifest
-
-**Categories:**
-- [Core Utilities](docs/scripts/core.md) - 27 general-purpose tools
-- [Credential Management](docs/guides/CREDENTIAL_MANAGEMENT.md) - Complete security guide
-- [Git Utilities](docs/scripts/git.md) - 23 git enhancements
-- [macOS Tools](docs/scripts/macos.md) - 3 macOS-specific utilities
-- [Quick Reference](docs/scripts/quick-reference.md) - One-page cheat sheet
-
-**Credential Management:**
-- Full guide: [CREDENTIAL_MANAGEMENT.md](docs/guides/CREDENTIAL_MANAGEMENT.md)
-- Tools: `store-api-key`, `credmatch`, `credfile`
-- 30+ examples, workflows, troubleshooting
-
-### Configurations
-
-- **Git** - Aliases, hooks, ignore patterns, conventional commits
-- **Zsh** - Prezto framework, Powerlevel10k theme, optimized startup
-- **Homebrew** - Package declarations via Brewfile
-- **macOS** - System preferences and settings
-- **Mise** - Development tool version management
-
-### Performance Features
-
-- **Lazy Loading** - mise, rbenv, nvm, SDKMAN load on first use
-- **Compiled Configs** - Pre-compiled .zwc bytecode for speed
-- **Smart Caching** - 24-hour completion cache
-- **Optimized History** - 10k entries (vs. 100k default)
-- **Background Operations** - Non-blocking updates
-
-**Expected Performance:**
-- Cold start: **< 500ms** (was 1.5-2.5s)
-- Warm start: **< 200ms** (was 0.8-1.5s)
-- **70-80% faster** than typical zsh setups
-
-## Installation
+## Get started
 
 ### Prerequisites
 
-**Required:**
-- macOS 10.15+ or Linux (Ubuntu 20.04+, CentOS 8+)
+- macOS 10.15+ or a modern Linux distribution
 - Git 2.30+
-- Bash 4.0+
-
-**macOS:**
-- Xcode Command Line Tools: `xcode-select --install`
-
-**Linux:**
-- Package manager (apt, yum, dnf, or pacman)
+- Bash 4+
+- Zsh 5.8+
+- Python 3.11+ for Python-based tools
+- `uv` for inline Python scripts such as `syncenv`
+- `jq` for manifest processing (installed automatically when possible)
+- Xcode Command Line Tools on macOS: `xcode-select --install`
 
 ### Install
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/dotfiles.git ~/.dotfiles
+git clone https://github.com/brunogama/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 
-# Interactive installation (recommended)
-./install
-
-# Non-interactive (CI/automation)
-./install --yes
-
-# Preview only (dry-run)
+# Preview all changes first
 ./install --dry-run
 
-# Skip specific phases
-./install --skip-packages  # Skip Homebrew bundle
-./install --skip-links     # Skip symlink creation
-```
+# Interactive setup
+./install
 
-### First-Time Setup
-
-```bash
-# 1. Configure git identity
-vim ~/.dotfiles/git/.gitconfig
-# Update: user.name and user.email
-
-# 2. Choose environment
-work-mode personal  # or: work-mode work
-
-# 3. Setup credentials (secure, no shell history exposure!)
-store-api-key CREDMATCH_MASTER_PASSWORD
-store-api-key OPENAI_API_KEY
-
-# 4. Restart shell
+# Restart the shell after installation
 exec zsh
-
-# 5. Benchmark performance (optional)
-zsh-benchmark
 ```
 
-See [ONBOARDING.md](ONBOARDING.md) for comprehensive setup guide.
-
-## Usage
-
-### Environment Management
-
-Switch between work and personal configurations seamlessly:
+Useful installer modes:
 
 ```bash
-# Switch to work environment
-work-mode work
-# Changes prompt to "WORK", loads work-config.zsh
+./install --yes             # Non-interactive setup
+./install --skip-packages   # Skip package installation
+./install --skip-links      # Skip symlink creation
+./install --scripts-only    # Refresh scripts in ~/local/bin only
+```
 
-# Switch to personal
+> [!TIP]
+> The installer is designed to be idempotent. Re-run it after pulling updates or after changing `LinkingManifest.json`.
+
+### First steps after install
+
+```bash
+# Choose an environment profile
 work-mode personal
-# Changes prompt to "HOME:PERSONAL", loads personal-config.zsh
+# or
+work-mode work
 
-# Check current environment
-work-mode status
-```
-
-### Credential Management
-
-Store and retrieve secrets securely without exposing them in shell history:
-
-```bash
-# SECURE: Interactive mode (no history exposure)
+# Store credentials without exposing secrets in shell history
+store-api-key GITHUB_TOKEN
 store-api-key OPENAI_API_KEY
-# Prompts: Enter value: [hidden input]
 
-# Retrieve securely
-get-api-key OPENAI_API_KEY
+# Check shell startup performance
+zsh-benchmark
 
-# Store files
-credfile put my-secret ~/path/to/secret.txt
+# Explore available tools
+dotfiles-help
+```
 
-# Retrieve files
-credfile get my-secret ~/restored.txt
+## Daily workflows
 
-# List all credentials
+### Switch environments
+
+```bash
+work-mode work       # Sets DOTFILES_ENV=work and loads work config
+work-mode personal   # Uses the personal profile by default
+work-mode status     # Shows the active profile
+```
+
+Work mode loads `~/.config/zsh/work-config.zsh` and personal mode loads `~/.config/zsh/personal-config.zsh`. The prompt shows `WORK` or `HOME:PERSONAL` after reloading the shell.
+
+### Manage symlinks
+
+`LinkingManifest.json` is the source of truth for files linked into your home directory.
+
+```bash
+python3 bin/core/link-dotfiles.py --dry-run
+python3 bin/core/link-dotfiles.py --apply
+```
+
+It links zsh files, Git configuration, package manager config, sync service files, and executable scripts into their target locations.
+
+### Manage credentials
+
+```bash
+# Simple secrets in macOS Keychain
+store-api-key API_KEY_NAME
+get-api-key API_KEY_NAME
+
+# Searchable encrypted credentials
 credmatch list
+credmatch search github
 
-# Clean up exposed secrets from history
+# Encrypted files such as SSH keys or certificates
+credfile put github_ssh ~/.ssh/id_rsa
+credfile get github_ssh /tmp/id_rsa
+
+# Audit shell history for exposed secrets
 clear-secret-history --dry-run
-clear-secret-history
 ```
 
-### Git Workflow
+> [!WARNING]
+> Do not pass secrets as command arguments. Use interactive prompts, stdin, or files so values do not land in shell history.
 
-Enhanced git workflow with conventional commits:
+### Sync across machines
 
 ```bash
-# Interactive conventional commit
-conventional-commit
-# Guides you through: type, scope, description
-
-# Quick WIP commit
-git-wip
-
-# Create savepoint
-git-save-all
-
-# Restore last savepoint
-git-restore-last-savepoint
+syncenv                  # Smart Git-based sync for the active profile
+syncenv --status         # Check repository sync state
+home-sync status         # Check package-backed sync state
+home-sync-service start  # Optional macOS LaunchAgent
 ```
 
-### Synchronization
+> [!NOTE]
+> `syncenv` uses `uv` to resolve inline Python dependencies. `home-sync` uses the package in `bin/core/home_sync`; set up its `.venv` before starting the background service.
 
-Keep dotfiles in sync across machines:
+The Python `home-sync` package includes daemon, locking, Git, metrics, and config modules.
+
+### Tune zsh performance
 
 ```bash
-# Modern sync (recommended)
-syncenv          # Smart sync with git detection
-syncenv --status # Check sync status
-
-# Legacy sync
-home-sync        # Auto-commits and pushes/pulls
-
-# Background service (macOS)
-home-sync-service start
+zsh-benchmark            # Quick startup benchmark
+zsh-benchmark --detailed # zprof-based details
+zsh-compile              # Compile zsh files to .zwc bytecode
+zsh-trim-history         # Keep history size manageable
 ```
 
-### Performance Optimization
+Heavy tools such as `nvm`, `pyenv`, `rbenv`, `mise`, SDKMAN, and fzf are loaded lazily so interactive shells stay responsive.
 
-Measure and optimize shell startup:
+### Manage packages
 
 ```bash
-# Benchmark startup time
-zsh-benchmark              # Quick 10-run average
-zsh-benchmark --detailed   # Function-by-function profiling
-
-# After config changes
-zsh-compile               # Recompile to bytecode
-exec zsh                  # Restart shell
-
-# Optimize history
-zsh-trim-history          # Reduce to 10k entries
+brew bundle --file packages/homebrew/Brewfile
+brew-sync update
+brew-sync generate
 ```
 
-## Project Structure
+The Homebrew bundle captures CLI tools, GUI apps, VS Code extensions, and globally installed npm packages used by this environment.
 
-```
-~/.dotfiles/
-├── install                  # Main installation script (START HERE)
-├── LinkingManifest.json     # Declarative symlink definitions
-│
-├── bin/                     # Executable scripts (lowercase required)
-│   ├── core/               # Core utilities (25+ scripts)
-│   ├── credentials/        # Secure credential management
-│   ├── git/               # Git hooks and utilities
-│   ├── ide/               # IDE integration
-│   ├── ios/               # iOS development tools (macOS)
-│   └── macos/             # macOS-specific utilities
-│
-├── git/                    # Git configuration (NOT scripts)
-│   ├── .gitconfig         # Global config
-│   ├── .gitignore        # Patterns (symlinked to root)
-│   └── aliases           # Git aliases
-│
-├── packages/              # Package manager configs
-│   ├── homebrew/         # Brewfile for macOS
-│   ├── mise/             # Version manager
-│   └── syncservice/      # Background sync
-│
-├── zsh/                   # Zsh configuration (OPTIMIZED!)
-│   ├── .zshrc            # Main config (< 500ms startup)
-│   ├── personal-config.zsh # Personal environment
-│   ├── work-config.zsh     # Work environment
-│   └── lib/
-│       └── lazy-load.zsh   # Lazy loading framework
-│
-├── openspec/             # Spec-driven development
-│   ├── changes/         # Proposed changes
-│   └── specs/          # Implemented specs
-│
-└── ai_docs/             # AI assistant documentation
+## Project map
+
+```text
+.
+├── install                    # Main idempotent installer
+├── LinkingManifest.json       # Declarative symlink manifest
+├── bin/
+│   ├── core/                  # Core utilities and home-sync Python package
+│   ├── credentials/           # Secret and encrypted-file management
+│   ├── git/                   # Git workflow helpers
+│   ├── ide/                   # Editor integration
+│   ├── macos/                 # macOS-specific tools
+│   └── test/                  # Test runner
+├── docs/
+│   ├── guides/                # Deep-dive user guides
+│   ├── scripts/               # Script reference and quick reference
+│   └── reports/               # Architecture and implementation reports
+├── git/                       # Global Git config and templates
+├── packages/
+│   ├── homebrew/              # Brewfile declarations
+│   ├── ios/                   # iOS tooling settings
+│   ├── macos/                 # macOS preference exports
+│   ├── mise/                  # Tool version config
+│   └── syncservice/           # Launch agent and sync config
+├── tests/                     # Bats, Python, fixtures, and helpers
+└── zsh/                       # zsh, Prezto, Powerlevel10k, completions
 ```
 
-**Constitutional Rule:** All directories MUST be lowercase (see [MINDSET.MD](MINDSET.MD))
+## Validation
 
-See [ONBOARDING.md](ONBOARDING.md) for detailed structure explanation.
-
-## Testing
-
-Comprehensive integration test suite using Bats (Bash Automated Testing System):
+Run the smallest useful check for the area you changed:
 
 ```bash
-# Run all tests
+# Shell syntax
+bash -n install
+zsh -n zsh/.zshrc
+
+# Installer, manifest, and linking
+./install --dry-run
+python3 -m json.tool LinkingManifest.json >/dev/null
+python3 bin/core/link-dotfiles.py --dry-run
+
+# Integration tests
 ./bin/test/run-tests
 
-# Run with verbose output
-./bin/test/run-tests --verbose
-
-# Run specific test category
-./bin/test/run-tests core       # Core utilities
-./bin/test/run-tests git        # Git utilities
-./bin/test/run-tests workflows  # End-to-end workflows
-
-# Run tests matching a pattern
-./bin/test/run-tests --filter "wip"
-
-# Run in parallel (4 jobs)
-./bin/test/run-tests --parallel 4
-
-# Show timing information
-./bin/test/run-tests --timing
+# Python package tests
+cd bin/core/home_sync
+uv pip install -e ".[dev]"
+uv run pytest tests/ -v
+uv run mypy home_sync --strict
 ```
 
-**Test Coverage:**
-- 890+ integration test cases across 16 test files
-- 5,500+ lines of test code
-- Core utilities, git utilities, credentials, workflows
-- Automated CI/CD testing on macOS and Linux
-- < 100ms test suite execution time
-
-**Installation:**
-```bash
-# macOS
-brew install bats-core
-
-# Linux
-sudo apt-get install bats  # Ubuntu/Debian
-sudo dnf install bats      # Fedora/RHEL
-```
-
-See [tests/README.md](tests/README.md) for complete testing documentation.
+GitHub Actions also validates pre-commit hooks, lowercase directory rules, emoji-free text files, shell scripts, the linking manifest, OpenSpec proposals, installation dry runs, and Linux/macOS test paths.
 
 ## Documentation
 
-**Getting Started:**
-- [QUICKSTART.md](QUICKSTART.md) - 5-minute setup guide
-- [ONBOARDING.md](ONBOARDING.md) - Comprehensive 30-minute guide
-- [AGENTS.md](AGENTS.md) - Project overview and AI assistant guide
+- [QUICKSTART.md](QUICKSTART.md) - Short setup guide.
+- [ONBOARDING.md](ONBOARDING.md) - Full architecture and workflow tour.
+- [docs/scripts/quick-reference.md](docs/scripts/quick-reference.md) - One-page command reference.
+- [docs/guides/CREDENTIAL_MANAGEMENT.md](docs/guides/CREDENTIAL_MANAGEMENT.md) - Credential storage guide.
+- [docs/reports/ZSH_OPTIMIZATION_SUMMARY.md](docs/reports/ZSH_OPTIMIZATION_SUMMARY.md) - Shell performance notes.
+- [AGENTS.md](AGENTS.md) - Project instructions for AI coding agents.
 
-**Performance:**
-- [ZSH_OPTIMIZATION_SUMMARY.md](ZSH_OPTIMIZATION_SUMMARY.md) - Performance improvements
+Dedicated files cover legal, contribution, and release-history details.
 
-**Development:**
-- [MINDSET.MD](MINDSET.MD) - Coding standards and constitutional rules
-- [openspec/AGENTS.md](openspec/AGENTS.md) - Spec-driven development workflow
-- [CHANGELOG.md](CHANGELOG.md) - User-facing changes
+## Troubleshooting
 
-**Security:**
-- [openspec/changes/fix-credential-shell-history-exposure/](openspec/changes/fix-credential-shell-history-exposure/) - Credential security
+| Symptom | Try this |
+| --- | --- |
+| A command is not found | Confirm `~/local/bin` is in `PATH`, then run `./install --scripts-only` |
+| Symlinks point to the wrong place | Run `python3 bin/core/link-dotfiles.py --dry-run`, then `python3 bin/core/link-dotfiles.py --apply --force` if needed |
+| Shell startup feels slow | Run `zsh-benchmark --detailed`, then `zsh-compile` |
+| Work profile did not apply | Run `work-mode status`, then `exec zsh` |
+| Homebrew packages drifted | Run `brew-sync generate` or `brew bundle --file packages/homebrew/Brewfile` |
+| Credentials are missing | Use `credmatch list`, `credfile list`, or re-store simple keys with `store-api-key` |
 
-**Reference:**
-- [LinkingManifest.json](LinkingManifest.json) - Symlink definitions
-- [packages/homebrew/Brewfile](packages/homebrew/Brewfile) - Package list
-
-## Contributing
-
-Contributions welcome! Please follow these guidelines:
-
-### Development Workflow
-
-1. **Create a branch:**
-   ```bash
-   git checkout -b feature/my-feature
-   ```
-
-2. **Make changes following standards:**
-   - Lowercase directories ONLY (constitutional rule)
-   - Pass `shellcheck` validation
-   - Use conventional commit messages
-   - Test your changes
-   - No emojis in documentation or code
-
-3. **Test:**
-   ```bash
-   shellcheck bin/core/my-script
-   ./bin/core/my-script --dry-run
-   ```
-
-4. **Commit:**
-   ```bash
-   git commit -m "feat: add my feature"
-   ```
-
-5. **Create PR:**
-   ```bash
-   gh pr create --title "feat: add feature" --body "Description"
-   ```
-
-### Coding Standards
-
-- **Shell:** Follow [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html)
-- **Commits:** Use [Conventional Commits](https://www.conventionalcommits.org/)
-- **Directories:** MUST be lowercase (see [MINDSET.MD](MINDSET.MD))
-- **Documentation:** NO emojis allowed (see [MINDSET.MD](MINDSET.MD))
-- **Security:** Never expose secrets in command arguments
-
-### For Major Changes
-
-Use OpenSpec for proposals:
-1. Create proposal in `openspec/changes/`
-2. Write spec.md with requirements
-3. Validate with `openspec validate --strict`
-4. Implement following tasks.md
-
-See [openspec/AGENTS.md](openspec/AGENTS.md) for details.
-
-## FAQ
-
-**Q: Does this work on Linux?**
-A: Yes! Tested on Ubuntu 20.04+, CentOS 8+. Some features are macOS-only (Homebrew, Keychain).
-
-**Q: Can I customize the configuration?**
-A: Absolutely! Edit files in `git/`, `zsh/`, `packages/` directories. Add your own scripts to `bin/core/`.
-
-**Q: How do I add my own packages?**
-A: Add them to `packages/homebrew/Brewfile` and run `brew bundle install --file=packages/homebrew/Brewfile`.
-
-**Q: Is it safe to run `./install` multiple times?**
-A: Yes! All operations are idempotent. Safe to re-run anytime.
-
-**Q: What if I don't use Zsh?**
-A: Scripts work with any shell. You'll need to manually source configurations for bash/fish.
-
-**Q: Can I use this with my existing dotfiles?**
-A: Yes, but conflicts may occur. The installer creates backups of existing files with timestamps.
-
-**Q: How do I keep dotfiles in sync across machines?**
-A: Use `syncenv` or `home-sync` commands. See [Usage](#synchronization) section.
-
-**Q: Why is shell startup so fast?**
-A: We use lazy loading, compiled configs, smart caching, and optimized history. See [Performance](#performance-features).
-
-**Q: How do I debug slow startup?**
-A: Run `zsh-benchmark --detailed` to see function-by-function timing.
-
-## Why These Dotfiles?
-
-### Comparison with Typical Dotfiles
-
-| Feature | This Project | Typical Dotfiles |
-|---------|--------------|------------------|
-| **Installation** | One command (`./install`) | Manual symlinking, trial and error |
-| **Symlink Management** | Declarative JSON manifest | Hardcoded scripts, brittle paths |
-| **Environments** | Work/personal switching | Single environment only |
-| **Credentials** | Secure Keychain, no history exposure | Plaintext files or git-crypt |
-| **Sync** | Automated (`syncenv`, `home-sync`) | Manual git operations |
-| **Change Management** | OpenSpec proposals with specs | Ad-hoc changes, no structure |
-| **Scripts** | 50+ organized, tested utilities | Scattered scripts, no organization |
-| **Performance** | < 500ms startup (lazy loading) | 1-3s startup (everything loads) |
-| **Security** | Interactive credential input | Secrets in shell history |
-
-### What Makes This Special
-
-- **Declarative Configuration** - LinkingManifest.json is source of truth for all symlinks
-
-- **Performance First** - Lazy loading, compiled configs, < 500ms cold start
-
-- **Security by Design** - Interactive credential input prevents shell history exposure
-
-- **Environment Aware** - Seamless work/personal mode switching with prompt indicators
-
-- **Spec-Driven** - OpenSpec framework ensures changes are documented and validated
-
-- **Battle-Tested** - 50+ utility scripts for real-world workflows
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-Copyright (c) 2025 Bruno Gama
-
-## Acknowledgments
-
-**Built with:**
-- [Prezto](https://github.com/sorin-ionescu/prezto) - Zsh configuration framework
-- [Powerlevel10k](https://github.com/romkatv/powerlevel10k) - Zsh theme
-- [OpenSpec](https://github.com/cloudy-os/openspec) - Spec-driven development
-- [Homebrew](https://brew.sh/) - Package management
-
-**Modern CLI tools:**
-- [eza](https://github.com/eza-community/eza) - Modern ls replacement
-- [bat](https://github.com/sharkdp/bat) - Cat with syntax highlighting
-- [fd](https://github.com/sharkdp/fd) - Fast find alternative
-- [ripgrep](https://github.com/BurntSushi/ripgrep) - Fast grep alternative
-- [delta](https://github.com/dandavison/delta) - Beautiful git diffs
-- [zoxide](https://github.com/ajeetdsouza/zoxide) - Smart cd command
-
-**Inspired by:**
-- [Mathias Bynens' dotfiles](https://github.com/mathiasbynens/dotfiles)
-- [Holman's dotfiles](https://github.com/holman/dotfiles)
-- [thoughtbot's dotfiles](https://github.com/thoughtbot/dotfiles)
-
----
-
-<div align="center">
-
-**Star this repo if you find it useful!**
-
-[Report Bug](https://github.com/yourusername/dotfiles/issues) · [Request Feature](https://github.com/yourusername/dotfiles/issues) · [Documentation](ONBOARDING.md)
-
-</div>
+If you are using this repository as a starting point for your own dotfiles, review every link target and script before applying it to your machine.
