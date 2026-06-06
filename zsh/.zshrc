@@ -171,6 +171,7 @@ bindkey "\ef" forward-word       # Option+f
 # Add completion directories to fpath
 fpath=(
     ~/.docker/completions(N)
+    ${ZDOTDIR:-$HOME/.config/zsh}/completion(N)
     ~/.zsh_functions(N)
     $fpath
 )
@@ -186,6 +187,12 @@ else
     compinit -C  # Skip security check for speed
 fi
 unsetopt EXTENDEDGLOB
+
+# Register pi explicitly so stale .zcompdump caches still pick up the new file.
+if [[ -o interactive ]] && (( $+functions[compdef] )) && [[ -r "${ZDOTDIR:-$HOME/.config/zsh}/completion/_pi" ]]; then
+    autoload -Uz _pi
+    compdef _pi pi
+fi
 
 # ============================================================================
 # 12. POWERLEVEL10K CONFIGURATION
