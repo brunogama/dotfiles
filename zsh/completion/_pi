@@ -1,0 +1,325 @@
+#compdef pi
+
+# Zsh completion for the Pi coding agent CLI.
+# Keep this static and lightweight: invoking `pi --help` during completion can
+# trigger extension discovery and interactive output.
+
+_pi() {
+  local -a global_options
+
+  global_options=(
+    '(-h --help)-h[Show help]'
+    '(-h --help)--help[Show help]'
+    '(-v --version)-v[Show version number]'
+    '(-v --version)--version[Show version number]'
+    '--provider[Provider name]:provider:_pi_providers'
+    '--model[Model pattern or ID]:model:_pi_model_patterns'
+    '--api-key[API key override]:api key:'
+    '--system-prompt[Replace default system prompt]:prompt text:'
+    '*--append-system-prompt[Append text or file contents to the system prompt]:text or file:_files'
+    '--mode[Output mode]:mode:(text json rpc)'
+    '(-p --print)-p[Non-interactive mode: process prompt and exit]'
+    '(-p --print)--print[Non-interactive mode: process prompt and exit]'
+    '(-c --continue)-c[Continue previous session]'
+    '(-c --continue)--continue[Continue previous session]'
+    '(-r --resume)-r[Select a session to resume]'
+    '(-r --resume)--resume[Select a session to resume]'
+    '--session[Use session file or partial UUID]:session:_pi_session_files'
+    '--session-id[Use exact project session ID, creating it if missing]:session id:'
+    '--fork[Fork session file or partial UUID]:session:_pi_session_files'
+    '--session-dir[Directory for session storage and lookup]:directory:_files -/'
+    '--no-session[Do not save session]'
+    '(-n --name)-n[Set session display name]:name:'
+    '(-n --name)--name[Set session display name]:name:'
+    '--models[Comma-separated model patterns for Ctrl+P cycling]:models:_pi_model_list'
+    '(-nt --no-tools)-nt[Disable all tools]'
+    '(-nt --no-tools)--no-tools[Disable all tools]'
+    '(-nbt --no-builtin-tools)-nbt[Disable built-in tools but keep extension/custom tools]'
+    '(-nbt --no-builtin-tools)--no-builtin-tools[Disable built-in tools but keep extension/custom tools]'
+    '(-t --tools)-t[Comma-separated allowlist of tools]:tools:_pi_tools'
+    '(-t --tools)--tools[Comma-separated allowlist of tools]:tools:_pi_tools'
+    '(-xt --exclude-tools)-xt[Comma-separated denylist of tools]:tools:_pi_tools'
+    '(-xt --exclude-tools)--exclude-tools[Comma-separated denylist of tools]:tools:_pi_tools'
+    '--thinking[Set thinking level]:level:(off minimal low medium high xhigh)'
+    '*(-e --extension)-e[Load extension file, npm package, or git source]:extension:_pi_package_source_or_path'
+    '*(-e --extension)--extension[Load extension file, npm package, or git source]:extension:_pi_package_source_or_path'
+    '*--skill[Load skill file or directory]:skill:_files'
+    '--no-skills[Disable skill discovery and loading]'
+    '--no-extensions[Disable extension discovery]'
+    '(-ne --no-extensions)-ne[Disable extension discovery]'
+    '*--prompt-template[Load prompt template file or directory]:prompt template:_files'
+    '--no-prompt-templates[Disable prompt template discovery and loading]'
+    '(-np --no-prompt-templates)-np[Disable prompt template discovery and loading]'
+    '*--theme[Load theme file or directory]:theme:_files'
+    '--no-themes[Disable theme discovery and loading]'
+    '--no-context-files[Disable AGENTS.md and CLAUDE.md discovery]'
+    '(-nc --no-context-files)-nc[Disable AGENTS.md and CLAUDE.md discovery]'
+    '--export[Export session file to HTML and exit]:session file:_files'
+    '--list-models[List available models, optionally filtered]:search:'
+    '--verbose[Force verbose startup]'
+    '--offline[Disable startup network operations]'
+    '--no-lens[Start pi-lens disabled for this session]'
+    '--no-lsp[Disable unified LSP diagnostics]'
+    '--no-autoformat[Disable automatic formatting]'
+    '--immediate-format[Run automatic formatting immediately after writes/edits]'
+    '--no-autofix[Disable auto-fixing of lint issues]'
+    '--no-tests[Disable test runner on write]'
+    '--no-delta[Show all diagnostics, not just new ones]'
+    '--lens-guard[Block git commit/push when pi-lens blockers exist]'
+    '--lens-semgrep[Enable Semgrep dispatch when config is available]'
+    '--lens-semgrep-config[Semgrep config for dispatch]:config:_files'
+    '--no-read-guard[Disable read-before-edit behavior monitor]'
+  )
+
+  case "${words[2]}" in
+    install|remove|uninstall|update|list|config)
+      if (( CURRENT >= 3 )); then
+        local subcommand="${words[2]}"
+        words=("pi-${subcommand}" "${words[@]:2}")
+        (( CURRENT-- ))
+        case "$subcommand" in
+          install) _pi_install ;;
+          remove|uninstall) _pi_remove ;;
+          update) _pi_update ;;
+          list) _pi_list ;;
+          config) _pi_config ;;
+        esac
+        return
+      fi
+      ;;
+  esac
+
+  _arguments -C -S "${global_options[@]}" \
+    '1:command or @file:_pi_first_arg' \
+    '*:message or @file:_pi_message_arg'
+}
+
+_pi_install() {
+  _arguments -C -S \
+    '(-h --help)-h[Show help]' \
+    '(-h --help)--help[Show help]' \
+    '(-l --local)-l[Install project-locally (.pi/settings.json)]' \
+    '(-l --local)--local[Install project-locally (.pi/settings.json)]' \
+    '1:package source:_pi_package_source_or_path'
+}
+
+_pi_remove() {
+  _arguments -C -S \
+    '(-h --help)-h[Show help]' \
+    '(-h --help)--help[Show help]' \
+    '(-l --local)-l[Remove from project settings (.pi/settings.json)]' \
+    '(-l --local)--local[Remove from project settings (.pi/settings.json)]' \
+    '1:installed package:_pi_installed_packages'
+}
+
+_pi_update() {
+  _arguments -C -S \
+    '(-h --help)-h[Show help]' \
+    '(-h --help)--help[Show help]' \
+    '--self[Update pi only]' \
+    '--extensions[Update installed packages only]' \
+    '--extension[Update one package only]:package:_pi_installed_packages' \
+    '--force[Reinstall pi even if current version is latest]' \
+    '1:target:_pi_update_targets'
+}
+
+_pi_list() {
+  _arguments -C -S \
+    '(-h --help)-h[Show help]' \
+    '(-h --help)--help[Show help]'
+}
+
+_pi_config() {
+  _message 'pi config opens the package resource TUI'
+}
+
+_pi_first_arg() {
+  _alternative \
+    'commands:pi command:_pi_commands' \
+    'at-files:@file:_pi_at_files'
+}
+
+_pi_message_arg() {
+  _pi_at_files || _message -e messages 'message text'
+}
+
+_pi_commands() {
+  local -a commands
+  commands=(
+    'install:Install a pi package and add it to settings'
+    'remove:Remove a pi package from settings'
+    'uninstall:Alias for remove'
+    'update:Update pi and installed packages'
+    'list:List installed packages'
+    'config:Enable or disable package resources in the TUI'
+  )
+  _describe -t commands 'pi command' commands "$@"
+}
+
+_pi_at_files() {
+  [[ "$PREFIX" == @* ]] || return 1
+  compset -P @
+  _files
+}
+
+_pi_package_source_or_path() {
+  _alternative \
+    'prefixes:package source prefix:_pi_package_source_prefixes' \
+    'paths:local path:_files'
+}
+
+_pi_package_source_prefixes() {
+  compadd -S '' -- \
+    'npm:' \
+    'git:' \
+    'git:github.com/' \
+    'git:git@github.com:' \
+    'https://github.com/' \
+    'ssh://git@github.com/' \
+    './'
+}
+
+_pi_installed_packages() {
+  local agent_dir="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+  local -a files packages
+  files=("$agent_dir/settings.json" ".pi/settings.json")
+
+  if command -v python3 >/dev/null 2>&1; then
+    packages=(${(f)"$(python3 - "${files[@]}" 2>/dev/null <<'PY'
+import json
+import os
+import sys
+
+seen = set()
+for path in sys.argv[1:]:
+    path = os.path.expanduser(path)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except Exception:
+        continue
+    for package in data.get("packages", []):
+        if isinstance(package, str) and package not in seen:
+            seen.add(package)
+            print(package)
+PY
+)"})
+  fi
+
+  if (( ${#packages} )); then
+    compadd -S '' -- "${packages[@]}"
+  else
+    _pi_package_source_or_path
+  fi
+}
+
+_pi_update_targets() {
+  local -a targets
+  targets=(
+    'pi:Update pi only'
+    'self:Update pi only'
+  )
+  _describe -t update-targets 'update target' targets "$@"
+  _pi_installed_packages
+}
+
+_pi_providers() {
+  local -a providers
+  providers=(
+    'anthropic:Anthropic'
+    'openai:OpenAI'
+    'openai-codex:OpenAI Codex subscription'
+    'github-copilot:GitHub Copilot'
+    'google:Google Gemini'
+    'google-vertex:Google Vertex AI'
+    'amazon-bedrock:Amazon Bedrock'
+    'ant-ling:Ant Ling'
+    'azure-openai-responses:Azure OpenAI Responses'
+    'deepseek:DeepSeek'
+    'nvidia:NVIDIA NIM'
+    'mistral:Mistral'
+    'groq:Groq'
+    'cerebras:Cerebras'
+    'fireworks:Fireworks'
+    'together:Together AI'
+    'huggingface:Hugging Face'
+    'moonshotai:Moonshot AI'
+    'moonshotai-cn:Moonshot AI China'
+    'kimi-coding:Kimi For Coding'
+    'minimax:MiniMax'
+    'minimax-cn:MiniMax China'
+    'cloudflare-ai-gateway:Cloudflare AI Gateway'
+    'cloudflare-workers-ai:Cloudflare Workers AI'
+    'openrouter:OpenRouter'
+    'vercel-ai-gateway:Vercel AI Gateway'
+    'xai:xAI'
+    'zai:ZAI'
+    'zai-coding-cn:ZAI Coding Plan China'
+    'opencode:OpenCode Zen'
+    'opencode-go:OpenCode Go'
+    'xiaomi:Xiaomi MiMo'
+    'xiaomi-token-plan-cn:Xiaomi MiMo Token Plan China'
+    'xiaomi-token-plan-ams:Xiaomi MiMo Token Plan Amsterdam'
+    'xiaomi-token-plan-sgp:Xiaomi MiMo Token Plan Singapore'
+  )
+  _describe -t providers 'provider' providers "$@"
+}
+
+_pi_model_patterns() {
+  local -a models
+  models=(
+    'sonnet:Anthropic Sonnet fuzzy match'
+    'opus:Anthropic Opus fuzzy match'
+    'haiku:Anthropic Haiku fuzzy match'
+    'gpt-5.5:OpenAI Codex default model'
+    'gpt-5.4:OpenAI/GitHub Copilot default model'
+    'gemini-3.1-pro-preview:Google default model'
+    'anthropic/*:All Anthropic models'
+    'openai/*:All OpenAI models'
+    'openai-codex/*:All OpenAI Codex models'
+    'github-copilot/*:All GitHub Copilot models'
+    'google/*:All Google Gemini models'
+    '*sonnet*:Any Sonnet model'
+  )
+  _describe -t models 'model pattern' models "$@"
+}
+
+_pi_model_list() {
+  local -a models
+  models=(
+    sonnet
+    opus
+    haiku
+    gpt-5.5
+    gpt-5.4
+    gemini-3.1-pro-preview
+    'anthropic/*'
+    'openai/*'
+    'openai-codex/*'
+    'github-copilot/*'
+    'google/*'
+    '*sonnet*'
+  )
+  _values -s , 'model pattern' "${models[@]}"
+}
+
+_pi_tools() {
+  local -a tools
+  tools=(
+    'read:Read file contents'
+    'bash:Execute bash commands'
+    'edit:Edit files with find/replace'
+    'write:Write files'
+    'grep:Search file contents'
+    'find:Find files by glob pattern'
+    'ls:List directory contents'
+    'ask_question:Ask a structured user question'
+  )
+  _values -s , 'tool' "${tools[@]}"
+}
+
+_pi_session_files() {
+  _files -g '*.jsonl'
+}
+
+_pi "$@"

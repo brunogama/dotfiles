@@ -46,6 +46,12 @@
           "target": "~/.config/zsh/lib",
           "description": "Zsh library files (lazy-load, etc.)",
           "type": "directory-contents"
+        },
+        {
+          "source": "zsh/completion/",
+          "target": "~/.config/zsh/completion",
+          "description": "Custom zsh completion functions",
+          "type": "directory-contents"
         }
       ]
     },
