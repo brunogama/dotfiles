@@ -177,15 +177,19 @@ fi
 # ============================================================================
 # Lazy Load: FZF (fuzzy finder)
 # ============================================================================
-# Note: FZF can be loaded in background in .zshrc for immediate availability.
-# This is a fallback if background loading fails.
-if command -v fzf &>/dev/null && [[ ! -f ~/.fzf-loaded ]]; then
-    _load_fzf() {
-        unfunction _load_fzf 2>/dev/null
+# Load fzf shell integration on first Ctrl+R instead of during startup.
+if [[ -o interactive ]] && command -v fzf &>/dev/null; then
+    _lazy_fzf_history_widget() {
+        zle -I
         source <(fzf --zsh) 2>/dev/null
-        touch ~/.fzf-loaded
+
+        if zle -l fzf-history-widget &>/dev/null; then
+            zle fzf-history-widget
+        else
+            zle reset-prompt
+        fi
     }
 
-    # Intercept Ctrl+R if fzf not loaded
-    bindkey '^R' _load_fzf
+    zle -N _lazy_fzf_history_widget
+    bindkey '^R' _lazy_fzf_history_widget
 fi

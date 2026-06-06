@@ -73,10 +73,7 @@ if [[ -z "$LESSOPEN" ]] && (( $#commands[(i)lesspipe(|.sh)] )); then
 fi
 
 #
-# Source .zshrc for login shells
+# Do not source .zshrc here.
 #
-# When ZDOTDIR is set, login shells don't automatically source .zshrc on some systems.
-# Explicitly source it to ensure Prezto and all interactive configurations load.
-if [[ -s "${ZDOTDIR:-$HOME}/.zshrc" ]]; then
-  source "${ZDOTDIR:-$HOME}/.zshrc"
-fi
+# Zsh automatically reads $ZDOTDIR/.zshrc for interactive shells after .zprofile.
+# Sourcing it manually here makes login shells load the full interactive config twice.

@@ -24,8 +24,6 @@ zstyle ':prezto:load' pmodule \
   'utility' \
   'completion' \
   'git' \
-  'python' \
-  'ruby' \
   'syntax-highlighting' \
   'history-substring-search' \
   'autosuggestions' \
@@ -113,19 +111,10 @@ zstyle ':prezto:module:terminal:tab-title' format '%m: %s'
 # by lazy-load.zsh which only sources nvm.sh on first use of nvm/node/npm.
 
 #
-# Python (pyenv)
+# Version managers
 #
-# Skip pyenv init - we handle lazy loading in lazy-load.zsh for better performance.
-# Prezto's python module loads pyenv eagerly which adds ~100-200ms to startup.
-zstyle ':prezto:module:python:virtualenv' auto-switch 'yes'
-zstyle ':prezto:module:python' skip-init 'yes'
-
-#
-# Ruby (rbenv)
-#
-# Skip rbenv init - we handle lazy loading in lazy-load.zsh for better performance.
-# Prezto's ruby module loads rbenv eagerly which adds ~50-100ms to startup.
-zstyle ':prezto:module:ruby' skip-init 'yes'
+# Python and Ruby Prezto modules are intentionally not loaded. pyenv/rbenv are
+# handled by ~/.config/zsh/lib/lazy-load.zsh on first use.
 
 #
 # Utility
