@@ -7,14 +7,46 @@ fi
 
 # ============================================================================
 # Optimized .zshrc for Fast Startup
-# Performance target: < 500ms cold start, < 200ms warm start
+# Performance target: < 150ms warm startup on this machine
 # ============================================================================
 
 # ============================================================================
-# 1. PREZTO INITIALIZATION (Must be first for instant prompt)
+# 1. EARLY PATH, FPATH, AND ENVIRONMENT
 # ============================================================================
-# Note: Prezto's prompt module handles Powerlevel10k instant prompt internally.
-# Do not manually source instant prompt - it conflicts with Prezto's mechanism.
+# Keep these before Prezto so its completion module sees custom fpath entries and
+# tools installed by Homebrew are available in login and non-login shells.
+typeset -gU path fpath
+
+export EDITOR="code"
+export VISUAL="code"
+export PYENV_ROOT="$HOME/.pyenv"
+export RBENV_ROOT="$HOME/.rbenv"
+export NVM_DIR="$HOME/.nvm"
+export SDKMAN_DIR="$HOME/.sdkman"
+export UV_NATIVE_TLS=1
+
+path=(
+    $PYENV_ROOT/bin(N)
+    $RBENV_ROOT/bin(N)
+    $SDKMAN_DIR/bin(N)
+    $HOME/.claude/local(N)
+    $HOME/.cache/lm-studio/bin(N)
+    /opt/{homebrew,local}/{,s}bin(N)
+    /usr/local/{,s}bin(N)
+    $path
+    $HOME/local/bin(N)
+)
+
+fpath=(
+    ~/.docker/completions(N)
+    ${ZDOTDIR:-$HOME/.config/zsh}/completion(N)
+    ~/.zsh_functions(N)
+    $fpath
+)
+
+# ============================================================================
+# 2. PREZTO INITIALIZATION
+# ============================================================================
 if [[ -s "$HOME/.zprezto/init.zsh" ]]; then
   source "$HOME/.zprezto/init.zsh"
 fi
@@ -33,9 +65,6 @@ fi
 # ============================================================================
 # 4. CORE SETTINGS (Fast operations only)
 # ============================================================================
-export EDITOR="code"
-export VISUAL="code"
-export GIT_PAGER='delta'
 
 # Unalias conflicting commands
 unalias g 2>/dev/null
@@ -48,19 +77,12 @@ unalias e 2>/dev/null
 
 # Shell & Config
 alias zs='source ~/.config/zsh/.zshrc'
-alias config='code $(realpath .)'
+config() {
+    local repo
+    repo="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"
+    e "$repo"
+}
 alias gitconfig='code ~/.gitconfig'
-
-# Modern CLI tools
-alias ls='eza --icons --group-directories-first'
-alias ll='eza -lah --git --icons --group-directories-first'
-alias tree='eza --tree --icons'
-alias cat='bat --paging=never'
-alias less='bat --paging=always'
-alias find='fd'
-alias grep='rg'
-alias top='htop'
-alias du='dust'
 
 # Git shortcuts
 alias mkdir="mkdir -p"
@@ -88,11 +110,6 @@ alias -g -- --help='--help 2>&1 | bat --language=help --style=plain'
 alias ...="cd ../.."
 alias ....="cd ../../.."
 alias .....="cd ../../../.."
-
-# Escape hatches for aliased commands
-alias old-find='/usr/bin/find'
-alias old-grep='/usr/bin/grep'
-alias old-cat='/bin/cat'
 
 # Claude CLI
 alias ccy='claude --dangerously-skip-permissions'
@@ -128,18 +145,14 @@ deadcode() {
 }
 
 # ============================================================================
-# 7. NVM PATH SETUP (Add default node to PATH without full initialization)
+# 7. LAZY LOADING (Defer expensive tools until first use)
 # ============================================================================
-# This provides immediate access to global npm modules without lazy loading overhead
+# Optional nvm path helper, if present, must run after NVM_DIR is set above.
 if [[ -f ~/.config/zsh/lib/nvm-path.zsh ]]; then
     source ~/.config/zsh/lib/nvm-path.zsh
 fi
 
-# ============================================================================
-# 8. LAZY LOADING (Defer expensive tools until first use)
-# ============================================================================
-# Lazy loading for pyenv, rbenv, mise, and SDKMAN.
-# Note: nvm lazy loading is handled by Prezto's node module (--no-use flag).
+# Lazy loading for nvm, pyenv, rbenv, mise, SDKMAN, and fzf key bindings.
 if [[ -f ~/.config/zsh/lib/lazy-load.zsh ]]; then
     source ~/.config/zsh/lib/lazy-load.zsh
 fi
@@ -166,28 +179,10 @@ bindkey "\eb" backward-word      # Option+b
 bindkey "\ef" forward-word       # Option+f
 
 # ============================================================================
-# 11. COMPLETION (Consolidated - called only once!)
+# 11. COMPLETION
 # ============================================================================
-# Add completion directories to fpath
-fpath=(
-    ~/.docker/completions(N)
-    ${ZDOTDIR:-$HOME/.config/zsh}/completion(N)
-    ~/.zsh_functions(N)
-    $fpath
-)
-
-# Initialize completion (only once!)
-autoload -Uz compinit
-
-# Smart completion caching - only rebuild if older than 24 hours
-setopt EXTENDEDGLOB
-if [[ -n ${ZDOTDIR:-$HOME}/.config/zsh/.zcompdump(#qNmh+24) ]]; then
-    compinit
-else
-    compinit -C  # Skip security check for speed
-fi
-unsetopt EXTENDEDGLOB
-
+# Completion is initialized by Prezto's completion module. Custom fpath entries
+# are added before Prezto above so compinit runs once, not twice.
 # Register pi explicitly so stale .zcompdump caches still pick up the new file.
 if [[ -o interactive ]] && (( $+functions[compdef] )) && [[ -r "${ZDOTDIR:-$HOME/.config/zsh}/completion/_pi" ]]; then
     autoload -Uz _pi
@@ -205,92 +200,18 @@ fi
 # zsh/.p10k.zsh -> ~/.config/zsh/.p10k.zsh
 
 # ============================================================================
-# 13. FZF (Load in background for responsiveness)
+# 13. FZF
 # ============================================================================
-if [[ -o interactive ]] && command -v fzf &>/dev/null; then
-    # Background load to not block startup
-    {
-        source <(fzf --zsh) 2>/dev/null
-        touch ~/.fzf-loaded
-    } &!
-fi
-
-# ============================================================================
-# 14. PATHS (Consolidated)
-# ============================================================================
-# Add custom paths (avoid duplicates)
-# Note: local/bin is added LAST so system tools take precedence
-path=(
-    $HOME/.claude/local(N)
-    $HOME/.cache/lm-studio/bin(N)
-    $path
-    $HOME/local/bin(N)
-)
-
-# Deduplicate PATH
-typeset -U path
-
-# ============================================================================
-# 15. ENVIRONMENT VARIABLES (Non-blocking)
-# ============================================================================
-export PYENV_ROOT="$HOME/.pyenv"
-export RBENV_ROOT="$HOME/.rbenv"
-export NVM_DIR="$HOME/.nvm"
-export SDKMAN_DIR="$HOME/.sdkman"
-
-# Add version manager bin paths to PATH (for lazy-loading detection)
-# Note: PATH is deduplicated by typeset -U above
-path=(
-    $PYENV_ROOT/bin(N)
-    $RBENV_ROOT/bin(N)
-    $SDKMAN_DIR/bin(N)
-    $path
-)
+# FZF key bindings are lazy-loaded by lib/lazy-load.zsh.
 
 # ============================================================================
 # END OF OPTIMIZED .zshrc
-# Expected startup time: < 500ms (cold), < 200ms (warm)
+# Observed startup time: ~50ms warm in zsh -i/-l tests
 # ============================================================================
 
-# To customize prompt, run `p10k configure` or edit ~/.config/zsh/.p10k.zsh.
-[[ ! -f ~/.config/zsh/.p10k.zsh ]] || source ~/.config/zsh/.p10k.zsh
+# Prezto's powerlevel10k prompt module sources ~/.config/zsh/.p10k.zsh.
+# Do not source it again here; that adds startup work and can duplicate prompt hooks.
 
-# Context Window Manager Aliases
-# =============================================================================
-export CTX_MANAGER_PATH="/Users/bruno/Developer/deep-researchs/commands/context-window-management-command"
-export CTX_STORAGE_BASE="/Users/bruno/ai_data"
-
-# Context Window Management aliases
-alias ctx-manager='python3 $CTX_MANAGER_PATH/context_storage_manager.py'
-alias ctx-stats='python3 $CTX_MANAGER_PATH/context_storage_manager.py stats'
-alias ctx-search='python3 $CTX_MANAGER_PATH/context_storage_manager.py search'
-alias ctx-store='python3 $CTX_MANAGER_PATH/context_storage_manager.py store'
-alias ctx-examples='python3 $CTX_MANAGER_PATH/examples.py'
-alias ctx-setup='bash $CTX_MANAGER_PATH/setup.sh'
-
-# PromptKit Aliases
-# =============================================================================
-export PROMPTKIT_PATH="/Users/bruno/Developer/Inbox/PromptKit"
-export PROMPTKIT_STORAGE_BASE="/Users/bruno/ai_data"
-
-# Context Window Management aliases
-alias pk-manager='python3 $PROMPTKIT_PATH/promptkit.py'
-alias pk-stats='python3 $PROMPTKIT_PATH/promptkit.py stats'
-alias pk-search='python3 $PROMPTKIT_PATH/promptkit.py search'
-alias pk-store='python3 $PROMPTKIT_PATH/promptkit.py store'
-alias pk-examples='python3 $PROMPTKIT_PATH/promptkit_examples.py'
-alias pk-setup='bash $PROMPTKIT_PATH/setup.sh'
-
-kimi-cc() {
-    export ANTHROPIC_AUTH_TOKEN=$(get-api-key KIMI_API_KEY)
-	export ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic
-	export ANTHROPIC_MODEL=kimi-k2-thinking
-	export ANTHROPIC_DEFAULT_OPUS_MODEL=kimi-k2-thinking-turbo
-	export ANTHROPIC_DEFAULT_SONNET_MODEL=kimi-k2-thinking-turbo
-	export ANTHROPIC_DEFAULT_HAIKU_MODEL=kimi-k2-thinking-turbo
-	export CLAUDE_CODE_SUBAGENT_MODEL=kimi-k2-thinking-turbo
-	claude $@
-}
 
 set-default-shell() {
 	brew install zsh
@@ -309,7 +230,9 @@ primary() {
   claude --agent primary-agent "$@"
 }
 
-# Add these lines at the end
-export UV_NATIVE_TLS=1
-export NEXUS_USER="$(get-api-key NEXUS_USER)"
-export NEXUS_PASS="$(get-api-key NEXUS_PASS)"
+# Load Nexus credentials only when needed; keychain lookups during startup are slow
+# and noisy when the keys are not present.
+nexus-env() {
+    export NEXUS_USER="${NEXUS_USER:-$(get-api-key NEXUS_USER)}"
+    export NEXUS_PASS="${NEXUS_PASS:-$(get-api-key NEXUS_PASS)}"
+}

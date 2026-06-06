@@ -6,27 +6,30 @@
 # ============================================================================
 # AUTO-UPDATE (Background, cached daily)
 # ============================================================================
-# Check once per day - runs in background to not block startup
-if [[ -d "$HOME/.dotfiles" ]]; then
-    # Create cache directory
-    mkdir -p ~/.cache/zsh 2>/dev/null
+# Avoid external date/mkdir calls on every startup. Only do work when ~/.dotfiles
+# exists and today's marker is missing.
+_dotfiles_auto_update_once_daily() {
+    local dotfiles_dir="$HOME/.dotfiles"
+    [[ -d "$dotfiles_dir" ]] || return
 
-    # Check if we've already updated today
-    TODAY_MARKER=~/.cache/zsh/scripts-checked-$(date +%Y%m%d)
+    zmodload -F zsh/datetime b:strftime 2>/dev/null || return
 
-    if [[ ! -f "$TODAY_MARKER" ]]; then
-        # Update in background (non-blocking)
-        {
-            if command -v update-dotfiles-scripts &>/dev/null; then
-                update-dotfiles-scripts &>/dev/null
-                # Clean old markers (use setopt NULL_GLOB to avoid error if no matches)
-                setopt LOCAL_OPTIONS NULL_GLOB
-                rm -f ~/.cache/zsh/scripts-checked-* 2>/dev/null
-                touch "$TODAY_MARKER"
-            fi
-        } &!
-    fi
-fi
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+    local today_marker="$cache_dir/scripts-checked-$(strftime '%Y%m%d')"
+    [[ -f "$today_marker" ]] && return
+
+    {
+        mkdir -p "$cache_dir" 2>/dev/null
+        if command -v update-dotfiles-scripts &>/dev/null; then
+            update-dotfiles-scripts &>/dev/null
+            setopt LOCAL_OPTIONS NULL_GLOB
+            rm -f "$cache_dir"/scripts-checked-* 2>/dev/null
+            touch "$today_marker"
+        fi
+    } >/dev/null 2>&1 &
+}
+_dotfiles_auto_update_once_daily
+unfunction _dotfiles_auto_update_once_daily
 
 # ============================================================================
 # WELCOME MESSAGE - Removed to comply with Powerlevel10k instant prompt
