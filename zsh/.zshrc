@@ -71,6 +71,7 @@ fi
 unalias g 2>/dev/null
 unalias o 2>/dev/null
 unalias e 2>/dev/null
+unalias gsd 2>/dev/null
 
 # ============================================================================
 # 5. ALIASES (Instant - no performance impact)
@@ -78,6 +79,7 @@ unalias e 2>/dev/null
 
 # Shell & Config
 alias zs='source ~/.config/zsh/.zshrc'
+alias dotfiles='e ~/Developer/dotfiles'
 config() {
     local repo
     repo="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"
@@ -96,17 +98,6 @@ alias gs-all="git status; git submodule foreach 'git status'"
 
 # Advanced git
 alias gdinit="rm -rf .git; git submodule deinit -f .; fd -e .git -t f; fd -e .gitignore -x cp {} .gitignore; git add .gitignore; git commit -m 'Initial commit'"
-alias new-main-with-one-commit="git checkout -b main && git commit --allow-empty -m 'Initial commit' && git push -u origin main"
-alias delete-main="git branch -D main && git push origin --delete main; git checkout -b main; new-main-with-one-commit"
-alias delete-branch="git branch -D"
-alias delete-remote-branch="git push origin --delete"
-alias delete-tag="git tag -d"
-alias delete-remote-tag="git push origin --delete"
-
-# Help piped through bat
-alias -g -- -h='-h 2>&1 | bat --language=help --style=plain'
-alias -g -- --help='--help 2>&1 | bat --language=help --style=plain'
-
 # Navigation
 alias ...="cd ../.."
 alias ....="cd ../../.."
@@ -138,27 +129,6 @@ claude() {
 codex() {
     eval "$(dump-api-keys)"
     /Users/bruno/.local/bin/codex "$@"
-}
-
-# Bat diff for git
-batdiff() {
-    git diff --name-only --relative --diff-filter=d | xargs bat --diff
-}
-
-# Dead code detection (iOS specific)
-deadcode() {
-    local folder_name="$(basename "$(pwd)")"
-    xcodebuild \
-      -scheme "$folder_name" \
-      -destination 'platform=iOS Simulator,OS=16.4,name=iPhone 14' \
-      -derivedDataPath ~/Desktop/dd \
-      clean build
-    periphery scan \
-      --skip-build \
-      --index-store-path ~/Desktop/dd/Index.noindex/DataStore/ \
-      --retain-public true \
-      --targets "$folder_name"
-    rm -rf ~/Desktop/dd
 }
 
 # ============================================================================
@@ -245,11 +215,4 @@ primary() {
   echo "Waking up the Primary Agent..."
   # "$@" automatically passes ALL arguments (text) you type to the agent
   claude --agent primary-agent "$@"
-}
-
-# Load Nexus credentials only when needed; keychain lookups during startup are slow
-# and noisy when the keys are not present.
-nexus-env() {
-    export NEXUS_USER="${NEXUS_USER:-$(get-api-key NEXUS_USER)}"
-    export NEXUS_PASS="${NEXUS_PASS:-$(get-api-key NEXUS_PASS)}"
 }
