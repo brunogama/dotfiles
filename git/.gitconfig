@@ -1,5 +1,5 @@
 [user]
-	name = Bruno
+	name = Bruno da Gama Porciuncula
 	email = bruno@naboo.local
 [core]
 	excludesfile = /Users/bruno/.gitignore_global
@@ -7,3 +7,8 @@
 	path = ~/.config/git/github-flow-aliases.gitconfig
 [push]
 	autoSetupRemote = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
