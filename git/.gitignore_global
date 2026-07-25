@@ -390,3 +390,5 @@ $RECYCLE.BIN/
 *.bak
 *.old
 *~
+
+**/.claude/settings.local.json
