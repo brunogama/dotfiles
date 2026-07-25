@@ -48,8 +48,11 @@ typeset -gU cdpath fpath mailpath path
 # )
 
 # Set the list of directories that Zsh searches for programs.
+export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
 path=(
   $HOME/{,s}bin(N)
+  $PYENV_ROOT/shims(N)
+  $PYENV_ROOT/bin(N)
   /opt/{homebrew,local}/{,s}bin(N)
   /usr/local/{,s}bin(N)
   $path
