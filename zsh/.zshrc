@@ -124,6 +124,22 @@ mkcd() {
     mkdir -p "$1" && cd "$1"
 }
 
+# Load API keys before launching agent CLIs.
+pi() {
+    eval "$(dump-api-keys)"
+    /opt/homebrew/bin/pi "$@"
+}
+
+claude() {
+    eval "$(dump-api-keys)"
+    /Users/bruno/.local/bin/claude "$@"
+}
+
+codex() {
+    eval "$(dump-api-keys)"
+    /Users/bruno/.local/bin/codex "$@"
+}
+
 # Bat diff for git
 batdiff() {
     git diff --name-only --relative --diff-filter=d | xargs bat --diff
