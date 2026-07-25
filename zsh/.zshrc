@@ -26,6 +26,7 @@ export SDKMAN_DIR="$HOME/.sdkman"
 export UV_NATIVE_TLS=1
 
 path=(
+    $PYENV_ROOT/shims(N)
     $PYENV_ROOT/bin(N)
     $RBENV_ROOT/bin(N)
     $SDKMAN_DIR/bin(N)
