@@ -68,7 +68,7 @@ done
 zsh -n zsh/.zshenv zsh/.zprofile zsh/.zshrc
 python3 -m json.tool packages/npm/package.json >/dev/null
 python3 -m json.tool packages/npm/package-lock.json >/dev/null
-git diff --check
+git --no-pager diff --check
 
 if command -v shellcheck >/dev/null 2>&1; then
     shellcheck bin/core/nix-bootstrap bin/core/nix-npm-sync bin/core/nix-rebuild \
