@@ -102,6 +102,19 @@ teardown() {
     assert_output --partial "Mock nix-bootstrap:"
 }
 
+@test "nix-bootstrap: detects installed Nix outside PATH" {
+    [[ -r /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]] || \
+        skip "Nix daemon profile is not installed"
+
+    local real_dotfiles_root
+    real_dotfiles_root="$(get_dotfiles_root)"
+    run env HOME="$HOME" PATH="/usr/bin:/bin" \
+        /bin/bash "$real_dotfiles_root/bin/core/nix-bootstrap" --dry-run
+
+    assert_success
+    refute_output --partial "Would install upstream Nix"
+}
+
 @test "install: --verbose enables verbose output" {
     run "$DOTFILES_ROOT/install" --dry-run --yes --verbose
     assert_success
