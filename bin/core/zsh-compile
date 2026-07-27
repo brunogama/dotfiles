@@ -104,13 +104,6 @@ if [[ -d ${ZSH_CONFIG_DIR}/.zsh_functions ]]; then
     done
 fi
 
-# Compile p10k config if exists
-if [[ -f ${ZSH_CONFIG_DIR}/.p10k.zsh ]]; then
-    echo ""
-    echo -e "${BOLD}Powerlevel10k:${NC}"
-    compile_file ${ZSH_CONFIG_DIR}/.p10k.zsh
-fi
-
 # Summary
 echo ""
 echo -e "${BLUE}════════════════════════════════════════${NC}"

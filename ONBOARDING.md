@@ -145,7 +145,7 @@ zsh/
 ├── .zshrc                 # Main configuration (loads others)
 ├── .zprofile              # Login shell initialization
 ├── .zpreztorc             # Prezto framework config
-├── .p10k.zsh              # Powerlevel10k theme
+├── starship.toml          # Starship prompt configuration
 ├── personal-config.zsh    # Personal environment settings
 ├── work-config.zsh        # Work environment settings
 ├── lib/
@@ -575,11 +575,11 @@ link-dotfiles --force        # Overwrite without confirmation
 **Loading Order:**
 1. PATH initialization
 2. Prezto framework
-3. Powerlevel10k theme
-4. Lazy-load library
-5. Environment-specific config (work or personal)
-6. FZF integration (background)
-7. Aliases and functions
+3. Environment-specific config (work or personal)
+4. Core aliases and functions
+5. Lazy-load library
+6. Completion and FZF integration
+7. Starship prompt
 
 **Performance Optimizations:**
 - Single compinit call (was 3x)
@@ -2601,9 +2601,9 @@ Each entry has `"description"` field explaining purpose
 - https://github.com/sorin-ionescu/prezto
 - Module docs: https://github.com/sorin-ionescu/prezto/tree/master/modules
 
-**Powerlevel10k Theme:**
-- https://github.com/romkatv/powerlevel10k
-- Configuration: `p10k configure`
+**Starship Prompt:**
+- https://starship.rs/
+- Configuration: `zsh/starship.toml`
 
 #### Git
 

@@ -876,12 +876,11 @@ phase_nvm() {
     fi
 }
 
-# Phase 6: Prezto and Powerlevel10k setup
+# Phase 6: Prezto and Starship setup
 phase_prezto() {
-    log_phase "Phase 6: Prezto & Powerlevel10k Setup"
+    log_phase "Phase 6: Prezto & Starship Setup"
 
     local prezto_dir="$HOME/.zprezto"
-    local p10k_module="$prezto_dir/modules/prompt/external/powerlevel10k"
 
     # Check if Prezto is installed
     if [[ -d "$prezto_dir" ]]; then
@@ -906,29 +905,23 @@ phase_prezto() {
         fi
     fi
 
-    # Check if Powerlevel10k is installed
-    if [[ -d "$prezto_dir" ]]; then
-        if [[ -d "$p10k_module" ]]; then
-            log_success "Powerlevel10k theme is installed"
-        else
-            log_warning "Powerlevel10k theme is not installed"
+    if command -v starship >/dev/null 2>&1; then
+        log_success "Starship is already installed"
+    else
+        log_warning "Starship is not installed"
 
-            if [[ "$DRY_RUN" == "true" ]]; then
-                log_info "Would clone Powerlevel10k to $p10k_module"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "Would install Starship with Homebrew"
+        elif confirm "Install Starship prompt?"; then
+            log_info "Installing Starship..."
+            if brew install starship; then
+                log_success "Starship installed"
             else
-                if confirm "Install Powerlevel10k theme?"; then
-                    log_info "Cloning Powerlevel10k..."
-                    mkdir -p "$(dirname "$p10k_module")"
-                    if git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_module"; then
-                        log_success "Powerlevel10k installed"
-                    else
-                        log_error "Failed to clone Powerlevel10k"
-                        exit 1
-                    fi
-                else
-                    log_warning "Skipped Powerlevel10k installation - prompt will use default theme"
-                fi
+                log_error "Failed to install Starship"
+                exit 1
             fi
+        else
+            log_warning "Skipped Starship installation - no custom prompt will load"
         fi
     fi
 
