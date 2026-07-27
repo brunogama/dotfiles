@@ -98,6 +98,20 @@ done
 [[ "$(uname -s)" == "Darwin" ]] || { echo "nix-bootstrap: nix-darwin requires macOS" >&2; exit 2; }
 
 install_nix() {
+    local default_profile="/nix/var/nix/profiles/default"
+
+    if ! command -v nix >/dev/null 2>&1 && \
+        [[ -r "$default_profile/etc/profile.d/nix-daemon.sh" ]]; then
+        # shellcheck disable=SC1091
+        source "$default_profile/etc/profile.d/nix-daemon.sh"
+    fi
+
+    # The profile script can be guarded as already sourced even when a caller
+    # has intentionally narrowed PATH, so check the canonical binary directly.
+    if ! command -v nix >/dev/null 2>&1 && [[ -x "$default_profile/bin/nix" ]]; then
+        export PATH="$default_profile/bin:$PATH"
+    fi
+
     if command -v nix >/dev/null 2>&1; then
         return 0
     fi
