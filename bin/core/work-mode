@@ -12,54 +12,70 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-ZSHENV="$HOME/.zshenv"
+ENV_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/zsh/environment.zsh"
+LEGACY_ZSHENV_BACKUP="$HOME/.zshenv.pre-nix"
 OLD_MARKER="$HOME/.work-machine"
 
-# Migrate from old marker file system
+# Atomically update the mutable environment state without touching managed files.
+write_environment() {
+    local mode="$1"
+    local env_dir
+    local temp_file
+
+    env_dir="$(dirname "$ENV_FILE")"
+    mkdir -p "$env_dir"
+    temp_file="$(mktemp "$env_dir/.environment.zsh.XXXXXX")"
+
+    if [[ -f "$ENV_FILE" ]]; then
+        grep -v '^export DOTFILES_ENV=' "$ENV_FILE" > "$temp_file" || true
+    fi
+    if [[ "$mode" == "work" ]]; then
+        printf '%s\n' 'export DOTFILES_ENV=work' >> "$temp_file"
+    fi
+
+    chmod 600 "$temp_file"
+    mv "$temp_file" "$ENV_FILE"
+}
+
+# Get current environment from the dedicated mutable state file.
+get_current_env() {
+    if [[ -f "$ENV_FILE" ]] && grep -q '^export DOTFILES_ENV=work$' "$ENV_FILE"; then
+        echo "work"
+    else
+        echo "personal"
+    fi
+}
+
+set_work_env() {
+    write_environment work
+}
+
+set_personal_env() {
+    write_environment personal
+}
+
+# Migrate state left by the marker-based flow or Home Manager's first backup.
 migrate_old_system() {
+    local migrated=false
+
     if [[ -f "$OLD_MARKER" ]]; then
         echo -e "${YELLOW}Migrating from old marker file system...${NC}"
         set_work_env
         rm "$OLD_MARKER"
         echo -e "${GREEN}Migration complete: Removed old marker file${NC}"
-        return 0
-    fi
-    return 1
-}
-
-# Get current environment from .zshenv
-get_current_env() {
-    if [[ -f "$ZSHENV" ]] && grep -q "^export DOTFILES_ENV=work" "$ZSHENV"; then
-        echo "work"
-    elif [[ -f "$ZSHENV" ]] && grep -q "^export DOTFILES_ENV=personal" "$ZSHENV"; then
-        echo "personal"
-    else
-        echo "personal"  # Default
-    fi
-}
-
-# Set work environment
-set_work_env() {
-    # Create .zshenv if it doesn't exist
-    touch "$ZSHENV"
-
-    # Remove any existing DOTFILES_ENV line
-    if grep -q "^export DOTFILES_ENV=" "$ZSHENV" 2>/dev/null; then
-        sed -i.bak '/^export DOTFILES_ENV=/d' "$ZSHENV" && rm "${ZSHENV}.bak"
+        migrated=true
     fi
 
-    # Add work environment
-    echo "export DOTFILES_ENV=work" >> "$ZSHENV"
-}
-
-# Set personal environment (remove DOTFILES_ENV)
-set_personal_env() {
-    if [[ -f "$ZSHENV" ]]; then
-        # Remove DOTFILES_ENV line
-        if grep -q "^export DOTFILES_ENV=" "$ZSHENV"; then
-            sed -i.bak '/^export DOTFILES_ENV=/d' "$ZSHENV" && rm "${ZSHENV}.bak"
+    if [[ ! -f "$ENV_FILE" && -f "$LEGACY_ZSHENV_BACKUP" ]]; then
+        if grep -q '^export DOTFILES_ENV=work$' "$LEGACY_ZSHENV_BACKUP"; then
+            echo -e "${YELLOW}Migrating work mode from ~/.zshenv.pre-nix...${NC}"
+            set_work_env
+            echo -e "${GREEN}Migration complete: State moved to ~/.config/zsh/environment.zsh${NC}"
+            migrated=true
         fi
     fi
+
+    [[ "$migrated" == "true" ]]
 }
 
 # Offer to reload shell
@@ -75,11 +91,12 @@ offer_reload() {
     fi
 }
 
+# Migrate legacy state before handling any command.
+migrate_old_system || true
+
 # Main command handling
 case "${1:-status}" in
     "work"|"on"|"enable")
-        migrate_old_system || true
-
         current=$(get_current_env)
         if [[ "$current" == "work" ]]; then
             echo -e "${BLUE}Already in work environment${NC}"
@@ -88,7 +105,6 @@ case "${1:-status}" in
 
         set_work_env
         echo -e "${GREEN}Switched to work environment${NC}"
-        echo -e "${BLUE}Prompt will show: ${YELLOW}WORK${NC}"
         offer_reload
         ;;
 
@@ -101,7 +117,6 @@ case "${1:-status}" in
 
         set_personal_env
         echo -e "${GREEN}Switched to personal environment${NC}"
-        echo -e "${BLUE}Prompt will show: ${YELLOW}HOME:PERSONAL${NC}"
         offer_reload
         ;;
 
@@ -117,13 +132,13 @@ case "${1:-status}" in
         if [[ "$current" == "work" ]]; then
             echo -e "${GREEN}Current environment: WORK${NC}"
             echo "   Variable: DOTFILES_ENV=work"
+            echo "   Storage file: ~/.config/zsh/environment.zsh"
             echo "   Config file: ~/.config/zsh/work-config.zsh"
-            echo "   Prompt shows: WORK (orange)"
         else
             echo -e "${BLUE}Current environment: PERSONAL${NC}"
             echo "   Variable: DOTFILES_ENV not set (default)"
+            echo "   Storage file: ~/.config/zsh/environment.zsh"
             echo "   Config file: ~/.config/zsh/personal-config.zsh"
-            echo "   Prompt shows: HOME:PERSONAL (blue)"
         fi
         ;;
 
@@ -147,15 +162,14 @@ EXAMPLES:
     work-mode status         # Check which environment is active
 
 WHAT IT DOES:
-    - Work mode: Sets DOTFILES_ENV=work in ~/.zshenv
-    - Personal mode: Removes DOTFILES_ENV from ~/.zshenv
+    - Work mode: Sets DOTFILES_ENV=work in ~/.config/zsh/environment.zsh
+    - Personal mode: Removes DOTFILES_ENV from that state file
     - Changes take effect after shell reload (exec zsh)
-    - Prompt indicator updates automatically
 
 NOTES:
     - Safe to run multiple times
-    - Migrates from old ~/.work-machine marker system
-    - Preserves other content in ~/.zshenv
+    - Uses atomic writes outside Home Manager-owned files
+    - Migrates old ~/.work-machine and ~/.zshenv.pre-nix work state
 
 EOF
         ;;

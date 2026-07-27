@@ -78,6 +78,7 @@ USAGE:
     ./install [OPTIONS]
 
 OPTIONS:
+    --nix              Use the Nix-first macOS bootstrap (recommended)
     --dry-run          Preview what would be done
     --yes              Non-interactive mode (assume yes)
     --skip-brew        Skip Homebrew installation/bundle
@@ -88,7 +89,10 @@ OPTIONS:
     --help             Show this help message
 
 EXAMPLES:
-    # Interactive installation
+    # Nix-first macOS installation
+    ./install --nix
+
+    # Legacy Homebrew-based installation
     ./install
 
     # Non-interactive (for CI)
@@ -1269,8 +1273,32 @@ show_summary() {
     echo "For help: ./install --help"
 }
 
+# Dispatch the Nix-first flow before parsing legacy installer flags.
+dispatch_nix_install() {
+    local arg
+    local nix_mode=false
+    local forwarded_args=()
+
+    for arg in "$@"; do
+        if [[ "$arg" == "--nix" ]]; then
+            nix_mode=true
+        else
+            forwarded_args+=("$arg")
+        fi
+    done
+
+    if [[ "$nix_mode" == "true" ]]; then
+        if [[ ! -x "$DOTFILES_ROOT/bin/core/nix-bootstrap" ]]; then
+            log_error "Nix bootstrap script not found: bin/core/nix-bootstrap"
+            exit 2
+        fi
+        exec "$DOTFILES_ROOT/bin/core/nix-bootstrap" "${forwarded_args[@]}"
+    fi
+}
+
 # Main execution
 main() {
+    dispatch_nix_install "$@"
     parse_args "$@"
 
     # Show banner

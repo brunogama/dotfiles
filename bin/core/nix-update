@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly DOTFILES_ROOT
+
+DRY_RUN=false
+SWITCH=false
+CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
+
+usage() {
+    cat <<'EOF'
+Usage: nix-update [OPTIONS]
+
+Update flake.lock, validate it, and optionally activate the new generation.
+The previous lock file is restored automatically if update or validation fails.
+
+Options:
+  --switch                Activate the updated configuration after validation
+  --configuration NAME    Select a darwinConfigurations output (default: default)
+  --dry-run               Print commands without changing files or the system
+  -h, --help              Show this help message
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --switch)
+            SWITCH=true
+            ;;
+        --configuration)
+            [[ $# -ge 2 ]] || { echo "nix-update: --configuration requires a name" >&2; exit 2; }
+            CONFIGURATION="$2"
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nix-update: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+cd "$DOTFILES_ROOT"
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "+ nix flake update"
+    echo "+ $SCRIPT_DIR/nix-validate --configuration $CONFIGURATION"
+    if [[ "$SWITCH" == "true" ]]; then
+        echo "+ $SCRIPT_DIR/nix-rebuild --skip-check --configuration $CONFIGURATION"
+    fi
+    exit 0
+fi
+
+command -v nix >/dev/null 2>&1 || { echo "nix-update: Nix is not installed" >&2; exit 2; }
+
+lock_backup="$(mktemp)"
+had_lock=false
+restore_lock=true
+if [[ -f flake.lock ]]; then
+    cp flake.lock "$lock_backup"
+    had_lock=true
+fi
+
+cleanup() {
+    local status=$?
+    if [[ $status -ne 0 && "$restore_lock" == "true" ]]; then
+        if [[ "$had_lock" == "true" ]]; then
+            cp "$lock_backup" flake.lock
+        else
+            rm -f flake.lock
+        fi
+        echo "nix-update: restored the previous flake.lock" >&2
+    fi
+    rm -f "$lock_backup"
+    trap - EXIT
+    exit "$status"
+}
+trap cleanup EXIT
+
+nix --extra-experimental-features "nix-command flakes" flake update
+"$SCRIPT_DIR/nix-validate" --configuration "$CONFIGURATION"
+
+if [[ "$SWITCH" == "true" ]]; then
+    "$SCRIPT_DIR/nix-rebuild" --skip-check --configuration "$CONFIGURATION"
+fi
+
+restore_lock=false
+echo "Updated and validated flake.lock"

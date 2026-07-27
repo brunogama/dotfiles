@@ -18,18 +18,26 @@ export NVM_DIR="$HOME/.nvm"
 export SDKMAN_DIR="$HOME/.sdkman"
 export UV_NATIVE_TLS=1
 
+# Keep inherited Nix profile paths ahead of Homebrew and /usr/local fallbacks.
 path=(
-    $PYENV_ROOT/shims(N)
-    $PYENV_ROOT/bin(N)
-    $RBENV_ROOT/bin(N)
-    $SDKMAN_DIR/bin(N)
+    $HOME/local/bin(N)
     $HOME/.claude/local(N)
     $HOME/.cache/lm-studio/bin(N)
+    $path
     /opt/{homebrew,local}/{,s}bin(N)
     /usr/local/{,s}bin(N)
-    $path
-    $HOME/local/bin(N)
 )
+
+# Legacy version managers remain available as an explicit migration fallback.
+if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]]; then
+    path=(
+        $PYENV_ROOT/shims(N)
+        $PYENV_ROOT/bin(N)
+        $RBENV_ROOT/bin(N)
+        $SDKMAN_DIR/bin(N)
+        $path
+    )
+fi
 
 fpath=(
     ~/.docker/completions(N)
@@ -41,7 +49,9 @@ fpath=(
 # ============================================================================
 # 2. PREZTO INITIALIZATION
 # ============================================================================
-if [[ -s "$HOME/.zprezto/init.zsh" ]]; then
+if [[ -n "${ZPREZTODIR:-}" && -s "$ZPREZTODIR/runcoms/zshrc" ]]; then
+  source "$ZPREZTODIR/runcoms/zshrc"
+elif [[ -s "$HOME/.zprezto/init.zsh" ]]; then
   source "$HOME/.zprezto/init.zsh"
 fi
 
@@ -91,6 +101,7 @@ alias gs-all="git status; git submodule foreach 'git status'"
 
 # Advanced git
 alias gdinit="rm -rf .git; git submodule deinit -f .; fd -e .git -t f; fd -e .gitignore -x cp {} .gitignore; git add .gitignore; git commit -m 'Initial commit'"
+
 # Navigation
 alias ...="cd ../.."
 alias ....="cd ../../.."
@@ -111,17 +122,22 @@ mkcd() {
 # Load API keys before launching agent CLIs.
 pi() {
     eval "$(dump-api-keys)"
-    /opt/homebrew/bin/pi "$@"
+    local pi_bin="${DOTFILES_NPM_BIN:-${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/npm/current/node_modules/.bin}/pi"
+    if [[ ! -x "$pi_bin" ]]; then
+        print -u2 "pi is not installed; run nix-npm-sync"
+        return 127
+    fi
+    "$pi_bin" "$@"
 }
 
 claude() {
     eval "$(dump-api-keys)"
-    /Users/bruno/.local/bin/claude "$@"
+    "$HOME/.local/bin/claude" "$@"
 }
 
 codex() {
     eval "$(dump-api-keys)"
-    /Users/bruno/.local/bin/codex "$@"
+    "$HOME/.local/bin/codex" "$@"
 }
 
 # ============================================================================
