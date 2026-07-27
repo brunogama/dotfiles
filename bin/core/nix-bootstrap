@@ -33,17 +33,20 @@ trap cleanup EXIT
 DRY_RUN=false
 YES=false
 SKIP_NPM=false
+SYSTEM_MODE=false
 CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
 
 usage() {
     cat <<'EOF'
 Usage: nix-bootstrap [OPTIONS]
 
-Bootstrap and activate the Nix-first macOS configuration. Missing Nix and
-Homebrew installations require confirmation unless --yes is provided.
+Bootstrap the Nix-first macOS configuration. The default Home Manager
+activation is user-only and does not use sudo. Installing Nix itself can still
+require administrator access when Nix is missing.
 
 Options:
-  --configuration NAME    Select a darwinConfigurations output (default: default)
+  --system                Activate nix-darwin system settings with sudo
+  --configuration NAME    Select the mode's flake output (default: default)
   --skip-npm              Do not synchronize pinned npm tools
   --dry-run               Print planned actions without changing the system
   --yes                   Confirm prerequisite installations non-interactively
@@ -68,6 +71,9 @@ confirm() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --system)
+            SYSTEM_MODE=true
+            ;;
         --configuration)
             [[ $# -ge 2 ]] || { echo "nix-bootstrap: --configuration requires a name" >&2; exit 2; }
             CONFIGURATION="$2"
@@ -181,23 +187,32 @@ install_homebrew() {
 }
 
 install_nix
-install_homebrew
+if [[ "$SYSTEM_MODE" == "true" ]]; then
+    install_homebrew
+    activation_script="$SCRIPT_DIR/nix-rebuild"
+else
+    activation_script="$SCRIPT_DIR/nix-activate"
+fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
     print_command "$DOTFILES_ROOT/install" --scripts-only --yes --dry-run
-    rebuild_args=(--configuration "$CONFIGURATION" --dry-run)
+    activation_args=(--configuration "$CONFIGURATION" --dry-run)
     if [[ "$SKIP_NPM" == "true" ]]; then
-        rebuild_args+=(--skip-npm)
+        activation_args+=(--skip-npm)
     fi
-    print_command "$SCRIPT_DIR/nix-rebuild" "${rebuild_args[@]}"
+    print_command "$activation_script" "${activation_args[@]}"
     exit 0
 fi
 
 "$DOTFILES_ROOT/install" --scripts-only --yes
-rebuild_args=(--configuration "$CONFIGURATION")
+activation_args=(--configuration "$CONFIGURATION")
 if [[ "$SKIP_NPM" == "true" ]]; then
-    rebuild_args+=(--skip-npm)
+    activation_args+=(--skip-npm)
 fi
-"$SCRIPT_DIR/nix-rebuild" "${rebuild_args[@]}"
+"$activation_script" "${activation_args[@]}"
 
-echo "Nix bootstrap complete. Start a new shell with: exec zsh"
+if [[ "$SYSTEM_MODE" == "true" ]]; then
+    echo "Nix system bootstrap complete. Start a new shell with: exec zsh"
+else
+    echo "Nix user bootstrap complete. Start a new shell with: exec zsh"
+fi

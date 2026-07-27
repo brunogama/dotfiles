@@ -78,7 +78,8 @@ USAGE:
     ./install [OPTIONS]
 
 OPTIONS:
-    --nix              Use the Nix-first macOS bootstrap (recommended)
+    --nix              Activate the user environment with Home Manager
+    --system           With --nix, activate privileged nix-darwin settings
     --dry-run          Preview what would be done
     --yes              Non-interactive mode (assume yes)
     --skip-brew        Skip Homebrew installation/bundle
@@ -89,8 +90,11 @@ OPTIONS:
     --help             Show this help message
 
 EXAMPLES:
-    # Nix-first macOS installation
+    # Sudo-free user activation (Nix must already be installed)
     ./install --nix
+
+    # Optional privileged macOS system activation
+    ./install --nix --system
 
     # Legacy Homebrew-based installation
     ./install

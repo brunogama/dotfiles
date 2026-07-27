@@ -22,6 +22,7 @@ readonly DOTFILES_ROOT
 
 DRY_RUN=false
 SWITCH=false
+SYSTEM_MODE=false
 CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
 
 usage() {
@@ -32,8 +33,9 @@ Update flake.lock, validate it, and optionally activate the new generation.
 The previous lock file is restored automatically if update or validation fails.
 
 Options:
-  --switch                Activate the updated configuration after validation
-  --configuration NAME    Select a darwinConfigurations output (default: default)
+  --switch                Activate the updated user configuration
+  --system                With --switch, activate nix-darwin using sudo
+  --configuration NAME    Select the mode's flake output (default: default)
   --dry-run               Print commands without changing files or the system
   -h, --help              Show this help message
 EOF
@@ -43,6 +45,9 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --switch)
             SWITCH=true
+            ;;
+        --system)
+            SYSTEM_MODE=true
             ;;
         --configuration)
             [[ $# -ge 2 ]] || { echo "nix-update: --configuration requires a name" >&2; exit 2; }
@@ -65,13 +70,24 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+if [[ "$SYSTEM_MODE" == "true" && "$SWITCH" != "true" ]]; then
+    echo "nix-update: --system requires --switch" >&2
+    exit 2
+fi
+validation_target=all
+if [[ "$SYSTEM_MODE" == "true" ]]; then
+    activation_script="$SCRIPT_DIR/nix-rebuild"
+else
+    activation_script="$SCRIPT_DIR/nix-activate"
+fi
+
 cd "$DOTFILES_ROOT"
 
 if [[ "$DRY_RUN" == "true" ]]; then
     echo "+ nix flake update"
-    echo "+ $SCRIPT_DIR/nix-validate --configuration $CONFIGURATION"
+    echo "+ $SCRIPT_DIR/nix-validate --target $validation_target --configuration $CONFIGURATION"
     if [[ "$SWITCH" == "true" ]]; then
-        echo "+ $SCRIPT_DIR/nix-rebuild --skip-check --configuration $CONFIGURATION"
+        echo "+ $activation_script --skip-check --configuration $CONFIGURATION"
     fi
     exit 0
 fi
@@ -103,10 +119,11 @@ cleanup() {
 trap cleanup EXIT
 
 nix --extra-experimental-features "nix-command flakes" flake update
-"$SCRIPT_DIR/nix-validate" --configuration "$CONFIGURATION"
+"$SCRIPT_DIR/nix-validate" --target "$validation_target" \
+    --configuration "$CONFIGURATION"
 
 if [[ "$SWITCH" == "true" ]]; then
-    "$SCRIPT_DIR/nix-rebuild" --skip-check --configuration "$CONFIGURATION"
+    "$activation_script" --skip-check --configuration "$CONFIGURATION"
 fi
 
 restore_lock=false

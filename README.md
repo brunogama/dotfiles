@@ -18,7 +18,7 @@ A fast, declarative Unix home environment for shell configuration, secure creden
 
 ## Overview
 
-This repository turns a home directory into a reproducible, high-performance development environment. Nix flakes, nix-darwin, and Home Manager own the macOS CLI toolchain, shell files, Git configuration, and supported system defaults. Homebrew remains only for declared macOS exceptions.
+This repository turns a home directory into a reproducible, high-performance development environment. Nix flakes and standalone Home Manager own the user CLI toolchain, shell files, and Git configuration without sudo. Optional nix-darwin activation owns supported system defaults, with Homebrew retained only for declared macOS exceptions.
 
 The main goals are:
 
@@ -51,10 +51,10 @@ The main goals are:
 
 - macOS with Xcode Command Line Tools: `xcode-select --install`
 - Git for cloning the repository
-- Administrator access for the Nix daemon, nix-darwin activation, and Homebrew bootstrap
+- Administrator access only when installing multi-user Nix or explicitly activating nix-darwin system settings
 - Review `nix/host.nix`; it is the single place for the user, architecture, and Git identity
 
-`./install --nix` can install upstream multi-user Nix and Homebrew after confirmation. If Nix is already installed by Determinate Systems, set `manageNix = false` in `nix/host.nix` before activation.
+`./install --nix` defaults to standalone Home Manager and does not use sudo when Nix is already installed. Use `./install --nix --system` only when you want nix-darwin, macOS defaults, shell registration, and retained Homebrew items. If Nix is managed by Determinate Systems, set `manageNix = false` in `nix/host.nix` before system activation.
 
 ### Install
 
@@ -68,7 +68,7 @@ $EDITOR nix/host.nix
 # Preview prerequisite and activation commands
 ./install --nix --dry-run
 
-# Bootstrap Nix, the retained Homebrew items, Home Manager, and npm tools
+# Activate Home Manager and npm tools without sudo
 ./install --nix
 
 exec zsh
@@ -77,6 +77,7 @@ exec zsh
 Useful installer modes:
 
 ```bash
+./install --nix --system    # Optional privileged nix-darwin activation
 ./install --nix --yes       # Non-interactive prerequisite installation
 ./install --nix --skip-npm  # Activate without the external npm tool set
 ./install --scripts-only    # Refresh scripts in ~/local/bin only
@@ -84,7 +85,7 @@ Useful installer modes:
 ```
 
 > [!TIP]
-> The Nix bootstrap and rebuild commands are idempotent. Existing Home Manager conflicts are backed up as `*.pre-nix`; Homebrew cleanup is deliberately disabled.
+> User and system activation are idempotent. Existing Home Manager conflicts are backed up as `*.pre-nix`; Homebrew is touched only by explicit `--system` activation, and automatic cleanup remains disabled.
 
 ### First steps after install
 
@@ -178,18 +179,20 @@ Nix-provided runtimes are used by default. To temporarily restore the previous n
 ### Manage packages
 
 ```bash
-nix-rebuild              # Evaluate and activate the current configuration
-nix-update               # Update and validate flake.lock only
-nix-update --switch      # Update, validate, and activate
-nix-validate             # Static checks plus Nix evaluation
-nix-npm-sync             # Reinstall the package-lock.json npm tool set
+nix-activate                 # Activate the user environment without sudo
+nix-rebuild                  # Activate privileged nix-darwin system settings
+nix-update                   # Update and validate flake.lock only
+nix-update --switch          # Update and activate the user environment
+nix-update --switch --system # Update and activate nix-darwin with sudo
+nix-validate                 # Static checks plus all Nix evaluations
+nix-npm-sync                 # Reinstall the package-lock.json npm tool set
 ```
 
 Add CLI packages to `nix/packages.nix`. Homebrew exceptions live in both `nix/darwin.nix` and the legacy `packages/homebrew/Brewfile`; keep those small lists aligned. Pinned agent-facing npm packages live in `packages/npm/` and install under `~/.local/share/dotfiles/npm/`.
 
 ### Migration and rollback
 
-The first Nix activation moves shell and Git ownership from `LinkingManifest.json` to Home Manager. The manifest remains for the legacy installer and script linking. `work-mode` stores mutable state in `~/.config/zsh/environment.zsh`, outside the Nix store. Keychain and encrypted credential files are never copied into Nix derivations.
+The first user activation moves shell and Git ownership from `LinkingManifest.json` to standalone Home Manager. The manifest remains for the legacy installer and script linking. Optional system activation reuses the same Home Manager module through nix-darwin, so the two modes do not maintain separate user configurations. `work-mode` stores mutable state in `~/.config/zsh/environment.zsh`, outside the Nix store. Keychain and encrypted credential files are never copied into Nix derivations.
 
 Homebrew is retained only for:
 
@@ -243,8 +246,10 @@ Run the smallest useful check for the area you changed:
 
 ```bash
 # Nix migration scripts and evaluation
-nix-validate --static       # Works before Nix is installed
-nix-validate                # Includes flake and nix-darwin evaluation
+nix-validate --static        # Works before Nix is installed
+nix-validate --target user   # Standalone Home Manager evaluation
+nix-validate --target system # nix-darwin evaluation
+nix-validate                 # Validate both modes
 
 # Shell syntax
 bash -n install
@@ -283,7 +288,7 @@ Dedicated files cover legal, contribution, and release-history details.
 
 | Symptom | Try this |
 | --- | --- |
-| A command is not found | Run `nix-rebuild`, then `exec zsh`; for repository scripts also run `./install --scripts-only` |
+| A command is not found | Run `nix-activate`, then `exec zsh`; for repository scripts also run `./install --scripts-only` |
 | Nix activation reports an existing file | Inspect the file and its `.pre-nix` backup before retrying; do not delete either blindly |
 | `pi` is missing | Run `nix-npm-sync`, then verify `~/.local/share/dotfiles/npm/current/node_modules/.bin/pi` |
 | Nix conflicts with Determinate Nix | Set `manageNix = false` in `nix/host.nix` and rebuild |

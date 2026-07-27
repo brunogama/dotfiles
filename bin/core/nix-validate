@@ -21,6 +21,7 @@ DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 readonly DOTFILES_ROOT
 
 STATIC_ONLY=false
+TARGET=all
 CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
 
 usage() {
@@ -31,7 +32,8 @@ Run static checks and evaluate the Nix configuration.
 
 Options:
   --static                Run checks that do not require Nix
-  --configuration NAME    Validate a darwinConfigurations output (default: default)
+  --target TARGET         Validate user, system, or all outputs (default: all)
+  --configuration NAME    Validate the selected mode's output (default: default)
   -h, --help              Show this help message
 EOF
 }
@@ -40,6 +42,11 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --static)
             STATIC_ONLY=true
+            ;;
+        --target)
+            [[ $# -ge 2 ]] || { echo "nix-validate: --target requires a value" >&2; exit 2; }
+            TARGET="$2"
+            shift
             ;;
         --configuration)
             [[ $# -ge 2 ]] || { echo "nix-validate: --configuration requires a name" >&2; exit 2; }
@@ -59,20 +66,50 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+case "$TARGET" in
+    user|system|all) ;;
+    *)
+        echo "nix-validate: --target must be user, system, or all" >&2
+        exit 2
+        ;;
+esac
+
+validate_json() {
+    local file="$1"
+
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -m json.tool "$file" >/dev/null
+    elif command -v jq >/dev/null 2>&1; then
+        jq empty "$file"
+    elif command -v nix >/dev/null 2>&1; then
+        VALIDATE_JSON_FILE="$DOTFILES_ROOT/$file" \
+            nix --extra-experimental-features "nix-command flakes" eval \
+            --impure --json --expr \
+            'builtins.fromJSON (builtins.readFile (builtins.getEnv "VALIDATE_JSON_FILE"))' \
+            >/dev/null
+    else
+        echo "nix-validate: python3, jq, or Nix is required to validate JSON" >&2
+        exit 2
+    fi
+}
+
 cd "$DOTFILES_ROOT"
 
 bash -n install
-for script in bin/core/nix-bootstrap bin/core/nix-npm-sync bin/core/nix-rebuild bin/core/nix-rollback bin/core/nix-update bin/core/nix-validate; do
+for script in bin/core/nix-activate bin/core/nix-bootstrap bin/core/nix-npm-sync \
+    bin/core/nix-rebuild bin/core/nix-rollback bin/core/nix-update \
+    bin/core/nix-validate; do
     bash -n "$script"
 done
 zsh -n zsh/.zshenv zsh/.zprofile zsh/.zshrc
-python3 -m json.tool packages/npm/package.json >/dev/null
-python3 -m json.tool packages/npm/package-lock.json >/dev/null
+validate_json packages/npm/package.json
+validate_json packages/npm/package-lock.json
 git --no-pager diff --check
 
 if command -v shellcheck >/dev/null 2>&1; then
-    shellcheck bin/core/nix-bootstrap bin/core/nix-npm-sync bin/core/nix-rebuild \
-        bin/core/nix-rollback bin/core/nix-update bin/core/nix-validate
+    shellcheck bin/core/nix-activate bin/core/nix-bootstrap bin/core/nix-npm-sync \
+        bin/core/nix-rebuild bin/core/nix-rollback bin/core/nix-update \
+        bin/core/nix-validate
 else
     echo "nix-validate: shellcheck not found; skipped shell lint" >&2
 fi
@@ -88,7 +125,13 @@ command -v nix >/dev/null 2>&1 || {
 }
 
 nix --extra-experimental-features "nix-command flakes" flake check --no-build --show-trace
-nix --extra-experimental-features "nix-command flakes" eval --raw \
-    ".#darwinConfigurations.${CONFIGURATION}.system.drvPath" >/dev/null
+if [[ "$TARGET" == "user" || "$TARGET" == "all" ]]; then
+    nix --extra-experimental-features "nix-command flakes" eval --raw \
+        ".#homeConfigurations.${CONFIGURATION}.activationPackage.drvPath" >/dev/null
+fi
+if [[ "$TARGET" == "system" || "$TARGET" == "all" ]]; then
+    nix --extra-experimental-features "nix-command flakes" eval --raw \
+        ".#darwinConfigurations.${CONFIGURATION}.system.drvPath" >/dev/null
+fi
 
-echo "Nix configuration evaluation passed"
+echo "Nix configuration evaluation passed for target: $TARGET"
