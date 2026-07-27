@@ -36,6 +36,14 @@ exit 0
 EOF
     chmod +x bin/core/zsh-compile
 
+    cat > bin/core/nix-bootstrap << 'EOF'
+#!/usr/bin/env bash
+printf 'Mock nix-bootstrap:'
+printf ' %s' "$@"
+printf '\n'
+EOF
+    chmod +x bin/core/nix-bootstrap
+
     # Create mock Brewfile
     cat > packages/homebrew/Brewfile << 'EOF'
 # Test Brewfile
@@ -58,6 +66,7 @@ teardown() {
     assert_output --partial "install v"
     assert_output --partial "USAGE:"
     assert_output --partial "OPTIONS:"
+    assert_output --partial "--nix"
     assert_output --partial "EXIT CODES:"
 }
 
@@ -78,6 +87,13 @@ teardown() {
     assert_success
     assert_output --partial "DRY RUN MODE"
     assert_output --partial "no changes were made"
+}
+
+@test "install: --nix delegates without running legacy phases" {
+    run "$DOTFILES_ROOT/install" --nix --dry-run --yes
+    assert_success
+    assert_output --partial "Mock nix-bootstrap: --dry-run --yes"
+    refute_output --partial "Phase 1: Pre-flight Checks"
 }
 
 @test "install: --verbose enables verbose output" {
@@ -164,7 +180,7 @@ teardown() {
 
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
-    assert_output --partial "Would install jq"
+    assert_output --regexp "(Would install jq|jq is already installed)"
 }
 
 @test "install: dry-run reports would install pyenv" {

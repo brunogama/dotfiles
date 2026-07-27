@@ -1,0 +1,22 @@
+{
+  "name": "dotfiles-global-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned npm tools that are not available or practical in Nixpkgs",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@curl.md/pi": "0.1.2",
+    "@earendil-works/pi-coding-agent": "0.82.0",
+    "@juicesharp/rpiv-ask-user-question": "1.18.2",
+    "@juicesharp/rpiv-btw": "1.18.2",
+    "@playwright/cli": "0.1.13",
+    "pi-hermes-memory": "0.7.15",
+    "pi-intercom": "0.6.0",
+    "pi-lens": "3.8.47",
+    "pi-subagents": "0.28.0",
+    "pi-web-access": "0.10.7",
+    "ypi": "0.5.2"
+  }
+}

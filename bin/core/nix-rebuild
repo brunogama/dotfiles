@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly DOTFILES_ROOT
+
+DRY_RUN=false
+SKIP_CHECK=false
+SKIP_NPM=false
+CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
+
+usage() {
+    cat <<'EOF'
+Usage: nix-rebuild [OPTIONS]
+
+Validate and activate the repository's nix-darwin configuration.
+
+Options:
+  --configuration NAME    Select a darwinConfigurations output (default: default)
+  --skip-check            Skip pre-activation Nix evaluation
+  --skip-npm              Do not synchronize pinned npm tools
+  --dry-run               Print commands without changing the system
+  -h, --help              Show this help message
+EOF
+}
+
+print_command() {
+    printf '+'
+    printf ' %q' "$@"
+    printf '\n'
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --configuration)
+            [[ $# -ge 2 ]] || { echo "nix-rebuild: --configuration requires a name" >&2; exit 2; }
+            CONFIGURATION="$2"
+            shift
+            ;;
+        --skip-check)
+            SKIP_CHECK=true
+            ;;
+        --skip-npm)
+            SKIP_NPM=true
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nix-rebuild: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+[[ "$(uname -s)" == "Darwin" ]] || { echo "nix-rebuild: nix-darwin requires macOS" >&2; exit 2; }
+if [[ "$DRY_RUN" != "true" ]]; then
+    command -v nix >/dev/null 2>&1 || { echo "nix-rebuild: Nix is not installed" >&2; exit 2; }
+fi
+
+cd "$DOTFILES_ROOT"
+
+if [[ "$SKIP_CHECK" != "true" ]]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_command "$SCRIPT_DIR/nix-validate" --configuration "$CONFIGURATION"
+    else
+        "$SCRIPT_DIR/nix-validate" --configuration "$CONFIGURATION"
+    fi
+fi
+
+flake_ref="$DOTFILES_ROOT#$CONFIGURATION"
+if command -v darwin-rebuild >/dev/null 2>&1; then
+    rebuild_command=(sudo darwin-rebuild switch --flake "$flake_ref")
+else
+    nix_bin="$(command -v nix 2>/dev/null || printf '%s' nix)"
+    rebuild_command=(sudo "$nix_bin" --extra-experimental-features "nix-command flakes" run \
+        "github:nix-darwin/nix-darwin/nix-darwin-26.05#darwin-rebuild" -- \
+        switch --flake "$flake_ref")
+fi
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    print_command "${rebuild_command[@]}"
+else
+    "${rebuild_command[@]}"
+fi
+
+if [[ "$SKIP_NPM" != "true" ]]; then
+    npm_command=(nix --extra-experimental-features "nix-command flakes" develop \
+        "$DOTFILES_ROOT" --command "$SCRIPT_DIR/nix-npm-sync")
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_command "${npm_command[@]}"
+    else
+        "${npm_command[@]}"
+    fi
+fi

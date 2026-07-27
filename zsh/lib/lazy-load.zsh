@@ -11,7 +11,7 @@
 # Saves ~100-200ms on shell startup compared to sourcing nvm.sh eagerly.
 # After first use, .nvmrc auto-switching is enabled via chpwd hook.
 
-if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" && -s "$NVM_DIR/nvm.sh" ]]; then
     # Internal function to initialize nvm and set up .nvmrc auto-switching
     _lazy_load_nvm() {
         unfunction nvm node npm npx 2>/dev/null
@@ -66,7 +66,7 @@ fi
 # ============================================================================
 # Lazy Load: mise (polyglot version manager)
 # ============================================================================
-if command -v mise &>/dev/null; then
+if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]] && command -v mise &>/dev/null; then
     mise() {
         unfunction mise
         eval "$(command mise activate zsh)"
@@ -79,7 +79,7 @@ fi
 # ============================================================================
 # Note: Prezto's python module is configured with skip-init in .zpreztorc
 # We handle lazy loading here for better startup performance (~100-200ms saved)
-if [[ -d "$PYENV_ROOT" ]] || command -v pyenv &>/dev/null; then
+if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]] && { [[ -d "$PYENV_ROOT" ]] || command -v pyenv &>/dev/null; }; then
     pyenv() {
         unfunction pyenv
         eval "$(command pyenv init -)"
@@ -117,7 +117,7 @@ fi
 # ============================================================================
 # Note: Prezto's ruby module is configured with skip-init in .zpreztorc
 # We handle lazy loading here for better startup performance (~50-100ms saved)
-if [[ -d "$RBENV_ROOT" ]] || command -v rbenv &>/dev/null; then
+if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]] && { [[ -d "$RBENV_ROOT" ]] || command -v rbenv &>/dev/null; }; then
     rbenv() {
         unfunction rbenv
         eval "$(command rbenv init - zsh)"
@@ -147,7 +147,7 @@ fi
 # ============================================================================
 # Lazy Load: SDKMAN (JVM version manager)
 # ============================================================================
-if [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]]; then
+if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" && -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]]; then
     sdk() {
         unset -f sdk java gradle maven kotlin groovy scala
         export SDKMAN_DIR="$HOME/.sdkman"

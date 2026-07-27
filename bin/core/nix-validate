@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly DOTFILES_ROOT
+
+STATIC_ONLY=false
+CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
+
+usage() {
+    cat <<'EOF'
+Usage: nix-validate [OPTIONS]
+
+Run static checks and evaluate the Nix configuration.
+
+Options:
+  --static                Run checks that do not require Nix
+  --configuration NAME    Validate a darwinConfigurations output (default: default)
+  -h, --help              Show this help message
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --static)
+            STATIC_ONLY=true
+            ;;
+        --configuration)
+            [[ $# -ge 2 ]] || { echo "nix-validate: --configuration requires a name" >&2; exit 2; }
+            CONFIGURATION="$2"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nix-validate: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+cd "$DOTFILES_ROOT"
+
+bash -n install
+for script in bin/core/nix-bootstrap bin/core/nix-npm-sync bin/core/nix-rebuild bin/core/nix-rollback bin/core/nix-update bin/core/nix-validate; do
+    bash -n "$script"
+done
+zsh -n zsh/.zshenv zsh/.zprofile zsh/.zshrc
+python3 -m json.tool packages/npm/package.json >/dev/null
+python3 -m json.tool packages/npm/package-lock.json >/dev/null
+git diff --check
+
+if command -v shellcheck >/dev/null 2>&1; then
+    shellcheck bin/core/nix-bootstrap bin/core/nix-npm-sync bin/core/nix-rebuild \
+        bin/core/nix-rollback bin/core/nix-update bin/core/nix-validate
+else
+    echo "nix-validate: shellcheck not found; skipped shell lint" >&2
+fi
+
+if [[ "$STATIC_ONLY" == "true" ]]; then
+    echo "Static Nix migration checks passed"
+    exit 0
+fi
+
+command -v nix >/dev/null 2>&1 || {
+    echo "nix-validate: Nix is not installed; use --static for local-only checks" >&2
+    exit 2
+}
+
+nix --extra-experimental-features "nix-command flakes" flake check --no-build --show-trace
+nix --extra-experimental-features "nix-command flakes" eval --raw \
+    ".#darwinConfigurations.${CONFIGURATION}.system.drvPath" >/dev/null
+
+echo "Nix configuration evaluation passed"
