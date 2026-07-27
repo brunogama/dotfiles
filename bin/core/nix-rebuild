@@ -93,17 +93,31 @@ fi
 flake_ref="$DOTFILES_ROOT#$CONFIGURATION"
 if command -v darwin-rebuild >/dev/null 2>&1; then
     rebuild_command=(sudo darwin-rebuild switch --flake "$flake_ref")
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_command "${rebuild_command[@]}"
+    else
+        "${rebuild_command[@]}"
+    fi
 else
     nix_bin="$(command -v nix 2>/dev/null || printf '%s' nix)"
-    rebuild_command=(sudo "$nix_bin" --extra-experimental-features "nix-command flakes" run \
-        "github:nix-darwin/nix-darwin/nix-darwin-26.05#darwin-rebuild" -- \
-        switch --flake "$flake_ref")
-fi
+    darwin_rebuild_ref="$DOTFILES_ROOT#darwin-rebuild"
+    build_command=("$nix_bin" --extra-experimental-features "nix-command flakes" build \
+        --no-link --print-out-paths "$darwin_rebuild_ref")
 
-if [[ "$DRY_RUN" == "true" ]]; then
-    print_command "${rebuild_command[@]}"
-else
-    "${rebuild_command[@]}"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_command "${build_command[@]}"
+        print_command sudo '<darwin-rebuild-store-path>/bin/darwin-rebuild' \
+            switch --flake "$flake_ref"
+    else
+        darwin_rebuild_out="$("${build_command[@]}")"
+        darwin_rebuild_bin="$darwin_rebuild_out/bin/darwin-rebuild"
+        [[ -x "$darwin_rebuild_bin" ]] || {
+            echo "nix-rebuild: darwin-rebuild output is invalid: $darwin_rebuild_out" >&2
+            exit 2
+        }
+        sudo "$darwin_rebuild_bin" switch --flake "$flake_ref"
+    fi
 fi
 
 if [[ "$SKIP_NPM" != "true" ]]; then
