@@ -38,6 +38,12 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
+      homeConfiguration = home-manager.lib.homeManagerConfiguration {
+        pkgs = import nixpkgs { system = host.system; };
+        extraSpecialArgs = { inherit host inputs self; };
+        modules = [ ./nix/home.nix ];
+      };
+
       darwinConfiguration = nix-darwin.lib.darwinSystem {
         specialArgs = { inherit host inputs self; };
         modules = [
@@ -56,13 +62,20 @@
       };
     in
     {
+      homeConfigurations = {
+        ${host.username} = homeConfiguration;
+        default = homeConfiguration;
+      };
+
       darwinConfigurations = {
         ${host.configurationName} = darwinConfiguration;
         default = darwinConfiguration;
       };
 
-      packages.${host.system}.darwin-rebuild =
-        nix-darwin.packages.${host.system}.darwin-rebuild;
+      packages.${host.system} = {
+        darwin-rebuild = nix-darwin.packages.${host.system}.darwin-rebuild;
+        home-manager = home-manager.packages.${host.system}.home-manager;
+      };
 
       devShells = forAllSystems (
         system:

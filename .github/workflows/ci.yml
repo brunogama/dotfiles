@@ -89,7 +89,7 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
 
-      - name: Evaluate flake and nix-darwin configuration
+      - name: Evaluate Home Manager and nix-darwin configurations
         run: ./bin/core/nix-validate
 
   test-macos:

@@ -29,7 +29,8 @@ usage() {
     cat <<'EOF'
 Usage: nix-rebuild [OPTIONS]
 
-Validate and activate the repository's nix-darwin configuration.
+Validate and activate the privileged nix-darwin system configuration.
+This command requires sudo; use nix-activate for user-only changes.
 
 Options:
   --configuration NAME    Select a darwinConfigurations output (default: default)
@@ -84,9 +85,11 @@ cd "$DOTFILES_ROOT"
 
 if [[ "$SKIP_CHECK" != "true" ]]; then
     if [[ "$DRY_RUN" == "true" ]]; then
-        print_command "$SCRIPT_DIR/nix-validate" --configuration "$CONFIGURATION"
+        print_command "$SCRIPT_DIR/nix-validate" --target system \
+            --configuration "$CONFIGURATION"
     else
-        "$SCRIPT_DIR/nix-validate" --configuration "$CONFIGURATION"
+        "$SCRIPT_DIR/nix-validate" --target system \
+            --configuration "$CONFIGURATION"
     fi
 fi
 

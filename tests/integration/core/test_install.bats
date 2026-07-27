@@ -67,6 +67,7 @@ teardown() {
     assert_output --partial "USAGE:"
     assert_output --partial "OPTIONS:"
     assert_output --partial "--nix"
+    assert_output --partial "--system"
     assert_output --partial "EXIT CODES:"
 }
 
@@ -102,7 +103,14 @@ teardown() {
     assert_output --partial "Mock nix-bootstrap:"
 }
 
+@test "install: --nix forwards explicit system activation" {
+    run /bin/bash "$DOTFILES_ROOT/install" --nix --system --dry-run
+    assert_success
+    assert_output --partial "Mock nix-bootstrap: --system --dry-run"
+}
+
 @test "nix-bootstrap: detects installed Nix outside PATH" {
+    skip_on_linux "macOS-specific Nix bootstrap"
     [[ -r /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]] || \
         skip "Nix daemon profile is not installed"
 
@@ -116,6 +124,7 @@ teardown() {
 }
 
 @test "nix-rebuild: uses the locked darwin-rebuild package" {
+    skip_on_linux "macOS-specific nix-darwin command"
     local real_dotfiles_root
     real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
     run env PATH="/usr/bin:/bin" \
@@ -125,6 +134,75 @@ teardown() {
     assert_success
     assert_output --partial "$real_dotfiles_root#darwin-rebuild"
     refute_output --partial "github:nix-darwin"
+}
+
+@test "nix-activate: dry-run is user-only and sudo-free" {
+    skip_on_linux "macOS-specific Home Manager configuration"
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-activate" \
+        --dry-run --skip-check --skip-npm
+
+    assert_success
+    assert_output --partial "$real_dotfiles_root#home-manager"
+    refute_output --partial "sudo"
+    refute_output --partial "darwin-rebuild"
+}
+
+@test "nix-bootstrap: defaults to user activation" {
+    skip_on_linux "macOS-specific Nix bootstrap"
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-bootstrap" \
+        --dry-run --skip-npm
+
+    assert_success
+    assert_output --partial "bin/core/nix-activate"
+    refute_output --partial "bin/core/nix-rebuild"
+    refute_output --partial "sudo"
+}
+
+@test "nix-bootstrap: system mode is explicit" {
+    skip_on_linux "macOS-specific Nix bootstrap"
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-bootstrap" \
+        --system --dry-run --skip-npm
+
+    assert_success
+    assert_output --partial "bin/core/nix-rebuild"
+}
+
+@test "nix-update: switch defaults to user activation" {
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-update" \
+        --switch --dry-run
+
+    assert_success
+    assert_output --partial "bin/core/nix-activate"
+    refute_output --partial "bin/core/nix-rebuild"
+    refute_output --partial "sudo"
+}
+
+@test "nix-update: system switch is explicit" {
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-update" \
+        --switch --system --dry-run
+
+    assert_success
+    assert_output --partial "bin/core/nix-rebuild"
+}
+
+@test "nix-update: system mode requires switch" {
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-update" \
+        --system --dry-run
+
+    assert_failure
+    assert_output --partial "--system requires --switch"
 }
 
 @test "install: --verbose enables verbose output" {

@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly DOTFILES_ROOT
+
+DRY_RUN=false
+SKIP_CHECK=false
+SKIP_NPM=false
+CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
+
+usage() {
+    cat <<'EOF'
+Usage: nix-activate [OPTIONS]
+
+Validate and activate the standalone Home Manager configuration without sudo.
+
+Options:
+  --configuration NAME    Select a homeConfigurations output (default: default)
+  --skip-check            Skip pre-activation Nix evaluation
+  --skip-npm              Do not synchronize pinned npm tools
+  --dry-run               Print commands without changing the user environment
+  -h, --help              Show this help message
+EOF
+}
+
+print_command() {
+    printf '+'
+    printf ' %q' "$@"
+    printf '\n'
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --configuration)
+            [[ $# -ge 2 ]] || {
+                echo "nix-activate: --configuration requires a name" >&2
+                exit 2
+            }
+            CONFIGURATION="$2"
+            shift
+            ;;
+        --skip-check)
+            SKIP_CHECK=true
+            ;;
+        --skip-npm)
+            SKIP_NPM=true
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nix-activate: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+[[ "$(uname -s)" == "Darwin" ]] || {
+    echo "nix-activate: this configuration targets macOS" >&2
+    exit 2
+}
+if [[ "$DRY_RUN" != "true" ]]; then
+    command -v nix >/dev/null 2>&1 || {
+        echo "nix-activate: Nix is not installed or not available in PATH" >&2
+        exit 2
+    }
+fi
+
+cd "$DOTFILES_ROOT"
+
+if [[ "$SKIP_CHECK" != "true" ]]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_command "$SCRIPT_DIR/nix-validate" --target user \
+            --configuration "$CONFIGURATION"
+    else
+        "$SCRIPT_DIR/nix-validate" --target user --configuration "$CONFIGURATION"
+    fi
+fi
+
+nix_bin="$(command -v nix 2>/dev/null || printf '%s' nix)"
+home_manager_ref="$DOTFILES_ROOT#home-manager"
+home_configuration_ref="$DOTFILES_ROOT#$CONFIGURATION"
+build_command=("$nix_bin" --extra-experimental-features "nix-command flakes" build \
+    --no-link --print-out-paths "$home_manager_ref")
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    print_command "${build_command[@]}"
+    print_command '<home-manager-store-path>/bin/home-manager' switch \
+        --flake "$home_configuration_ref" -b pre-nix
+else
+    home_manager_out="$("${build_command[@]}")"
+    home_manager_bin="$home_manager_out/bin/home-manager"
+    [[ -x "$home_manager_bin" ]] || {
+        echo "nix-activate: Home Manager output is invalid: $home_manager_out" >&2
+        exit 2
+    }
+    "$home_manager_bin" switch --flake "$home_configuration_ref" -b pre-nix
+fi
+
+if [[ "$SKIP_NPM" != "true" ]]; then
+    npm_command=(nix --extra-experimental-features "nix-command flakes" develop \
+        "$DOTFILES_ROOT" --command "$SCRIPT_DIR/nix-npm-sync")
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_command "${npm_command[@]}"
+    else
+        "${npm_command[@]}"
+    fi
+fi
