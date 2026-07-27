@@ -225,7 +225,7 @@ teardown() {
     assert_output --partial "Phase 3: Dependencies"
     assert_output --partial "Phase 4: Homebrew Bundle"
     assert_output --partial "Phase 5: Version Manager Setup"
-    assert_output --partial "Phase 6: Prezto & Powerlevel10k Setup"
+    assert_output --partial "Phase 6: Prezto & Starship Setup"
     assert_output --partial "Phase 7: Symlink Creation"
     assert_output --partial "Phase 8: Shell Configuration"
     assert_output --partial "Phase 9: Performance Optimization"
@@ -499,13 +499,15 @@ teardown() {
     fi
 }
 
-@test "install: checks for Powerlevel10k theme" {
+@test "install: checks for Starship prompt" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
 
-    # Should check for Powerlevel10k if Prezto exists
-    if [[ -d "$HOME/.zprezto" ]]; then
-        assert_output --partial "Powerlevel10k"
+    if command -v starship >/dev/null 2>&1; then
+        assert_output --partial "Starship is already installed"
+    else
+        assert_output --partial "Starship is not installed"
+        assert_output --partial "Would install Starship with Homebrew"
     fi
 }
 

@@ -1,10 +1,3 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.config/zsh/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
 # ============================================================================
 # Optimized .zshrc for Fast Startup
 # Performance target: < 150ms warm startup on this machine
@@ -177,17 +170,7 @@ if [[ -o interactive ]] && (( $+functions[compdef] )) && [[ -r "${ZDOTDIR:-$HOME
 fi
 
 # ============================================================================
-# 12. POWERLEVEL10K CONFIGURATION
-# ============================================================================
-# Note: Prezto's prompt module automatically sources ~/.config/zsh/.p10k.zsh
-# when the powerlevel10k theme is loaded. Do not manually source it here as
-# it causes conflicts with Prezto's initialization sequence.
-#
-# Configuration file location is set in LinkingManifest.json:
-# zsh/.p10k.zsh -> ~/.config/zsh/.p10k.zsh
-
-# ============================================================================
-# 13. FZF
+# 12. FZF
 # ============================================================================
 # FZF key bindings are lazy-loaded by lib/lazy-load.zsh.
 
@@ -195,9 +178,6 @@ fi
 # END OF OPTIMIZED .zshrc
 # Observed startup time: ~50ms warm in zsh -i/-l tests
 # ============================================================================
-
-# Prezto's powerlevel10k prompt module sources ~/.config/zsh/.p10k.zsh.
-# Do not source it again here; that adds startup work and can duplicate prompt hooks.
 
 
 set-default-shell() {
@@ -216,3 +196,58 @@ primary() {
   # "$@" automatically passes ALL arguments (text) you type to the agent
   claude --agent primary-agent "$@"
 }
+
+export PATH="$HOME/.local/bin:$PATH"
+
+# Starship owns the prompt; Prezto still provides completion, history, editing,
+# syntax highlighting, and autosuggestions without loading its prompt module.
+if [[ -o interactive ]] && (( $+commands[starship] )); then
+    export STARSHIP_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml"
+    ZLE_RPROMPT_INDENT=0
+    eval "$(starship init zsh)"
+
+    # Starship has no native transient-prompt support for Zsh. Wrap the line
+    # editor so an accepted command is redrawn with the character-only profile.
+    # add-zle-hook-widget preserves Prezto's autosuggestion/highlighting hooks.
+    _dotfiles_starship_transient_prompt() {
+        emulate -L zsh
+        [[ "$CONTEXT" == "start" ]] || return 0
+
+        local -i edit_status
+        while true; do
+            zle .recursive-edit
+            edit_status=$?
+            [[ "$edit_status" == 0 && "$KEYS" == $'\4' ]] || break
+            [[ -o ignore_eof ]] || exit 0
+        done
+
+        local transient_prompt
+        transient_prompt="$(
+            "$commands[starship]" prompt \
+                --profile transient \
+                --terminal-width="${COLUMNS:-80}" \
+                --keymap="${KEYMAP:-viins}" \
+                --status="${STARSHIP_CMD_STATUS:-0}" \
+                --pipestatus="${STARSHIP_PIPE_STATUS[*]:-0}"
+        )" || return
+        transient_prompt="${transient_prompt#$'\n'}"
+
+        local saved_prompt="$PROMPT"
+        local saved_rprompt="$RPROMPT"
+        PROMPT="$transient_prompt"
+        RPROMPT=''
+        zle .reset-prompt
+        PROMPT="$saved_prompt"
+        RPROMPT="$saved_rprompt"
+
+        if (( edit_status )); then
+            zle .send-break
+        else
+            zle .accept-line
+        fi
+        return "$edit_status"
+    }
+
+    autoload -Uz add-zle-hook-widget
+    add-zle-hook-widget line-init _dotfiles_starship_transient_prompt
+fi
