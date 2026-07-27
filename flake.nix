@@ -61,6 +61,9 @@
         default = darwinConfiguration;
       };
 
+      packages.${host.system}.darwin-rebuild =
+        nix-darwin.packages.${host.system}.darwin-rebuild;
+
       devShells = forAllSystems (
         system:
         let

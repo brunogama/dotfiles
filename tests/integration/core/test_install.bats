@@ -115,6 +115,18 @@ teardown() {
     refute_output --partial "Would install upstream Nix"
 }
 
+@test "nix-rebuild: uses the locked darwin-rebuild package" {
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run env PATH="/usr/bin:/bin" \
+        /bin/bash "$real_dotfiles_root/bin/core/nix-rebuild" \
+        --dry-run --skip-check --skip-npm
+
+    assert_success
+    assert_output --partial "$real_dotfiles_root#darwin-rebuild"
+    refute_output --partial "github:nix-darwin"
+}
+
 @test "install: --verbose enables verbose output" {
     run "$DOTFILES_ROOT/install" --dry-run --yes --verbose
     assert_success
