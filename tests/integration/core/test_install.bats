@@ -96,6 +96,12 @@ teardown() {
     refute_output --partial "Phase 1: Pre-flight Checks"
 }
 
+@test "install: --nix delegates with no forwarded arguments" {
+    run /bin/bash "$DOTFILES_ROOT/install" --nix
+    assert_success
+    assert_output --partial "Mock nix-bootstrap:"
+}
+
 @test "install: --verbose enables verbose output" {
     run "$DOTFILES_ROOT/install" --dry-run --yes --verbose
     assert_success

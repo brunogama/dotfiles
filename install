@@ -1292,7 +1292,11 @@ dispatch_nix_install() {
             log_error "Nix bootstrap script not found: bin/core/nix-bootstrap"
             exit 2
         fi
-        exec "$DOTFILES_ROOT/bin/core/nix-bootstrap" "${forwarded_args[@]}"
+        if (( ${#forwarded_args[@]} > 0 )); then
+            exec "$DOTFILES_ROOT/bin/core/nix-bootstrap" "${forwarded_args[@]}"
+        else
+            exec "$DOTFILES_ROOT/bin/core/nix-bootstrap"
+        fi
     fi
 }
 
