@@ -176,7 +176,7 @@ update_host_file() {
         exit 2
     fi
 
-    file_mode="$(stat -f '%Lp' "$HOST_FILE" 2>/dev/null || stat -c '%a' "$HOST_FILE")"
+    file_mode="$(stat -c '%a' "$HOST_FILE" 2>/dev/null || stat -f '%Lp' "$HOST_FILE")"
     chmod "$file_mode" "$temp_file"
     mv "$temp_file" "$HOST_FILE"
     trap - RETURN
