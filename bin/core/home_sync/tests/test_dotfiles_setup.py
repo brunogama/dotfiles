@@ -10,7 +10,7 @@ Tests cover:
 
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -105,7 +105,7 @@ class TestSyncConfig:
 
     def test_sync_config_string_path(self, temp_git_repo: Path) -> None:
         """Test that string paths are converted to Path objects."""
-        config = SyncConfig(repo_path=str(temp_git_repo))
+        config = SyncConfig(repo_path=str(temp_git_repo))  # type: ignore[arg-type]
 
         assert isinstance(config.repo_path, Path)
         assert config.repo_path == temp_git_repo
@@ -269,14 +269,14 @@ class TestCheckStatus:
         config = SyncConfig(repo_path=temp_git_repo)
         sync = DotfilesSync(config)
 
-        # Mock is_remote_reachable to return True
-        with patch("home_sync.dotfiles.is_remote_reachable", return_value=True):
-            # Mock get_branch_status to return UP_TO_DATE
-            with patch(
+        with (
+            patch("home_sync.dotfiles.is_remote_reachable", return_value=True),
+            patch(
                 "home_sync.dotfiles.get_branch_status",
                 return_value=BranchStatus.UP_TO_DATE,
-            ):
-                status = sync.check_status()
+            ),
+        ):
+            status = sync.check_status()
 
         assert status["branch_status"] == BranchStatus.UP_TO_DATE
 
@@ -307,6 +307,7 @@ class TestCanSync:
         can_sync, reason = sync.can_sync()
 
         assert can_sync is False
+        assert reason is not None
         assert "uncommitted changes" in reason.lower()
 
     def test_can_sync_dirty_with_force(self, temp_git_repo: Path) -> None:
@@ -342,6 +343,7 @@ class TestCanSync:
             can_sync, reason = sync.can_sync()
 
         assert can_sync is False
+        assert reason is not None
         assert "diverged" in reason.lower()
 
     def test_can_sync_ahead_of_remote(self, temp_git_repo: Path) -> None:
