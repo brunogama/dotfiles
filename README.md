@@ -198,7 +198,8 @@ Homebrew is retained only for:
 
 - `sourcekitten`, because it depends on the Apple/Xcode toolchain and is not packaged in the selected Nixpkgs release.
 - Fork, because it is a macOS GUI cask.
-- `anysphere.remote-ssh`, because it is installed through the editor marketplace.
+
+Cursor bundles its `anysphere.remote-ssh` extension. It is intentionally not passed to Homebrew Bundle's VS Code extension installer, which may target another installed editor such as VS Code Insiders.
 
 ```bash
 nix-rollback --list              # Inspect available generations
