@@ -7,11 +7,11 @@ with proper signal handling for graceful shutdown.
 import signal
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from home_sync.dotfiles import DotfilesSync, DotfilesSyncError, SyncConfig
 from home_sync.logger import setup_logger
-from home_sync.metrics import Metrics, write_metrics
+from home_sync.metrics import write_metrics
 
 logger = setup_logger(__name__)
 
@@ -66,7 +66,7 @@ def setup_signal_handlers() -> None:
 
 
 def interruptible_sleep(duration: int) -> bool:
-    """Sleep for specified duration, but check for shutdown every second.
+    """Sleep for the specified duration while remaining responsive to shutdown.
 
     Args:
         duration: Sleep duration in seconds
@@ -74,18 +74,19 @@ def interruptible_sleep(duration: int) -> bool:
     Returns:
         True if completed full sleep, False if interrupted
     """
-    for _ in range(duration):
+    deadline = time.monotonic() + duration
+    while (remaining := deadline - time.monotonic()) > 0:
         if _shutdown_requested:
             return False
-        time.sleep(1)
-    return True
+        time.sleep(min(0.1, remaining))
+    return not _shutdown_requested
 
 
 def run_daemon(
     repo_path: Path,
     interval: int = 3600,
     force_commit: bool = False,
-    metrics_file: Optional[Path] = None,
+    metrics_file: Path | None = None,
 ) -> None:
     """Run home-sync daemon.
 
@@ -145,9 +146,10 @@ def run_daemon(
 
                 if metrics.success:
                     success_count += 1
+                    duration = metrics.duration_seconds or 0.0
                     logger.info(
                         f"Sync #{sync_count} completed successfully "
-                        f"(duration: {metrics.duration_seconds:.2f}s)"
+                        f"(duration: {duration:.2f}s)"
                     )
 
                     if metrics.commits_created > 0:
@@ -178,7 +180,8 @@ def run_daemon(
             # Sleep until next sync (interruptible)
             if not _shutdown_requested:
                 logger.debug(f"Sleeping for {interval}s until next sync")
-                interruptible_sleep(interval)
+                if not interruptible_sleep(interval):
+                    break
 
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received")

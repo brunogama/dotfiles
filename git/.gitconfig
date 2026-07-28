@@ -2,7 +2,7 @@
 	name = Bruno da Gama Porciuncula
 	email = bruno@naboo.local
 [core]
-	excludesfile = /Users/bruno/.gitignore_global
+	excludesfile = ~/.gitignore_global
 [include]
 	path = ~/.config/git/github-flow-aliases.gitconfig
 [push]

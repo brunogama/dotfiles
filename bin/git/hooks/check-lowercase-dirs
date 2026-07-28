@@ -16,8 +16,10 @@ DIRS=$(find . -type d \
     -not -path "./.git/*" \
     -not -path "./.git" \
     -not -path "./.claude/*" \
-    -not -path "./node_modules/*" \
-    -not -path "./.cache/*" \
+    -not -path "*/node_modules" \
+    -not -path "*/node_modules/*" \
+    -not -path "*/.cache" \
+    -not -path "*/.cache/*" \
     | sed 's|^\./||' || true)
 
 FOUND=false

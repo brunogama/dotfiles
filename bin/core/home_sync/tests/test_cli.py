@@ -8,8 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from home_sync.cli import cli
-from home_sync.dotfiles import DotfilesSync, DotfilesSyncError
-from home_sync.metrics import Metrics
+from home_sync.dotfiles import DotfilesSync
 
 
 @pytest.fixture

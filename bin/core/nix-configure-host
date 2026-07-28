@@ -1,0 +1,255 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly DOTFILES_ROOT
+HOST_FILE="${DOTFILES_NIX_HOST_FILE:-$DOTFILES_ROOT/nix/host.nix}"
+
+DRY_RUN=false
+YES=false
+USERNAME_VALUE=""
+MACHINE_NAME=""
+
+usage() {
+    cat <<'EOF'
+Usage: nix-configure-host [OPTIONS]
+
+Configure the macOS account and machine identity used by the Nix flake.
+Interactive runs prompt with values detected from the current Mac. With --yes,
+detected values are accepted automatically unless explicit values are supplied.
+
+Options:
+  --username NAME         Set the macOS account short name
+  --machine-name NAME     Set the Mac's display name and normalized host names
+  --dry-run               Print the resolved identity without changing host.nix
+  --yes                   Accept detected values without prompting
+  -h, --help              Show this help message
+EOF
+}
+
+detect_username() {
+    /usr/bin/id -un
+}
+
+detect_machine_name() {
+    local detected=""
+
+    if [[ -x /usr/sbin/scutil ]]; then
+        detected="$(/usr/sbin/scutil --get ComputerName 2>/dev/null || true)"
+    fi
+    if [[ -z "$detected" ]]; then
+        detected="$(/bin/hostname -s 2>/dev/null || /bin/hostname)"
+    fi
+
+    printf '%s\n' "$detected"
+}
+
+prompt_value() {
+    local label="$1"
+    local default_value="$2"
+    local response
+
+    printf '%s [%s]: ' "$label" "$default_value" >&2
+    if ! IFS= read -r response; then
+        echo "nix-configure-host: input ended before setup completed" >&2
+        exit 2
+    fi
+    if [[ -z "$response" ]]; then
+        response="$default_value"
+    fi
+    PROMPT_VALUE="$response"
+}
+
+validate_username() {
+    local value="$1"
+    local pattern='^[A-Za-z_][A-Za-z0-9._-]*$'
+
+    if [[ ! "$value" =~ $pattern ]]; then
+        echo "nix-configure-host: invalid macOS username: $value" >&2
+        exit 2
+    fi
+}
+
+validate_machine_name() {
+    local value="$1"
+
+    case "$value" in
+        ''|*$'\n'*|*$'\r'*|*\"*|*\\*|*\$*|*\**|*\?*|*\[*|*\]*)
+            echo "nix-configure-host: machine name is empty or contains unsupported characters" >&2
+            exit 2
+            ;;
+    esac
+}
+
+normalize_host_name() {
+    local value="$1"
+    local normalized
+
+    normalized="$(
+        printf '%s' "$value" |
+            LC_ALL=C tr '[:upper:]' '[:lower:]' |
+            LC_ALL=C sed -E "s/['’]//g; s/[^a-z0-9]+/-/g; s/^-+//; s/-+$//" |
+            cut -c 1-63
+    )"
+
+    if [[ -z "$normalized" ]]; then
+        echo "nix-configure-host: machine name cannot produce an empty host name" >&2
+        exit 2
+    fi
+
+    printf '%s\n' "$normalized"
+}
+
+update_host_file() {
+    local username="$1"
+    local machine_name="$2"
+    local normalized_name="$3"
+    local temp_file file_mode
+
+    [[ -f "$HOST_FILE" ]] || {
+        echo "nix-configure-host: host configuration not found: $HOST_FILE" >&2
+        exit 2
+    }
+
+    temp_file="$(mktemp "${TMPDIR:-/tmp}/dotfiles-host.nix.XXXXXX")"
+    trap 'rm -f "$temp_file"' RETURN
+
+    if ! awk \
+        -v configuration_name="$normalized_name" \
+        -v username="$username" \
+        -v computer_name="$machine_name" \
+        -v host_name="$normalized_name" '
+        BEGIN { configuration = user = computer = host = local_host = 0 }
+        /^  configurationName = / {
+            print "  configurationName = \"" configuration_name "\";"
+            configuration = 1
+            next
+        }
+        /^  username = / {
+            print "  username = \"" username "\";"
+            user = 1
+            next
+        }
+        /^  computerName = / {
+            print "  computerName = \"" computer_name "\";"
+            computer = 1
+            next
+        }
+        /^  hostName = / {
+            print "  hostName = \"" host_name "\";"
+            host = 1
+            next
+        }
+        /^  localHostName = / {
+            print "  localHostName = \"" host_name "\";"
+            local_host = 1
+            next
+        }
+        { print }
+        END {
+            if (!(configuration && user && computer && host && local_host)) {
+                exit 3
+            }
+        }
+    ' "$HOST_FILE" > "$temp_file"; then
+        rm -f "$temp_file"
+        trap - RETURN
+        echo "nix-configure-host: host.nix is missing required identity fields" >&2
+        exit 2
+    fi
+
+    file_mode="$(stat -c '%a' "$HOST_FILE" 2>/dev/null || stat -f '%Lp' "$HOST_FILE")"
+    chmod "$file_mode" "$temp_file"
+    mv "$temp_file" "$HOST_FILE"
+    trap - RETURN
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --username)
+            [[ $# -ge 2 ]] || {
+                echo "nix-configure-host: --username requires a name" >&2
+                exit 2
+            }
+            USERNAME_VALUE="$2"
+            shift
+            ;;
+        --machine-name)
+            [[ $# -ge 2 ]] || {
+                echo "nix-configure-host: --machine-name requires a name" >&2
+                exit 2
+            }
+            MACHINE_NAME="$2"
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        --yes)
+            YES=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nix-configure-host: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+default_username="$(detect_username)"
+default_machine_name="$(detect_machine_name)"
+
+if [[ -z "$USERNAME_VALUE" ]]; then
+    if [[ "$YES" == "true" || "$DRY_RUN" == "true" ]]; then
+        USERNAME_VALUE="$default_username"
+    else
+        prompt_value "macOS username" "$default_username"
+        USERNAME_VALUE="$PROMPT_VALUE"
+    fi
+fi
+
+if [[ -z "$MACHINE_NAME" ]]; then
+    if [[ "$YES" == "true" || "$DRY_RUN" == "true" ]]; then
+        MACHINE_NAME="$default_machine_name"
+    else
+        prompt_value "Machine name" "$default_machine_name"
+        MACHINE_NAME="$PROMPT_VALUE"
+    fi
+fi
+
+validate_username "$USERNAME_VALUE"
+validate_machine_name "$MACHINE_NAME"
+normalized_name="$(normalize_host_name "$MACHINE_NAME")"
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "Would configure Nix username: $USERNAME_VALUE"
+    echo "Would configure Mac computer name: $MACHINE_NAME"
+    echo "Would configure host name: $normalized_name"
+    exit 0
+fi
+
+update_host_file "$USERNAME_VALUE" "$MACHINE_NAME" "$normalized_name"
+echo "Configured Nix username: $USERNAME_VALUE"
+echo "Configured Mac computer name: $MACHINE_NAME"
+echo "Configured host name: $normalized_name"

@@ -149,6 +149,7 @@ gcloud
 **/.npm
 **/.yarn/
 **/package-lock.json
+!packages/npm/package-lock.json
 **/yarn.lock
 
 # NVM (Node Version Manager)
@@ -217,6 +218,11 @@ Git/.gitconfig
 node_modules/
 .venv/
 venv/
+
+# Nix build and direnv artifacts
+result
+result-*
+.direnv/
 
 # macOS
 .DS_Store
@@ -305,7 +311,9 @@ Thumbs.db
 
 # System files
 *.lock
+!flake.lock
 *.log
 *.pid
 .cache/
 tmp/
+.serena/

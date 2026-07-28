@@ -5,11 +5,9 @@ running as a daemon, and checking status.
 """
 
 from pathlib import Path
-from typing import Optional
 
 import click
 
-from home_sync.config import load_config
 from home_sync.daemon import run_daemon
 from home_sync.dotfiles import DotfilesSync, DotfilesSyncError, SyncConfig
 from home_sync.logger import LogLevel, setup_logger
@@ -31,11 +29,11 @@ logger = setup_logger(__name__)
 )
 @click.option(
     "--config",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),  # type: ignore[type-var]
     help="Path to configuration file",
 )
 @click.pass_context
-def cli(ctx: click.Context, verbose: int, config: Optional[Path]) -> None:
+def cli(ctx: click.Context, verbose: int, config: Path | None) -> None:
     """Home environment and credentials synchronization tool.
 
     Synchronizes dotfiles and credentials across machines using git.
@@ -79,7 +77,7 @@ def cli(ctx: click.Context, verbose: int, config: Optional[Path]) -> None:
 )
 @click.option(
     "--repo",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    type=click.Path(exists=True, file_okay=False, path_type=Path),  # type: ignore[type-var]
     help="Path to dotfiles repository (default: ~/.dotfiles)",
 )
 @click.pass_context
@@ -89,7 +87,7 @@ def sync(
     force: bool,
     skip_pull: bool,
     skip_push: bool,
-    repo: Optional[Path],
+    repo: Path | None,
 ) -> None:
     """Sync dotfiles repository once.
 
@@ -165,7 +163,7 @@ def sync(
 )
 @click.option(
     "--repo",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    type=click.Path(exists=True, file_okay=False, path_type=Path),  # type: ignore[type-var]
     help="Path to dotfiles repository (default: ~/.dotfiles)",
 )
 @click.pass_context
@@ -173,7 +171,7 @@ def daemon(
     ctx: click.Context,
     interval: int,
     force: bool,
-    repo: Optional[Path],
+    repo: Path | None,
 ) -> None:
     """Run as a background daemon.
 
@@ -218,13 +216,13 @@ def daemon(
 @cli.command()
 @click.option(
     "--repo",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    type=click.Path(exists=True, file_okay=False, path_type=Path),  # type: ignore[type-var]
     help="Path to dotfiles repository (default: ~/.dotfiles)",
 )
 @click.pass_context
 def status(
     ctx: click.Context,
-    repo: Optional[Path],
+    repo: Path | None,
 ) -> None:
     """Show repository status.
 

@@ -1,10 +1,3 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.config/zsh/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
 # ============================================================================
 # Optimized .zshrc for Fast Startup
 # Performance target: < 150ms warm startup on this machine
@@ -25,18 +18,26 @@ export NVM_DIR="$HOME/.nvm"
 export SDKMAN_DIR="$HOME/.sdkman"
 export UV_NATIVE_TLS=1
 
+# Keep inherited Nix profile paths ahead of Homebrew and /usr/local fallbacks.
 path=(
-    $PYENV_ROOT/shims(N)
-    $PYENV_ROOT/bin(N)
-    $RBENV_ROOT/bin(N)
-    $SDKMAN_DIR/bin(N)
+    $HOME/local/bin(N)
     $HOME/.claude/local(N)
     $HOME/.cache/lm-studio/bin(N)
+    $path
     /opt/{homebrew,local}/{,s}bin(N)
     /usr/local/{,s}bin(N)
-    $path
-    $HOME/local/bin(N)
 )
+
+# Legacy version managers remain available as an explicit migration fallback.
+if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]]; then
+    path=(
+        $PYENV_ROOT/shims(N)
+        $PYENV_ROOT/bin(N)
+        $RBENV_ROOT/bin(N)
+        $SDKMAN_DIR/bin(N)
+        $path
+    )
+fi
 
 fpath=(
     ~/.docker/completions(N)
@@ -48,7 +49,9 @@ fpath=(
 # ============================================================================
 # 2. PREZTO INITIALIZATION
 # ============================================================================
-if [[ -s "$HOME/.zprezto/init.zsh" ]]; then
+if [[ -n "${ZPREZTODIR:-}" && -s "$ZPREZTODIR/runcoms/zshrc" ]]; then
+  source "$ZPREZTODIR/runcoms/zshrc"
+elif [[ -s "$HOME/.zprezto/init.zsh" ]]; then
   source "$HOME/.zprezto/init.zsh"
 fi
 
@@ -98,6 +101,7 @@ alias gs-all="git status; git submodule foreach 'git status'"
 
 # Advanced git
 alias gdinit="rm -rf .git; git submodule deinit -f .; fd -e .git -t f; fd -e .gitignore -x cp {} .gitignore; git add .gitignore; git commit -m 'Initial commit'"
+
 # Navigation
 alias ...="cd ../.."
 alias ....="cd ../../.."
@@ -118,17 +122,22 @@ mkcd() {
 # Load API keys before launching agent CLIs.
 pi() {
     eval "$(dump-api-keys)"
-    /opt/homebrew/bin/pi "$@"
+    local pi_bin="${DOTFILES_NPM_BIN:-${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/npm/current/node_modules/.bin}/pi"
+    if [[ ! -x "$pi_bin" ]]; then
+        print -u2 "pi is not installed; run nix-npm-sync"
+        return 127
+    fi
+    "$pi_bin" "$@"
 }
 
 claude() {
     eval "$(dump-api-keys)"
-    /Users/bruno/.local/bin/claude "$@"
+    "$HOME/.local/bin/claude" "$@"
 }
 
 codex() {
     eval "$(dump-api-keys)"
-    /Users/bruno/.local/bin/codex "$@"
+    "$HOME/.local/bin/codex" "$@"
 }
 
 # ============================================================================
@@ -177,17 +186,7 @@ if [[ -o interactive ]] && (( $+functions[compdef] )) && [[ -r "${ZDOTDIR:-$HOME
 fi
 
 # ============================================================================
-# 12. POWERLEVEL10K CONFIGURATION
-# ============================================================================
-# Note: Prezto's prompt module automatically sources ~/.config/zsh/.p10k.zsh
-# when the powerlevel10k theme is loaded. Do not manually source it here as
-# it causes conflicts with Prezto's initialization sequence.
-#
-# Configuration file location is set in LinkingManifest.json:
-# zsh/.p10k.zsh -> ~/.config/zsh/.p10k.zsh
-
-# ============================================================================
-# 13. FZF
+# 12. FZF
 # ============================================================================
 # FZF key bindings are lazy-loaded by lib/lazy-load.zsh.
 
@@ -195,9 +194,6 @@ fi
 # END OF OPTIMIZED .zshrc
 # Observed startup time: ~50ms warm in zsh -i/-l tests
 # ============================================================================
-
-# Prezto's powerlevel10k prompt module sources ~/.config/zsh/.p10k.zsh.
-# Do not source it again here; that adds startup work and can duplicate prompt hooks.
 
 
 set-default-shell() {
@@ -216,3 +212,58 @@ primary() {
   # "$@" automatically passes ALL arguments (text) you type to the agent
   claude --agent primary-agent "$@"
 }
+
+export PATH="$HOME/.local/bin:$PATH"
+
+# Starship owns the prompt; Prezto still provides completion, history, editing,
+# syntax highlighting, and autosuggestions without loading its prompt module.
+if [[ -o interactive ]] && (( $+commands[starship] )); then
+    export STARSHIP_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml"
+    ZLE_RPROMPT_INDENT=0
+    eval "$(starship init zsh)"
+
+    # Starship has no native transient-prompt support for Zsh. Wrap the line
+    # editor so an accepted command is redrawn with the character-only profile.
+    # add-zle-hook-widget preserves Prezto's autosuggestion/highlighting hooks.
+    _dotfiles_starship_transient_prompt() {
+        emulate -L zsh
+        [[ "$CONTEXT" == "start" ]] || return 0
+
+        local -i edit_status
+        while true; do
+            zle .recursive-edit
+            edit_status=$?
+            [[ "$edit_status" == 0 && "$KEYS" == $'\4' ]] || break
+            [[ -o ignore_eof ]] || exit 0
+        done
+
+        local transient_prompt
+        transient_prompt="$(
+            "$commands[starship]" prompt \
+                --profile transient \
+                --terminal-width="${COLUMNS:-80}" \
+                --keymap="${KEYMAP:-viins}" \
+                --status="${STARSHIP_CMD_STATUS:-0}" \
+                --pipestatus="${STARSHIP_PIPE_STATUS[*]:-0}"
+        )" || return
+        transient_prompt="${transient_prompt#$'\n'}"
+
+        local saved_prompt="$PROMPT"
+        local saved_rprompt="$RPROMPT"
+        PROMPT="$transient_prompt"
+        RPROMPT=''
+        zle .reset-prompt
+        PROMPT="$saved_prompt"
+        RPROMPT="$saved_rprompt"
+
+        if (( edit_status )); then
+            zle .send-break
+        else
+            zle .accept-line
+        fi
+        return "$edit_status"
+    }
+
+    autoload -Uz add-zle-hook-widget
+    add-zle-hook-widget line-init _dotfiles_starship_transient_prompt
+fi

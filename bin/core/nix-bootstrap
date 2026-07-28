@@ -1,0 +1,257 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly DOTFILES_ROOT
+
+TEMP_FILES=()
+cleanup() {
+    local file
+    for file in "${TEMP_FILES[@]-}"; do
+        [[ -n "$file" ]] && rm -f "$file"
+    done
+    return 0
+}
+trap cleanup EXIT
+
+DRY_RUN=false
+YES=false
+SKIP_NPM=false
+SYSTEM_MODE=false
+CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
+USERNAME_VALUE=""
+MACHINE_NAME=""
+
+usage() {
+    cat <<'EOF'
+Usage: nix-bootstrap [OPTIONS]
+
+Bootstrap the Nix-first macOS configuration. The default Home Manager
+activation is user-only and does not use sudo. Installing Nix itself can still
+require administrator access when Nix is missing.
+
+Options:
+  --system                Activate nix-darwin system settings with sudo
+  --configuration NAME    Select the mode's flake output (default: default)
+  --username NAME         Set the macOS account short name
+  --machine-name NAME     Set the Mac display name and normalized host names
+  --skip-npm              Do not synchronize pinned npm tools
+  --dry-run               Print planned actions without changing the system
+  --yes                   Confirm prerequisite installations non-interactively
+  -h, --help              Show this help message
+EOF
+}
+
+print_command() {
+    printf '+'
+    printf ' %q' "$@"
+    printf '\n'
+}
+
+confirm() {
+    local prompt="$1"
+    if [[ "$YES" == "true" ]]; then
+        return 0
+    fi
+    read -r -p "$prompt [y/N] " response
+    [[ "$response" =~ ^[Yy]$ ]]
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --system)
+            SYSTEM_MODE=true
+            ;;
+        --configuration)
+            [[ $# -ge 2 ]] || { echo "nix-bootstrap: --configuration requires a name" >&2; exit 2; }
+            CONFIGURATION="$2"
+            shift
+            ;;
+        --username)
+            [[ $# -ge 2 ]] || { echo "nix-bootstrap: --username requires a name" >&2; exit 2; }
+            USERNAME_VALUE="$2"
+            shift
+            ;;
+        --machine-name)
+            [[ $# -ge 2 ]] || { echo "nix-bootstrap: --machine-name requires a name" >&2; exit 2; }
+            MACHINE_NAME="$2"
+            shift
+            ;;
+        --skip-npm)
+            SKIP_NPM=true
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        --yes)
+            YES=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nix-bootstrap: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+[[ "$(uname -s)" == "Darwin" ]] || { echo "nix-bootstrap: nix-darwin requires macOS" >&2; exit 2; }
+
+install_nix() {
+    local default_profile="/nix/var/nix/profiles/default"
+
+    if ! command -v nix >/dev/null 2>&1 && \
+        [[ -r "$default_profile/etc/profile.d/nix-daemon.sh" ]]; then
+        # shellcheck disable=SC1091
+        source "$default_profile/etc/profile.d/nix-daemon.sh"
+    fi
+
+    # The profile script can be guarded as already sourced even when a caller
+    # has intentionally narrowed PATH, so check the canonical binary directly.
+    if ! command -v nix >/dev/null 2>&1 && [[ -x "$default_profile/bin/nix" ]]; then
+        export PATH="$default_profile/bin:$PATH"
+    fi
+
+    if command -v nix >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Would install upstream Nix in multi-user daemon mode"
+        return 0
+    fi
+
+    echo "Nix is not installed. The upstream installer creates /nix and a system daemon."
+    confirm "Install Nix now?" || { echo "Install Nix, then rerun this command." >&2; exit 2; }
+
+    local installer
+    installer="$(mktemp)"
+    TEMP_FILES+=("$installer")
+    curl --proto '=https' --tlsv1.2 -fsSL https://nixos.org/nix/install -o "$installer"
+    if [[ "$YES" == "true" ]]; then
+        sh "$installer" --daemon --yes
+    else
+        sh "$installer" --daemon
+    fi
+    rm -f "$installer"
+
+    if [[ -r /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
+        # shellcheck disable=SC1091
+        source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    fi
+
+    command -v nix >/dev/null 2>&1 || {
+        echo "Nix was installed, but this shell cannot see it yet. Start a new shell and rerun." >&2
+        exit 2
+    }
+}
+
+install_homebrew() {
+    if command -v brew >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Would install Homebrew for the retained sourcekitten and Fork packages"
+        return 0
+    fi
+
+    confirm "Install Homebrew for retained macOS-only packages?" || {
+        echo "Homebrew is required by the configured nix-darwin Homebrew module." >&2
+        exit 2
+    }
+
+    local installer
+    installer="$(mktemp)"
+    TEMP_FILES+=("$installer")
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$installer"
+    if [[ "$YES" == "true" ]]; then
+        NONINTERACTIVE=1 /bin/bash "$installer"
+    else
+        /bin/bash "$installer"
+    fi
+    rm -f "$installer"
+
+    if [[ -x /opt/homebrew/bin/brew ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -x /usr/local/bin/brew ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+}
+
+configure_script="$SCRIPT_DIR/nix-configure-host"
+[[ -x "$configure_script" ]] || {
+    echo "nix-bootstrap: host configurator not found: $configure_script" >&2
+    exit 2
+}
+configure_args=()
+[[ -n "$USERNAME_VALUE" ]] && configure_args+=(--username "$USERNAME_VALUE")
+[[ -n "$MACHINE_NAME" ]] && configure_args+=(--machine-name "$MACHINE_NAME")
+[[ "$DRY_RUN" == "true" ]] && configure_args+=(--dry-run)
+[[ "$YES" == "true" ]] && configure_args+=(--yes)
+if (( ${#configure_args[@]} > 0 )); then
+    "$configure_script" "${configure_args[@]}"
+else
+    "$configure_script"
+fi
+
+install_nix
+if [[ "$SYSTEM_MODE" == "true" ]]; then
+    install_homebrew
+    activation_script="$SCRIPT_DIR/nix-rebuild"
+else
+    activation_script="$SCRIPT_DIR/nix-activate"
+fi
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    print_command "$DOTFILES_ROOT/install" --scripts-only --yes --dry-run
+    activation_args=(--configuration "$CONFIGURATION" --dry-run)
+    if [[ "$SKIP_NPM" == "true" ]]; then
+        activation_args+=(--skip-npm)
+    fi
+    print_command "$activation_script" "${activation_args[@]}"
+    print_command /bin/zsh "$SCRIPT_DIR/zsh-compile" --force
+    exit 0
+fi
+
+"$DOTFILES_ROOT/install" --scripts-only --yes
+activation_args=(--configuration "$CONFIGURATION")
+if [[ "$SKIP_NPM" == "true" ]]; then
+    activation_args+=(--skip-npm)
+fi
+"$activation_script" "${activation_args[@]}"
+
+compile_script="$SCRIPT_DIR/zsh-compile"
+if [[ -f "$compile_script" ]]; then
+    /bin/zsh "$compile_script" --force
+else
+    echo "nix-bootstrap: zsh compiler not found: $compile_script" >&2
+    exit 1
+fi
+
+if [[ "$SYSTEM_MODE" == "true" ]]; then
+    echo "Nix system bootstrap complete. Start a new shell with: exec zsh"
+else
+    echo "Nix user bootstrap complete. Start a new shell with: exec zsh"
+fi

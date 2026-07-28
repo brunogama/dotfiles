@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+DRY_RUN=false
+LIST_ONLY=false
+GENERATION=""
+
+usage() {
+    cat <<'EOF'
+Usage: nix-rollback [OPTIONS]
+
+Roll back the nix-darwin system profile or list available generations.
+
+Options:
+  --list                  List system generations without changing anything
+  --generation NUMBER     Activate a specific generation
+  --dry-run               Print the command without running it
+  -h, --help              Show this help message
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --list)
+            LIST_ONLY=true
+            ;;
+        --generation)
+            [[ $# -ge 2 ]] || { echo "nix-rollback: --generation requires a number" >&2; exit 2; }
+            GENERATION="$2"
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nix-rollback: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+if [[ "$LIST_ONLY" == "true" ]]; then
+    command=(darwin-rebuild --list-generations)
+elif [[ -n "$GENERATION" ]]; then
+    [[ "$GENERATION" =~ ^[0-9]+$ ]] || { echo "nix-rollback: generation must be numeric" >&2; exit 2; }
+    command=(sudo darwin-rebuild --switch-generation "$GENERATION")
+else
+    command=(sudo darwin-rebuild --rollback)
+fi
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    printf 'Would run:'
+    printf ' %q' "${command[@]}"
+    printf '\n'
+    exit 0
+fi
+
+command -v darwin-rebuild >/dev/null 2>&1 || {
+    echo "nix-rollback: darwin-rebuild is not installed" >&2
+    exit 2
+}
+
+"${command[@]}"

@@ -36,6 +36,14 @@ exit 0
 EOF
     chmod +x bin/core/zsh-compile
 
+    cat > bin/core/nix-bootstrap << 'EOF'
+#!/usr/bin/env bash
+printf 'Mock nix-bootstrap:'
+printf ' %s' "$@"
+printf '\n'
+EOF
+    chmod +x bin/core/nix-bootstrap
+
     # Create mock Brewfile
     cat > packages/homebrew/Brewfile << 'EOF'
 # Test Brewfile
@@ -58,6 +66,10 @@ teardown() {
     assert_output --partial "install v"
     assert_output --partial "USAGE:"
     assert_output --partial "OPTIONS:"
+    assert_output --partial "--nix"
+    assert_output --partial "--system"
+    assert_output --partial "--username"
+    assert_output --partial "--machine-name"
     assert_output --partial "EXIT CODES:"
 }
 
@@ -78,6 +90,201 @@ teardown() {
     assert_success
     assert_output --partial "DRY RUN MODE"
     assert_output --partial "no changes were made"
+}
+
+@test "install: --nix delegates without running legacy phases" {
+    run "$DOTFILES_ROOT/install" --nix --dry-run --yes
+    assert_success
+    assert_output --partial "Mock nix-bootstrap: --dry-run --yes"
+    refute_output --partial "Phase 1: Pre-flight Checks"
+}
+
+@test "install: --nix delegates with no forwarded arguments" {
+    run /bin/bash "$DOTFILES_ROOT/install" --nix
+    assert_success
+    assert_output --partial "Mock nix-bootstrap:"
+}
+
+@test "install: --nix forwards explicit system activation" {
+    run /bin/bash "$DOTFILES_ROOT/install" --nix --system --dry-run
+    assert_success
+    assert_output --partial "Mock nix-bootstrap: --system --dry-run"
+}
+
+@test "install: --nix forwards host identity" {
+    run /bin/bash "$DOTFILES_ROOT/install" --nix \
+        --username ci-user --machine-name "CI Runner Mac" --dry-run
+
+    assert_success
+    assert_output --partial "--username ci-user"
+    assert_output --partial "--machine-name CI Runner Mac"
+}
+
+@test "nix-configure-host: prompts and writes host identity" {
+    local real_dotfiles_root host_file original_host
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    original_host="$real_dotfiles_root/nix/host.nix"
+    cp "$original_host" "$host_file"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash -c \
+        'printf "%s\n" "ci-user" "CI Runner Mac" | /bin/bash "$1"' \
+        _ "$real_dotfiles_root/bin/core/nix-configure-host"
+
+    assert_success
+    assert_file_contains "$host_file" 'configurationName = "ci-runner-mac";'
+    assert_file_contains "$host_file" 'username = "ci-user";'
+    assert_file_contains "$host_file" 'computerName = "CI Runner Mac";'
+    assert_file_contains "$host_file" 'hostName = "ci-runner-mac";'
+    assert_file_contains "$host_file" 'localHostName = "ci-runner-mac";'
+}
+
+@test "nix-configure-host: dry-run preserves host configuration" {
+    local real_dotfiles_root host_file checksum_before checksum_after
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    cp "$real_dotfiles_root/nix/host.nix" "$host_file"
+    checksum_before="$(cksum < "$host_file")"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash \
+        "$real_dotfiles_root/bin/core/nix-configure-host" \
+        --dry-run --username ci-user --machine-name "CI Runner Mac"
+
+    assert_success
+    assert_output --partial "Would configure Nix username: ci-user"
+    checksum_after="$(cksum < "$host_file")"
+    assert_equal "$checksum_after" "$checksum_before"
+}
+
+@test "nix-configure-host: rejects shell glob characters in machine names" {
+    local real_dotfiles_root machine_name
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+
+    for machine_name in '*' '?' '[' ']'; do
+        run /bin/bash "$real_dotfiles_root/bin/core/nix-configure-host" \
+            --dry-run --username ci-user --machine-name "$machine_name"
+
+        assert_failure
+        assert_output --partial "contains unsupported characters"
+    done
+}
+
+@test "nix-bootstrap: detects installed Nix outside PATH" {
+    skip_on_linux "macOS-specific Nix bootstrap"
+    [[ -r /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]] || \
+        skip "Nix daemon profile is not installed"
+
+    local real_dotfiles_root
+    real_dotfiles_root="$(get_dotfiles_root)"
+    run env HOME="$HOME" PATH="/usr/bin:/bin" \
+        /bin/bash "$real_dotfiles_root/bin/core/nix-bootstrap" --dry-run
+
+    assert_success
+    refute_output --partial "Would install upstream Nix"
+}
+
+@test "nix-rebuild: uses the locked darwin-rebuild package" {
+    skip_on_linux "macOS-specific nix-darwin command"
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run env PATH="/usr/bin:/bin" \
+        /bin/bash "$real_dotfiles_root/bin/core/nix-rebuild" \
+        --dry-run --skip-check --skip-npm
+
+    assert_success
+    assert_output --partial "$real_dotfiles_root#darwin-rebuild"
+    refute_output --partial "github:nix-darwin"
+}
+
+@test "nix-activate: dry-run is user-only and sudo-free" {
+    skip_on_linux "macOS-specific Home Manager configuration"
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-activate" \
+        --dry-run --skip-check --skip-npm
+
+    assert_success
+    assert_output --partial "$real_dotfiles_root#home-manager"
+    refute_output --partial "sudo"
+    refute_output --partial "darwin-rebuild"
+}
+
+@test "nix-bootstrap: defaults to user activation" {
+    skip_on_linux "macOS-specific Nix bootstrap"
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-bootstrap" \
+        --dry-run --skip-npm
+
+    assert_success
+    assert_output --partial "bin/core/nix-activate"
+    assert_output --partial "bin/core/zsh-compile --force"
+    refute_output --partial "bin/core/nix-rebuild"
+    refute_output --partial "sudo"
+}
+
+@test "zsh-compile: force replaces stale bytecode" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not installed"
+    local real_dotfiles_root compile_home source_file original_checksum
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    compile_home="$BATS_TEST_TMPDIR/zsh-compile-home"
+    source_file="$compile_home/.config/zsh/.zshrc"
+    mkdir -p "$(dirname "$source_file")"
+    printf 'export COMPILED_VALUE=old\n' > "$source_file"
+    zsh -c 'zcompile "$1"' _ "$source_file"
+    original_checksum="$(cksum < "$source_file.zwc")"
+    touch -t 203001010000 "$source_file.zwc"
+    printf 'export COMPILED_VALUE=new\n' > "$source_file"
+
+    run env HOME="$compile_home" zsh \
+        "$real_dotfiles_root/bin/core/zsh-compile" --force
+
+    assert_success
+    refute_output --partial "already up to date"
+    refute [ "$(cksum < "$source_file.zwc")" = "$original_checksum" ]
+}
+
+@test "nix-bootstrap: system mode is explicit" {
+    skip_on_linux "macOS-specific Nix bootstrap"
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-bootstrap" \
+        --system --dry-run --skip-npm
+
+    assert_success
+    assert_output --partial "bin/core/nix-rebuild"
+}
+
+@test "nix-update: switch defaults to user activation" {
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-update" \
+        --switch --dry-run
+
+    assert_success
+    assert_output --partial "bin/core/nix-activate"
+    refute_output --partial "bin/core/nix-rebuild"
+    refute_output --partial "sudo"
+}
+
+@test "nix-update: system switch is explicit" {
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-update" \
+        --switch --system --dry-run
+
+    assert_success
+    assert_output --partial "bin/core/nix-rebuild"
+}
+
+@test "nix-update: system mode requires switch" {
+    local real_dotfiles_root
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    run /bin/bash "$real_dotfiles_root/bin/core/nix-update" \
+        --system --dry-run
+
+    assert_failure
+    assert_output --partial "--system requires --switch"
 }
 
 @test "install: --verbose enables verbose output" {
@@ -164,7 +371,7 @@ teardown() {
 
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
-    assert_output --partial "Would install jq"
+    assert_output --regexp "(Would install jq|jq is already installed)"
 }
 
 @test "install: dry-run reports would install pyenv" {
@@ -216,7 +423,9 @@ teardown() {
 # Phase Execution Tests
 
 @test "install: executes all phases in order" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes
+    skip_on_linux "macOS-specific phase sequence"
+
+    run env SHELL=/bin/zsh "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
 
     # Verify phase order in output
@@ -225,7 +434,7 @@ teardown() {
     assert_output --partial "Phase 3: Dependencies"
     assert_output --partial "Phase 4: Homebrew Bundle"
     assert_output --partial "Phase 5: Version Manager Setup"
-    assert_output --partial "Phase 6: Prezto & Powerlevel10k Setup"
+    assert_output --partial "Phase 6: Prezto & Starship Setup"
     assert_output --partial "Phase 7: Symlink Creation"
     assert_output --partial "Phase 8: Shell Configuration"
     assert_output --partial "Phase 9: Performance Optimization"
@@ -431,6 +640,8 @@ teardown() {
 }
 
 @test "install: handles missing Brewfile gracefully" {
+    skip_on_linux "Homebrew is only configured on macOS"
+
     rm -f "$DOTFILES_ROOT/packages/homebrew/Brewfile"
 
     run "$DOTFILES_ROOT/install" --dry-run --yes
@@ -499,13 +710,15 @@ teardown() {
     fi
 }
 
-@test "install: checks for Powerlevel10k theme" {
+@test "install: checks for Starship prompt" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
 
-    # Should check for Powerlevel10k if Prezto exists
-    if [[ -d "$HOME/.zprezto" ]]; then
-        assert_output --partial "Powerlevel10k"
+    if command -v starship >/dev/null 2>&1; then
+        assert_output --partial "Starship is already installed"
+    else
+        assert_output --partial "Starship is not installed"
+        assert_output --partial "Would install Starship with Homebrew"
     fi
 }
 

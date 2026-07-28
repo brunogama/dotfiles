@@ -6,7 +6,7 @@ orchestrating git operations with proper error handling and rollback support.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 from home_sync.git import (
     GitConflictError,
@@ -32,8 +32,6 @@ logger = setup_logger(__name__)
 
 class DotfilesSyncError(Exception):
     """Base exception for dotfiles sync operations."""
-
-    pass
 
 
 @dataclass
@@ -105,9 +103,7 @@ class DotfilesSync:
 
         # Check is git repository
         if not is_git_repo(self.config.repo_path):
-            raise DotfilesSyncError(
-                f"Not a git repository: {self.config.repo_path}"
-            )
+            raise DotfilesSyncError(f"Not a git repository: {self.config.repo_path}")
 
         # Check not detached HEAD
         try:
@@ -117,21 +113,23 @@ class DotfilesSync:
             raise DotfilesSyncError(f"Cannot determine current branch: {e}") from e
 
         # Check remote connectivity if sync operations will be performed
-        if not self.config.skip_pull or not self.config.skip_push:
-            if not is_remote_reachable(self.config.repo_path, self.config.remote):
-                if self.config.dry_run:
-                    logger.warning(
-                        f"Remote '{self.config.remote}' is not reachable (dry-run, continuing)"
-                    )
-                else:
-                    raise DotfilesSyncError(
-                        f"Remote '{self.config.remote}' is not reachable. "
-                        f"Check network connection."
-                    )
+        syncs_remote = not self.config.skip_pull or not self.config.skip_push
+        if syncs_remote and not is_remote_reachable(
+            self.config.repo_path, self.config.remote
+        ):
+            if self.config.dry_run:
+                logger.warning(
+                    f"Remote '{self.config.remote}' is not reachable (dry-run, continuing)"
+                )
+            else:
+                raise DotfilesSyncError(
+                    f"Remote '{self.config.remote}' is not reachable. "
+                    f"Check network connection."
+                )
 
         logger.info("Prerequisites validated successfully")
 
-    def check_status(self) -> dict[str, any]:
+    def check_status(self) -> dict[str, Any]:
         """Check current repository status.
 
         Returns:
@@ -175,7 +173,7 @@ class DotfilesSync:
         except GitError as e:
             raise DotfilesSyncError(f"Failed to check status: {e}") from e
 
-    def can_sync(self) -> tuple[bool, Optional[str]]:
+    def can_sync(self) -> tuple[bool, str | None]:
         """Check if sync can proceed.
 
         Returns:

@@ -26,8 +26,7 @@ zstyle ':prezto:load' pmodule \
   'git' \
   'syntax-highlighting' \
   'history-substring-search' \
-  'autosuggestions' \
-  'prompt'
+  'autosuggestions'
 
 #
 # Editor
@@ -70,14 +69,6 @@ zstyle ':prezto:module:history-substring-search' case-sensitive 'no'
 
 # Enable search for fuzzy matches.
 zstyle ':prezto:module:history-substring-search' fuzzy 'yes'
-
-#
-# Prompt
-#
-
-# Set the prompt theme to load.
-# Use powerlevel10k for advanced prompt
-zstyle ':prezto:module:prompt' theme 'powerlevel10k'
 
 #
 # Syntax Highlighting
