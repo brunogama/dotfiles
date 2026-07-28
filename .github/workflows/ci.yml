@@ -293,11 +293,15 @@ jobs:
           uv sync --extra dev
           uv pip install mutmut==2.4.5
 
-          # Keep mutation testing bounded to the metrics module. The full
-          # package would execute the 270-test suite once per mutant.
+          # Keep mutation testing bounded to the metrics module and its focused
+          # tests. The default runner executes the entire suite per mutant.
+          mutation_runner="python -m pytest -x --assert=plain -q"
+          mutation_runner+=" tests/test_metrics.py"
           uv run mutmut run \
             --paths-to-mutate=home_sync/metrics.py \
-            --tests-dir=tests/test_metrics.py
+            --runner "$mutation_runner" \
+            --no-progress \
+            --CI
           uv run mutmut results
           uv run mutmut html
           uv run mutmut junitxml > mutation-results.xml
