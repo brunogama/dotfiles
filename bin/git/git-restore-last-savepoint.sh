@@ -1,4 +1,4 @@
-#!/usr/bin env bash
+#!/usr/bin/env bash
 
 # Restore from reflog last commit that has "chore!: SAVE POINT" in the message
 commit_hash=$(git reflog --pretty="%H %s" | grep "chore!: SAVE POINT" | head -n1 | cut -d" " -f1)

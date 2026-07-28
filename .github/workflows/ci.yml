@@ -35,6 +35,10 @@ jobs:
 
       - name: Run pre-commit hooks
         uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507
+        env:
+          # Commit-time hooks enforce these on changed files. Running them over
+          # the historical repository would create unrelated formatting edits.
+          SKIP: trailing-whitespace,end-of-file-fixer
 
       - name: Validate MINDSET rules
         run: |
