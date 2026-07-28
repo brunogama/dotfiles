@@ -11,6 +11,12 @@ in
 {
   nixpkgs.hostPlatform = host.system;
 
+  networking = {
+    computerName = host.computerName;
+    hostName = host.hostName;
+    localHostName = host.localHostName;
+  };
+
   nix = {
     enable = host.manageNix;
     settings.experimental-features = [
@@ -44,10 +50,17 @@ in
 
     defaults = {
       NSGlobalDomain = {
+        AppleInterfaceStyleSwitchesAutomatically = true;
         ApplePressAndHoldEnabled = false;
         AppleShowAllExtensions = true;
-        InitialKeyRepeat = 15;
-        KeyRepeat = 2;
+        InitialKeyRepeat = 10;
+        KeyRepeat = 1;
+        NSAutomaticCapitalizationEnabled = true;
+        NSAutomaticPeriodSubstitutionEnabled = true;
+        "com.apple.springing.delay" = 0.5;
+        "com.apple.springing.enabled" = true;
+        "com.apple.swipescrolldirection" = false;
+        "com.apple.trackpad.forceClick" = true;
       };
 
       trackpad = {
@@ -57,21 +70,69 @@ in
 
       finder = {
         AppleShowAllFiles = true;
-        ShowPathbar = true;
-        _FXSortFoldersFirst = true;
-        FXPreferredViewStyle = "Nlsv";
         FXEnableExtensionChangeWarning = false;
+        FXPreferredViewStyle = "Nlsv";
+        NewWindowTarget = "Recents";
+        ShowExternalHardDrivesOnDesktop = true;
+        ShowHardDrivesOnDesktop = false;
+        ShowPathbar = true;
+        ShowRemovableMediaOnDesktop = true;
         _FXShowPosixPathInTitle = true;
+        _FXSortFoldersFirst = true;
+        _FXSortFoldersFirstOnDesktop = true;
       };
 
       dock = {
-        orientation = "bottom";
         autohide = true;
-        showhidden = true;
-        show-recents = false;
-        tilesize = 74;
+        autohide-delay = 0.0;
+        autohide-time-modifier = 0.0;
         minimize-to-application = true;
+        orientation = "bottom";
+        persistent-apps = [
+          "/System/Applications/Apps.app"
+          "/Applications/Safari.app"
+          "/System/Applications/Reminders.app"
+          "/System/Applications/Music.app"
+          "/System/Applications/System Settings.app"
+        ];
+        persistent-others = [
+          {
+            folder = {
+              path = "${homeDirectory}/Downloads";
+              arrangement = "date-added";
+              displayas = "stack";
+              showas = "fan";
+            };
+          }
+        ];
         show-process-indicators = true;
+        show-recents = false;
+        showhidden = true;
+        tilesize = 41;
+        wvous-br-corner = 14;
+      };
+
+      menuExtraClock = {
+        ShowAMPM = true;
+        ShowDate = 0;
+        ShowDayOfWeek = true;
+      };
+
+      ActivityMonitor = {
+        OpenMainWindow = true;
+        ShowCategory = 102;
+      };
+
+      iCal.CalendarSidebarShown = false;
+      hitoolbox.AppleFnUsageType = "Start Dictation";
+
+      WindowManager = {
+        AppWindowGroupingBehavior = true;
+        AutoHide = false;
+        EnableTiledWindowMargins = false;
+        HideDesktop = true;
+        StageManagerHideWidgets = false;
+        StandardHideWidgets = false;
       };
 
       screencapture = {
@@ -81,10 +142,20 @@ in
       };
 
       CustomUserPreferences = {
+        NSGlobalDomain = {
+          AppleLanguages = [
+            "pt-BR"
+            "en-BR"
+          ];
+          AppleLocale = "pt_BR";
+          AppleMiniaturizeOnDoubleClick = false;
+        };
         "com.apple.desktopservices" = {
           DSDontWriteNetworkStores = true;
           DSDontWriteUSBStores = true;
         };
+        "com.apple.finder".ShowSidebar = true;
+        "com.apple.iCal".enableTravelAdvisoriesForAutomaticBehavior = true;
         "com.apple.SoftwareUpdate" = {
           AutomaticCheckEnabled = true;
           AutomaticDownload = true;

@@ -1,7 +1,10 @@
 {
   # This is the only file that should need editing for another user or Mac.
-  configurationName = "personal-mac";
+  configurationName = "naboo";
   username = "bruno";
+  computerName = "naboo";
+  hostName = "naboo";
+  localHostName = "naboo";
   system = "aarch64-darwin";
 
   git = {

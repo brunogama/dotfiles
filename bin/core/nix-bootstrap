@@ -35,6 +35,8 @@ YES=false
 SKIP_NPM=false
 SYSTEM_MODE=false
 CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
+USERNAME_VALUE=""
+MACHINE_NAME=""
 
 usage() {
     cat <<'EOF'
@@ -47,6 +49,8 @@ require administrator access when Nix is missing.
 Options:
   --system                Activate nix-darwin system settings with sudo
   --configuration NAME    Select the mode's flake output (default: default)
+  --username NAME         Set the macOS account short name
+  --machine-name NAME     Set the Mac display name and normalized host names
   --skip-npm              Do not synchronize pinned npm tools
   --dry-run               Print planned actions without changing the system
   --yes                   Confirm prerequisite installations non-interactively
@@ -77,6 +81,16 @@ while [[ $# -gt 0 ]]; do
         --configuration)
             [[ $# -ge 2 ]] || { echo "nix-bootstrap: --configuration requires a name" >&2; exit 2; }
             CONFIGURATION="$2"
+            shift
+            ;;
+        --username)
+            [[ $# -ge 2 ]] || { echo "nix-bootstrap: --username requires a name" >&2; exit 2; }
+            USERNAME_VALUE="$2"
+            shift
+            ;;
+        --machine-name)
+            [[ $# -ge 2 ]] || { echo "nix-bootstrap: --machine-name requires a name" >&2; exit 2; }
+            MACHINE_NAME="$2"
             shift
             ;;
         --skip-npm)
@@ -185,6 +199,22 @@ install_homebrew() {
         eval "$(/usr/local/bin/brew shellenv)"
     fi
 }
+
+configure_script="$SCRIPT_DIR/nix-configure-host"
+[[ -x "$configure_script" ]] || {
+    echo "nix-bootstrap: host configurator not found: $configure_script" >&2
+    exit 2
+}
+configure_args=()
+[[ -n "$USERNAME_VALUE" ]] && configure_args+=(--username "$USERNAME_VALUE")
+[[ -n "$MACHINE_NAME" ]] && configure_args+=(--machine-name "$MACHINE_NAME")
+[[ "$DRY_RUN" == "true" ]] && configure_args+=(--dry-run)
+[[ "$YES" == "true" ]] && configure_args+=(--yes)
+if (( ${#configure_args[@]} > 0 )); then
+    "$configure_script" "${configure_args[@]}"
+else
+    "$configure_script"
+fi
 
 install_nix
 if [[ "$SYSTEM_MODE" == "true" ]]; then

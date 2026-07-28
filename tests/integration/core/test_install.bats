@@ -68,6 +68,8 @@ teardown() {
     assert_output --partial "OPTIONS:"
     assert_output --partial "--nix"
     assert_output --partial "--system"
+    assert_output --partial "--username"
+    assert_output --partial "--machine-name"
     assert_output --partial "EXIT CODES:"
 }
 
@@ -107,6 +109,51 @@ teardown() {
     run /bin/bash "$DOTFILES_ROOT/install" --nix --system --dry-run
     assert_success
     assert_output --partial "Mock nix-bootstrap: --system --dry-run"
+}
+
+@test "install: --nix forwards host identity" {
+    run /bin/bash "$DOTFILES_ROOT/install" --nix \
+        --username ci-user --machine-name "CI Runner Mac" --dry-run
+
+    assert_success
+    assert_output --partial "--username ci-user"
+    assert_output --partial "--machine-name CI Runner Mac"
+}
+
+@test "nix-configure-host: prompts and writes host identity" {
+    local real_dotfiles_root host_file original_host
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    original_host="$real_dotfiles_root/nix/host.nix"
+    cp "$original_host" "$host_file"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash -c \
+        'printf "%s\n" "ci-user" "CI Runner Mac" | /bin/bash "$1"' \
+        _ "$real_dotfiles_root/bin/core/nix-configure-host"
+
+    assert_success
+    assert_file_contains "$host_file" 'configurationName = "ci-runner-mac";'
+    assert_file_contains "$host_file" 'username = "ci-user";'
+    assert_file_contains "$host_file" 'computerName = "CI Runner Mac";'
+    assert_file_contains "$host_file" 'hostName = "ci-runner-mac";'
+    assert_file_contains "$host_file" 'localHostName = "ci-runner-mac";'
+}
+
+@test "nix-configure-host: dry-run preserves host configuration" {
+    local real_dotfiles_root host_file checksum_before checksum_after
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    cp "$real_dotfiles_root/nix/host.nix" "$host_file"
+    checksum_before="$(cksum < "$host_file")"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash \
+        "$real_dotfiles_root/bin/core/nix-configure-host" \
+        --dry-run --username ci-user --machine-name "CI Runner Mac"
+
+    assert_success
+    assert_output --partial "Would configure Nix username: ci-user"
+    checksum_after="$(cksum < "$host_file")"
+    assert_equal "$checksum_after" "$checksum_before"
 }
 
 @test "nix-bootstrap: detects installed Nix outside PATH" {
