@@ -109,7 +109,7 @@ defaults write com.apple.dock showhidden -bool true
 defaults write com.apple.dock show-recents -bool false
 
 # Dock icon size
-defaults write com.apple.dock tilesize -int 74
+defaults write com.apple.dock tilesize -int 41
 
 # Minimize to app icon
 defaults write com.apple.dock minimize-to-application -bool true

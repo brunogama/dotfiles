@@ -80,6 +80,9 @@ USAGE:
 OPTIONS:
     --nix              Activate the user environment with Home Manager
     --system           With --nix, activate privileged nix-darwin settings
+    --username NAME    With --nix, set the macOS account short name
+    --machine-name NAME
+                       With --nix, set the Mac and normalized host names
     --dry-run          Preview what would be done
     --yes              Non-interactive mode (assume yes)
     --skip-brew        Skip Homebrew installation/bundle
