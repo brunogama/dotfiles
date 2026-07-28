@@ -5,7 +5,7 @@ import subprocess
 import time
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -135,10 +135,10 @@ class TestInterruptibleSleep:
 
         assert result is False
         assert elapsed >= 1.0
-        assert elapsed < 2.0  # Should interrupt quickly
+        assert elapsed < 1.5  # Should interrupt quickly
 
-    def test_sleep_checks_every_second(self) -> None:
-        """Test sleep checks shutdown flag every second."""
+    def test_sleep_checks_frequently(self) -> None:
+        """Test sleep checks the shutdown flag frequently."""
         daemon._shutdown_requested = False
 
         # Set shutdown after 0.5 seconds
@@ -157,10 +157,10 @@ class TestInterruptibleSleep:
 
         thread.join()
 
-        # Should check at 1 second mark and interrupt
+        # Should notice the shutdown soon after the flag changes.
         assert result is False
-        assert elapsed >= 1.0
-        assert elapsed < 1.5
+        assert elapsed >= 0.5
+        assert elapsed < 1.0
 
 
 class TestRunDaemon:
