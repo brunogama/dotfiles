@@ -7,6 +7,81 @@
 }:
 let
   npmBin = "${config.xdg.dataHome}/dotfiles/npm/current/node_modules/.bin";
+  legacyLinks = [
+    {
+      target = ".zshenv";
+      source = ../zsh/.zshenv;
+    }
+    {
+      target = ".config/zsh/.zshrc";
+      source = ../zsh/.zshrc;
+    }
+    {
+      target = ".config/zsh/.zprofile";
+      source = ../zsh/.zprofile;
+    }
+    {
+      target = ".config/zsh/.zpreztorc";
+      source = ../zsh/.zpreztorc;
+    }
+    {
+      target = ".config/starship.toml";
+      source = ../zsh/starship.toml;
+    }
+    {
+      target = ".config/zsh/work-config.zsh";
+      source = ../zsh/work-config.zsh;
+    }
+    {
+      target = ".config/zsh/personal-config.zsh";
+      source = ../zsh/personal-config.zsh;
+    }
+    {
+      target = ".config/zsh/lib/lazy-load.zsh";
+      source = ../zsh/lib/lazy-load.zsh;
+    }
+    {
+      target = ".config/zsh/completion/_pi";
+      source = ../zsh/completion/_pi;
+    }
+    {
+      target = ".config/zsh/completion/git-ignore-completion";
+      source = ../zsh/completion/git-ignore-completion;
+    }
+    {
+      target = ".gitconfig";
+      source = ../git/.gitconfig;
+    }
+    {
+      target = ".gitignore_global";
+      source = ../git/.gitignore_global;
+    }
+    {
+      target = ".config/git/github-flow-aliases.gitconfig";
+      source = ../git/github-flow-aliases.gitconfig;
+    }
+    {
+      target = ".config/git/conventional-commits-gitmessage";
+      source = ../git/conventional-commits-gitmessage;
+    }
+    {
+      target = ".config/git/ios.gitattributes";
+      source = ../git/ios.gitattributes;
+    }
+  ];
+  legacyLinkSource =
+    link:
+    pkgs.writeText "legacy-dotfile-${builtins.substring 0 12 (builtins.hashString "sha256" link.target)}" (
+      builtins.readFile link.source
+    );
+  legacyLinkCommands = lib.concatMapStringsSep "\n" (
+    link:
+    "migrate_legacy_link ${lib.escapeShellArg link.target} ${lib.escapeShellArg (legacyLinkSource link)}"
+  ) legacyLinks;
+  legacyLinkCheckCommands = lib.concatMapStringsSep "\n" (
+    link:
+    "check_legacy_link ${lib.escapeShellArg link.target} ${lib.escapeShellArg (legacyLinkSource link)}"
+  ) legacyLinks;
 in
 {
   home = {
@@ -29,6 +104,44 @@ in
   };
 
   xdg.enable = true;
+
+  home.activation.migrateLegacyDotfileLinks = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    check_legacy_link() {
+      local relative="$1"
+      local expected="$2"
+      local target="$HOME/$relative"
+      local backup="$target.pre-nix"
+
+      if [[ ! -L "$target" ]] || ! cmp -s -- "$target" "$expected"; then
+        return 0
+      fi
+      if [[ ( -e "$backup" || -L "$backup" ) ]] && ! cmp -s -- "$backup" "$expected"; then
+        echo "Home Manager migration: refusing to overwrite $backup" >&2
+        return 1
+      fi
+    }
+
+    migrate_legacy_link() {
+      local relative="$1"
+      local expected="$2"
+      local target="$HOME/$relative"
+      local backup="$target.pre-nix"
+
+      if [[ ! -L "$target" ]] || ! cmp -s -- "$target" "$expected"; then
+        return 0
+      fi
+
+      if [[ -e "$backup" || -L "$backup" ]]; then
+        rm -- "$target"
+      else
+        mv -- "$target" "$backup"
+      fi
+      echo "Home Manager migration: preserved $target as $backup" >&2
+    }
+
+    ${legacyLinkCheckCommands}
+    ${legacyLinkCommands}
+  '';
 
   programs = {
     home-manager.enable = true;
