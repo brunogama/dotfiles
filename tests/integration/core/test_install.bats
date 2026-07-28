@@ -410,7 +410,9 @@ teardown() {
 # Phase Execution Tests
 
 @test "install: executes all phases in order" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes
+    skip_on_linux "macOS-specific phase sequence"
+
+    run env SHELL=/bin/zsh "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
 
     # Verify phase order in output
@@ -625,6 +627,8 @@ teardown() {
 }
 
 @test "install: handles missing Brewfile gracefully" {
+    skip_on_linux "Homebrew is only configured on macOS"
+
     rm -f "$DOTFILES_ROOT/packages/homebrew/Brewfile"
 
     run "$DOTFILES_ROOT/install" --dry-run --yes
