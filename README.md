@@ -85,7 +85,7 @@ Useful installer modes:
 ```
 
 > [!TIP]
-> User and system activation are idempotent. Existing Home Manager conflicts are backed up as `*.pre-nix`. On first system activation, recognized Apple shell files modified only by the upstream Nix installer are preserved as `*.before-nix-darwin`; unknown or customized `/etc` files are never overwritten. Homebrew is touched only by explicit `--system` activation, and automatic cleanup remains disabled.
+> User and system activation are idempotent. Regular Home Manager conflicts and recognized symlinks from the legacy linker are preserved as `*.pre-nix`; unknown symlinks remain protected. On first system activation, recognized Apple shell files modified only by the upstream Nix installer are preserved as `*.before-nix-darwin`; unknown or customized `/etc` files are never overwritten. Homebrew is touched only by explicit `--system` activation, and automatic cleanup remains disabled.
 
 ### First steps after install
 
