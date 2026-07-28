@@ -1238,7 +1238,6 @@ show_summary() {
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "This was a dry run - no changes were made"
         log_info "Run './install' (without --dry-run) to actually install"
-        return
     fi
 
     echo "Next Steps:"

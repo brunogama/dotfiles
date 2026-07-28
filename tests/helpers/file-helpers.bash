@@ -202,6 +202,11 @@ create_file_with_content() {
     echo "$content" > "$file_path"
 }
 
+# Compatibility name used throughout the integration suite
+create_test_file() {
+    create_file_with_content "$@"
+}
+
 # Append to file
 append_to_file() {
     local file_path="$1"
