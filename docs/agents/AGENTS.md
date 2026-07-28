@@ -1,6 +1,6 @@
 # global agent instructions
 
-- Never use the em dash "—". Use plain dash "-" instead
+- Never use the Unicode em dash character. Use plain dash "-" instead
 - When writing commit messages, NEVER auto-add your agent name as co-author
 - Never manually modify CHANGELOG.md files or any files that are marked as auto-generated
 - When making technical decisions, do not give much weight to development cost.
@@ -13,4 +13,4 @@
 - Apply that same high standard to engineering excellence: lint, test failures, and test flakiness.
   If you see one, even if it is not caused by what you are working on right now, still get it fixed.
 - Before using "dynamic workflows", "ultra code" or any harness feature that immediately spawns a large swarm of subagents, always explain the tradeoffs and ask the user for explicit approval.
-- All markdown must separate ending topics of "##" headerss with: "{{blank line}} {{triple-hiffen}} {{blank-line}}" for sharding.
+- Separate sections introduced by level-two Markdown headings with a blank line, a horizontal rule (`---`), and another blank line.

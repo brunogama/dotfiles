@@ -156,6 +156,19 @@ teardown() {
     assert_equal "$checksum_after" "$checksum_before"
 }
 
+@test "nix-configure-host: rejects shell glob characters in machine names" {
+    local real_dotfiles_root machine_name
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+
+    for machine_name in '*' '?' '[' ']'; do
+        run /bin/bash "$real_dotfiles_root/bin/core/nix-configure-host" \
+            --dry-run --username ci-user --machine-name "$machine_name"
+
+        assert_failure
+        assert_output --partial "contains unsupported characters"
+    done
+}
+
 @test "nix-bootstrap: detects installed Nix outside PATH" {
     skip_on_linux "macOS-specific Nix bootstrap"
     [[ -r /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]] || \
