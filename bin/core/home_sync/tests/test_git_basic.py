@@ -8,14 +8,12 @@ Tests cover:
 """
 
 import subprocess
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from home_sync.git import (
-    BranchStatus,
     GitError,
     GitTimeoutError,
     check_dirty,

@@ -4,12 +4,10 @@ import os
 import time
 from multiprocessing import Process, Queue
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from home_sync.lock import (
-    LOCK_TIMEOUT,
     LockError,
     _check_stale_lock,
     _is_process_running,

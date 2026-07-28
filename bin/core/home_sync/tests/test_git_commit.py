@@ -209,7 +209,7 @@ class TestCreateCommit:
         (temp_git_repo / "file.txt").write_text("content\n")
         stage_changes(temp_git_repo)
 
-        commit_sha = create_commit(temp_git_repo, message)
+        create_commit(temp_git_repo, message)
 
         # Verify full commit message
         result = subprocess.run(
