@@ -101,7 +101,6 @@ in
     enableZshIntegration = false;
     brews = [ "sourcekitten" ];
     casks = [ "fork" ];
-    vscode = [ "anysphere.remote-ssh" ];
     onActivation = {
       autoUpdate = false;
       cleanup = "none";
