@@ -168,6 +168,10 @@ in
   };
 
   home.file = {
+    ".pi/agent/AGENTS.md".source = ../docs/agents/AGENTS.md;
+    ".codex/AGENTS.md".source = ../docs/agents/AGENTS.md;
+    ".claude/CLAUDE.md".source = ../docs/agents/AGENTS.md;
+
     ".gitignore_global".source = ../git/.gitignore_global;
     ".config/git/github-flow-aliases.gitconfig".source = ../git/github-flow-aliases.gitconfig;
     ".config/git/conventional-commits-gitmessage".source = ../git/conventional-commits-gitmessage;
