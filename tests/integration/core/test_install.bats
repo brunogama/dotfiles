@@ -158,8 +158,30 @@ teardown() {
 
     assert_success
     assert_output --partial "bin/core/nix-activate"
+    assert_output --partial "bin/core/zsh-compile --force"
     refute_output --partial "bin/core/nix-rebuild"
     refute_output --partial "sudo"
+}
+
+@test "zsh-compile: force replaces stale bytecode" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not installed"
+    local real_dotfiles_root compile_home source_file original_checksum
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    compile_home="$BATS_TEST_TMPDIR/zsh-compile-home"
+    source_file="$compile_home/.config/zsh/.zshrc"
+    mkdir -p "$(dirname "$source_file")"
+    printf 'export COMPILED_VALUE=old\n' > "$source_file"
+    zsh -c 'zcompile "$1"' _ "$source_file"
+    original_checksum="$(cksum < "$source_file.zwc")"
+    touch -t 203001010000 "$source_file.zwc"
+    printf 'export COMPILED_VALUE=new\n' > "$source_file"
+
+    run env HOME="$compile_home" zsh \
+        "$real_dotfiles_root/bin/core/zsh-compile" --force
+
+    assert_success
+    refute_output --partial "already up to date"
+    refute [ "$(cksum < "$source_file.zwc")" = "$original_checksum" ]
 }
 
 @test "nix-bootstrap: system mode is explicit" {

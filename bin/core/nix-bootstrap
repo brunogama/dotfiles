@@ -201,6 +201,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
         activation_args+=(--skip-npm)
     fi
     print_command "$activation_script" "${activation_args[@]}"
+    print_command /bin/zsh "$SCRIPT_DIR/zsh-compile" --force
     exit 0
 fi
 
@@ -210,6 +211,14 @@ if [[ "$SKIP_NPM" == "true" ]]; then
     activation_args+=(--skip-npm)
 fi
 "$activation_script" "${activation_args[@]}"
+
+compile_script="$SCRIPT_DIR/zsh-compile"
+if [[ -f "$compile_script" ]]; then
+    /bin/zsh "$compile_script" --force
+else
+    echo "nix-bootstrap: zsh compiler not found: $compile_script" >&2
+    exit 1
+fi
 
 if [[ "$SYSTEM_MODE" == "true" ]]; then
     echo "Nix system bootstrap complete. Start a new shell with: exec zsh"
