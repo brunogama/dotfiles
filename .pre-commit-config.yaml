@@ -33,6 +33,12 @@ repos:
             tests/.*\.bats$
           )
 
+  # Gitleaks - scan staged changes for hardcoded secrets.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
