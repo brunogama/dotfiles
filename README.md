@@ -52,7 +52,7 @@ The main goals are:
 - macOS with Xcode Command Line Tools: `xcode-select --install`
 - Git for cloning the repository
 - Administrator access only when installing multi-user Nix or explicitly activating nix-darwin system settings
-- Review `nix/host.nix`; it is the single place for the user, architecture, and Git identity
+- Review `nix/host.nix`; installation configures the user and machine names, while architecture and Git identity remain editable there
 
 `./install --nix` defaults to standalone Home Manager and does not use sudo when Nix is already installed. Use `./install --nix --system` only when you want nix-darwin, macOS defaults, shell registration, and retained Homebrew items. If Nix is managed by Determinate Systems, set `manageNix = false` in `nix/host.nix` before system activation.
 
@@ -62,13 +62,13 @@ The main goals are:
 git clone https://github.com/brunogama/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 
-# Edit username, architecture, and Git identity first
+# Edit architecture and Git identity when adapting this repository
 $EDITOR nix/host.nix
 
 # Preview prerequisite and activation commands
 ./install --nix --dry-run
 
-# Activate Home Manager and npm tools without sudo
+# Enter the macOS username and machine name, then activate without sudo
 ./install --nix
 
 exec zsh
@@ -78,7 +78,8 @@ Useful installer modes:
 
 ```bash
 ./install --nix --system    # Optional privileged nix-darwin activation
-./install --nix --yes       # Non-interactive prerequisite installation
+./install --nix --yes       # Auto-detect identity without prompting
+./install --nix --username bruno --machine-name "Bruno’s MacBook Pro"
 ./install --nix --skip-npm  # Activate without the external npm tool set
 ./install --scripts-only    # Refresh scripts in ~/local/bin only
 ./install                   # Legacy Homebrew/version-manager installer
@@ -272,7 +273,7 @@ uv run pytest tests/ -v
 uv run mypy home_sync --strict
 ```
 
-GitHub Actions also validates pre-commit hooks, lowercase directory rules, emoji-free text files, shell scripts, the linking manifest, OpenSpec proposals, installation dry runs, and Linux/macOS test paths.
+GitHub Actions also runs a complete Home Manager installation on a fresh macOS runner, verifies the configured host identity, managed files, compiled shell, Nix packages, and pinned npm tools, and retains the existing static, integration, and documentation checks.
 
 ## Documentation
 
