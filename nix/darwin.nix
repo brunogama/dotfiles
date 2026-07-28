@@ -21,6 +21,17 @@ in
 
   programs.zsh.enable = true;
 
+  # The upstream Nix 2.35 daemon installer prepends its initialization block to
+  # Apple's stock shell files. These exact hashes contain no user customization;
+  # allowing them lets nix-darwin preserve each original as
+  # *.before-nix-darwin during first activation instead of aborting.
+  environment.etc."bashrc".knownSha256Hashes = [
+    "8b5e3466922d1ae34bc145e21c7e53e7329a7a7b58b148b436bd954d5e651ac3"
+  ];
+  environment.etc."zshrc".knownSha256Hashes = [
+    "cf0f7b7775b4c058d6085d9e7e57d58c307ca43730f8e4d921a9ef4e530e7e16"
+  ];
+
   users.users.${host.username} = {
     home = homeDirectory;
     shell = pkgs.zsh;
