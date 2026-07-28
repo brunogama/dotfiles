@@ -11,7 +11,11 @@
 sudo -v
 
 # Keep-alive: update existing sudo time stamp until script has finished
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+while true; do
+	sudo -n true
+	sleep 60
+	kill -0 "$$" || exit
+done 2>/dev/null &
 
 echo "Applying macOS settings..."
 
@@ -19,12 +23,16 @@ echo "Applying macOS settings..."
 # System Information                                                          #
 ###############################################################################
 
-# Computer Name
-MACHINE_NAME="Naboo"
+# Computer Name (optional: export MACHINE_NAME before running this legacy script)
+MACHINE_NAME="${MACHINE_NAME:-}"
 
-sudo scutil --set ComputerName "${MACHINE_NAME}"
-sudo scutil --set HostName "${MACHINE_NAME}"
-sudo scutil --set LocalHostName "${MACHINE_NAME}"
+if [[ -n "$MACHINE_NAME" ]]; then
+	sudo scutil --set ComputerName "$MACHINE_NAME"
+	sudo scutil --set HostName "$MACHINE_NAME"
+	sudo scutil --set LocalHostName "$MACHINE_NAME"
+else
+	echo "Skipping computer name; MACHINE_NAME is not set"
+fi
 
 ###############################################################################
 # Global Preferences                                                          #
@@ -101,7 +109,7 @@ defaults write com.apple.dock showhidden -bool true
 defaults write com.apple.dock show-recents -bool false
 
 # Dock icon size
-defaults write com.apple.dock tilesize -int 74
+defaults write com.apple.dock tilesize -int 41
 
 # Minimize to app icon
 defaults write com.apple.dock minimize-to-application -bool true
@@ -129,7 +137,7 @@ defaults write com.apple.terminal SecureKeyboardEntry -bool true
 ###############################################################################
 
 # Screenshot save location
-defaults write com.apple.screencapture location -string "/Users/bruno/Desktop"
+defaults write com.apple.screencapture location -string "$HOME/Desktop"
 
 # Screenshot format
 defaults write com.apple.screencapture type -string "png"
@@ -193,7 +201,7 @@ defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
 ###############################################################################
 
 for app in "Dock" "Finder" "Mail" "Photos" "Safari" "SystemUIServer" "Terminal"; do
-    killall "${app}" >/dev/null 2>&1 || true
+	killall "${app}" >/dev/null 2>&1 || true
 done
 
 echo "Done. Note that some of these changes require a logout/restart to take effect."

@@ -261,7 +261,7 @@ class TestUtilsIntegration:
         """Test complete command execution workflow."""
         # Create a test file
         test_file = tmp_path / "test.txt"
-        test_file.write_text("test content")
+        test_file.write_text("test content\n")
 
         # List directory
         result = run_command(["ls", "-1"], cwd=tmp_path)

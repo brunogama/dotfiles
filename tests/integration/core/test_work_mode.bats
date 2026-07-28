@@ -11,7 +11,9 @@ load '../../helpers/bats-file/load.bash'
 setup() {
     standard_setup
 
-    export ZSHENV="$HOME/.zshenv"
+    # Keep the historical variable name so existing assertions target the new state file.
+    export ZSHENV="$HOME/.config/zsh/environment.zsh"
+    mkdir -p "$(dirname "$ZSHENV")"
 }
 
 teardown() {
@@ -23,7 +25,7 @@ teardown() {
 @test "work-mode: status shows current environment" {
     run_core_script "work-mode" "status"
     assert_success
-    assert_output --partial "Environment:"
+    assert_output --partial "Current environment:"
 }
 
 @test "work-mode: status defaults to personal when no config exists" {
@@ -197,15 +199,15 @@ teardown() {
 
     # Should have work value now
     assert_file_contains "$ZSHENV" "export DOTFILES_ENV=work"
-    refute_file_contains "$ZSHENV" "export DOTFILES_ENV=personal"
+    assert_file_not_contains "$ZSHENV" "export DOTFILES_ENV=personal"
 }
 
-# Reload Prompt Tests
+# Reload Tests
 
-@test "work-mode: offers to reload shell" {
+@test "work-mode: shows reload guidance" {
     run_core_script "work-mode" "work" <<< "n"
     assert_success
-    assert_output --partial "Reload shell now?"
+    assert_output --partial "Reload your shell"
 }
 
 @test "work-mode: shows reload command" {
@@ -214,31 +216,13 @@ teardown() {
     assert_output --partial "exec zsh"
 }
 
-# Prompt Indicator Tests
-
-@test "work-mode: mentions prompt indicator for work mode" {
-    run_core_script "work-mode" "work" <<< "n"
-    assert_success
-    assert_output --partial "Prompt will show"
-    assert_output --partial "WORK"
-}
-
-@test "work-mode: mentions prompt indicator for personal mode" {
-    echo "export DOTFILES_ENV=work" > "$ZSHENV"
-
-    run_core_script "work-mode" "personal" <<< "n"
-    assert_success
-    assert_output --partial "Prompt will show"
-    assert_output --partial "HOME:PERSONAL"
-}
-
 # Help Tests
 
 @test "work-mode: help shows usage" {
     run_core_script "work-mode" "help"
     assert_success
     assert_output --partial "Usage:"
-    assert_output --partial "Commands:"
+    assert_output --partial "COMMANDS:"
 }
 
 @test "work-mode: --help shows usage" {
@@ -269,9 +253,19 @@ teardown() {
     # Should use colors (even if not visible in test)
 }
 
-# .zshenv Preservation Tests
+# Environment State Preservation Tests
 
-@test "work-mode: preserves other content in .zshenv" {
+@test "work-mode: does not modify the managed .zshenv" {
+    printf '%s\n' 'source "$HOME/.config/zsh/.zshenv"' > "$HOME/.zshenv"
+
+    run_core_script "work-mode" "work" <<< "n"
+    assert_success
+
+    assert_file_contains "$HOME/.zshenv" 'source "$HOME/.config/zsh/.zshenv"'
+    assert_file_not_contains "$HOME/.zshenv" "DOTFILES_ENV"
+}
+
+@test "work-mode: preserves other content in environment.zsh" {
     # Create .zshenv with other content
     cat > "$ZSHENV" << 'EOF'
 export PATH="/custom/path:$PATH"
@@ -369,5 +363,5 @@ EOF
 @test "work-mode: defaults to status with no arguments" {
     run_core_script "work-mode"
     assert_success
-    assert_output --partial "Environment:"
+    assert_output --partial "Current environment:"
 }

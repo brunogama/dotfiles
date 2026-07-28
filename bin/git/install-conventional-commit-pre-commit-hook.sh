@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-source ${HOME}/local/bin/prints
+source "${HOME}/local/bin/prints"
 GIT_DIR="$1"
-HOOKS_DIR=="$GIT_DIR/.git/hooks"
+HOOKS_DIR="$GIT_DIR/.git/hooks"
     
 install_hook() {
     local repo_path="$1"

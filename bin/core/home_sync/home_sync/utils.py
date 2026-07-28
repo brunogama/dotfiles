@@ -6,7 +6,7 @@ Provides path expansion, validation helpers, and safe subprocess execution.
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 __all__ = [
     "expand_path",

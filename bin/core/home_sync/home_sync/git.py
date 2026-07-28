@@ -6,10 +6,10 @@ without shell injection vulnerabilities and with proper timeout handling.
 """
 
 import subprocess
+from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import StrEnum
 from pathlib import Path
-from typing import Iterator, List, Optional
 
 from home_sync.logger import setup_logger
 
@@ -19,19 +19,13 @@ logger = setup_logger(__name__)
 class GitError(Exception):
     """Base exception for git operations."""
 
-    pass
-
 
 class GitTimeoutError(GitError):
     """Git operation timed out."""
 
-    pass
-
 
 class GitConflictError(GitError):
     """Git operation resulted in a conflict."""
-
-    pass
 
 
 class BranchStatus(StrEnum):
@@ -44,11 +38,11 @@ class BranchStatus(StrEnum):
 
 
 def run_git(
-    args: List[str],
+    args: list[str],
     cwd: Path,
     check: bool = True,
     timeout: int = 30,
-) -> subprocess.CompletedProcess:
+) -> subprocess.CompletedProcess[str]:
     """Execute git command safely.
 
     Args:
@@ -191,7 +185,7 @@ def check_dirty(repo_path: Path) -> bool:
     return is_dirty
 
 
-def get_modified_files(repo_path: Path) -> List[str]:
+def get_modified_files(repo_path: Path) -> list[str]:
     """Get list of modified files in the repository.
 
     Args:
@@ -257,9 +251,7 @@ def git_savepoint(repo_path: Path) -> Iterator[str]:
         yield original_commit
 
     except Exception as e:
-        logger.warning(
-            f"Operation failed, rolling back to {original_commit[:8]}: {e}"
-        )
+        logger.warning(f"Operation failed, rolling back to {original_commit[:8]}: {e}")
 
         try:
             # Reset to savepoint (hard reset)
@@ -424,7 +416,9 @@ def get_ahead_behind_count(repo_path: Path) -> tuple[int, int]:
 
     try:
         # Use git rev-list to count commits
-        result = run_git(["rev-list", "--left-right", "--count", "HEAD...@{u}"], cwd=repo_path)
+        result = run_git(
+            ["rev-list", "--left-right", "--count", "HEAD...@{u}"], cwd=repo_path
+        )
         parts = result.stdout.strip().split()
 
         if len(parts) == 2:
@@ -441,7 +435,11 @@ def get_ahead_behind_count(repo_path: Path) -> tuple[int, int]:
         raise
 
 
-def stage_changes(repo_path: Path, files: Optional[List[str]] = None, all_tracked: bool = False) -> None:
+def stage_changes(
+    repo_path: Path,
+    files: list[str] | None = None,
+    all_tracked: bool = False,
+) -> None:
     """Stage changes for commit.
 
     Args:
@@ -590,7 +588,9 @@ def unstage_all(repo_path: Path) -> None:
     run_git(["reset", "HEAD"], cwd=repo_path)
 
 
-def is_remote_reachable(repo_path: Path, remote: str = "origin", timeout: int = 10) -> bool:
+def is_remote_reachable(
+    repo_path: Path, remote: str = "origin", timeout: int = 10
+) -> bool:
     """Check if remote repository is reachable.
 
     Args:
@@ -615,7 +615,9 @@ def is_remote_reachable(repo_path: Path, remote: str = "origin", timeout: int = 
         return False
 
 
-def pull_changes(repo_path: Path, remote: str = "origin", fast_forward_only: bool = True) -> None:
+def pull_changes(
+    repo_path: Path, remote: str = "origin", fast_forward_only: bool = True
+) -> None:
     """Pull changes from remote repository.
 
     Args:
@@ -654,14 +656,14 @@ def pull_changes(repo_path: Path, remote: str = "origin", fast_forward_only: boo
         # Check for fast-forward conflicts
         if "fast-forward" in error_str or "diverged" in error_str:
             raise GitConflictError(
-                f"Cannot fast-forward: local and remote have diverged. "
-                f"Manual merge or rebase required."
+                "Cannot fast-forward: local and remote have diverged. "
+                "Manual merge or rebase required."
             ) from e
 
         # Check for merge conflicts
         if "conflict" in error_str:
             raise GitConflictError(
-                f"Merge conflicts detected. Resolve conflicts manually."
+                "Merge conflicts detected. Resolve conflicts manually."
             ) from e
 
         raise
@@ -714,8 +716,8 @@ def push_changes(
         # Check for rejected push (non-fast-forward)
         if "rejected" in error_str or "non-fast-forward" in error_str:
             raise GitError(
-                f"Push rejected: remote has changes not in local branch. "
-                f"Pull changes first or use force push."
+                "Push rejected: remote has changes not in local branch. "
+                "Pull changes first or use force push."
             ) from e
 
         raise

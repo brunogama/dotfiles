@@ -1,7 +1,6 @@
 """Tests for logger module."""
 
 import logging
-from io import StringIO
 
 import pytest
 

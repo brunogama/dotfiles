@@ -32,9 +32,9 @@ _dotfiles_auto_update_once_daily
 unfunction _dotfiles_auto_update_once_daily
 
 # ============================================================================
-# WELCOME MESSAGE - Removed to comply with Powerlevel10k instant prompt
+# WELCOME MESSAGE - Omitted to keep interactive startup and prompt output clean
 # ============================================================================
-# Console output during zsh initialization interferes with instant prompt.
+# Keep initialization silent so prompt rendering remains clean.
 # The prompt indicator already shows HOME:PERSONAL, so this message is redundant.
 
 # ============================================================================

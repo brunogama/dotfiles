@@ -18,45 +18,43 @@ A fast, declarative Unix home environment for shell configuration, secure creden
 
 ## Overview
 
-This repository turns a home directory into a reproducible, high-performance development environment. It combines declarative symlink management with focused command-line utilities so the same setup can be installed, updated, audited, and synchronized across machines.
+This repository turns a home directory into a reproducible, high-performance development environment. Nix flakes and standalone Home Manager own the user CLI toolchain, shell files, and Git configuration without sudo. Optional nix-darwin activation owns supported system defaults, with Homebrew retained only for declared macOS exceptions.
 
 The main goals are:
 
-- **Fast shell startup** with optimized zsh, Prezto, Powerlevel10k, and lazy-loaded version managers.
-- **Safe installation** through an idempotent `./install` script and a JSON symlink manifest.
-- **Work/personal environments** with prompt indicators and separate zsh configuration files.
+- **Fast shell startup** with optimized zsh, Nix-managed Prezto and Starship, and opt-in legacy version managers.
+- **Safe installation** through idempotent bootstrap scripts, evaluated Nix configuration, and rollback-capable generations.
+- **Work/personal environments** with separate zsh configuration files.
 - **Credential hygiene** using Keychain-backed and encrypted secret storage tools.
 - **Portable automation** with shell, Python, Git, macOS, iOS, and video utilities under `bin/`.
 - **Quality gates** for shell syntax, manifest validation, OpenSpec proposals, Python tests, and integration tests.
 
 > [!IMPORTANT]
-> Dotfiles intentionally create symlinks and can replace existing configuration files. Start with `./install --dry-run` before applying changes on a new machine.
+> Home Manager takes ownership of declared shell and Git files. The first activation backs conflicting files up with a `.pre-nix` suffix. Start with `./install --nix --dry-run`.
 
 ## Features
 
 | Area | What is included |
 | --- | --- |
 | Installation | One-command setup, dry runs, non-interactive mode, scripts-only updates |
-| Shell | Organized zsh config, Prezto, Powerlevel10k, lazy loading, custom completions |
+| Shell | Organized zsh config, Prezto, Starship, lazy loading, custom completions |
 | Environments | `work-mode` switches between `work` and `personal` profiles |
 | Sync | `syncenv`, `home-sync`, and an optional macOS background sync service |
 | Credentials | `store-api-key`, `get-api-key`, `credmatch`, `credfile`, and history cleanup |
 | Git | Conventional commits, WIP/savepoint helpers, worktree helpers, smart merge tools |
-| Packages | Homebrew bundle, mise config, macOS preferences, sync service config |
+| Packages | Nixpkgs CLI tools, pinned npm agent tools, and a minimal Homebrew exception set |
 | Testing | Bats integration tests, Python unit tests, CI validation, mypy and coverage for `home-sync` |
 
 ## Get started
 
 ### Prerequisites
 
-- macOS 10.15+ or a modern Linux distribution
-- Git 2.30+
-- Bash 4+
-- Zsh 5.8+
-- Python 3.11+ for Python-based tools
-- `uv` for inline Python scripts such as `syncenv`
-- `jq` for manifest processing (installed automatically when possible)
-- Xcode Command Line Tools on macOS: `xcode-select --install`
+- macOS with Xcode Command Line Tools: `xcode-select --install`
+- Git for cloning the repository
+- Administrator access only when installing multi-user Nix or explicitly activating nix-darwin system settings
+- Review `nix/host.nix`; installation configures the user and machine names, while architecture and Git identity remain editable there
+
+`./install --nix` defaults to standalone Home Manager and does not use sudo when Nix is already installed. Use `./install --nix --system` only when you want nix-darwin, macOS defaults, shell registration, and retained Homebrew items. If Nix is managed by Determinate Systems, set `manageNix = false` in `nix/host.nix` before system activation.
 
 ### Install
 
@@ -64,27 +62,31 @@ The main goals are:
 git clone https://github.com/brunogama/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 
-# Preview all changes first
-./install --dry-run
+# Edit architecture and Git identity when adapting this repository
+$EDITOR nix/host.nix
 
-# Interactive setup
-./install
+# Preview prerequisite and activation commands
+./install --nix --dry-run
 
-# Restart the shell after installation
+# Enter the macOS username and machine name, then activate without sudo
+./install --nix
+
 exec zsh
 ```
 
 Useful installer modes:
 
 ```bash
-./install --yes             # Non-interactive setup
-./install --skip-packages   # Skip package installation
-./install --skip-links      # Skip symlink creation
+./install --nix --system    # Optional privileged nix-darwin activation
+./install --nix --yes       # Auto-detect identity without prompting
+./install --nix --username bruno --machine-name "Bruno’s MacBook Pro"
+./install --nix --skip-npm  # Activate without the external npm tool set
 ./install --scripts-only    # Refresh scripts in ~/local/bin only
+./install                   # Legacy Homebrew/version-manager installer
 ```
 
 > [!TIP]
-> The installer is designed to be idempotent. Re-run it after pulling updates or after changing `LinkingManifest.json`.
+> User and system activation are idempotent. Regular Home Manager conflicts and recognized symlinks from the legacy linker are preserved as `*.pre-nix`; unknown symlinks remain protected. On first system activation, recognized Apple shell files modified only by the upstream Nix installer are preserved as `*.before-nix-darwin`; unknown or customized `/etc` files are never overwritten. Homebrew is touched only by explicit `--system` activation, and automatic cleanup remains disabled.
 
 ### First steps after install
 
@@ -115,7 +117,7 @@ work-mode personal   # Uses the personal profile by default
 work-mode status     # Shows the active profile
 ```
 
-Work mode loads `~/.config/zsh/work-config.zsh` and personal mode loads `~/.config/zsh/personal-config.zsh`. The prompt shows `WORK` or `HOME:PERSONAL` after reloading the shell.
+Work mode loads `~/.config/zsh/work-config.zsh` and personal mode loads `~/.config/zsh/personal-config.zsh` after reloading the shell.
 
 ### Manage symlinks
 
@@ -173,24 +175,49 @@ zsh-compile              # Compile zsh files to .zwc bytecode
 zsh-trim-history         # Keep history size manageable
 ```
 
-Heavy tools such as `nvm`, `pyenv`, `rbenv`, `mise`, SDKMAN, and fzf are loaded lazily so interactive shells stay responsive.
+Nix-provided runtimes are used by default. To temporarily restore the previous nvm, pyenv, rbenv, mise, and SDKMAN hooks, set `DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS=1`; fzf remains lazy-loaded either way.
 
 ### Manage packages
 
 ```bash
-brew bundle --file packages/homebrew/Brewfile
-brew-sync update
-brew-sync generate
+nix-activate                 # Activate the user environment without sudo
+nix-rebuild                  # Activate privileged nix-darwin system settings
+nix-update                   # Update and validate flake.lock only
+nix-update --switch          # Update and activate the user environment
+nix-update --switch --system # Update and activate nix-darwin with sudo
+nix-validate                 # Static checks plus all Nix evaluations
+nix-npm-sync                 # Reinstall the package-lock.json npm tool set
 ```
 
-The Homebrew bundle captures CLI tools, GUI apps, VS Code extensions, and globally installed npm packages used by this environment.
+Add CLI packages to `nix/packages.nix`. Homebrew exceptions live in both `nix/darwin.nix` and the legacy `packages/homebrew/Brewfile`; keep those small lists aligned. Pinned agent-facing npm packages live in `packages/npm/` and install under `~/.local/share/dotfiles/npm/`.
+
+### Migration and rollback
+
+The first user activation moves shell and Git ownership from `LinkingManifest.json` to standalone Home Manager. The manifest remains for the legacy installer and script linking. Optional system activation reuses the same Home Manager module through nix-darwin, so the two modes do not maintain separate user configurations. `work-mode` stores mutable state in `~/.config/zsh/environment.zsh`, outside the Nix store. Keychain and encrypted credential files are never copied into Nix derivations.
+
+Homebrew is retained only for:
+
+- `sourcekitten`, because it depends on the Apple/Xcode toolchain and is not packaged in the selected Nixpkgs release.
+- Fork, because it is a macOS GUI cask.
+
+Cursor bundles its `anysphere.remote-ssh` extension. It is intentionally not passed to Homebrew Bundle's VS Code extension installer, which may target another installed editor such as VS Code Insiders.
+
+```bash
+nix-rollback --list              # Inspect available generations
+nix-rollback                     # Activate the previous generation
+nix-rollback --generation 42     # Activate one specific generation
+```
+
+A nix-darwin rollback does not remove Nix. For a full return to the legacy flow, run the nix-darwin uninstaller, restore the relevant `*.pre-nix` files, then run `./install`. Review commands before removing `/nix` or Homebrew.
 
 ## Project map
 
 ```text
 .
-├── install                    # Main idempotent installer
-├── LinkingManifest.json       # Declarative symlink manifest
+├── flake.nix                  # Pinned nix-darwin/Home Manager entry point
+├── flake.lock                 # Reproducible input revisions
+├── install                    # Nix dispatcher and legacy installer
+├── LinkingManifest.json       # Legacy and script symlink manifest
 ├── bin/
 │   ├── core/                  # Core utilities and home-sync Python package
 │   ├── credentials/           # Secret and encrypted-file management
@@ -203,14 +230,16 @@ The Homebrew bundle captures CLI tools, GUI apps, VS Code extensions, and global
 │   ├── scripts/               # Script reference and quick reference
 │   └── reports/               # Architecture and implementation reports
 ├── git/                       # Global Git config and templates
+├── nix/                       # Host, package, macOS, and Home Manager modules
 ├── packages/
-│   ├── homebrew/              # Brewfile declarations
+│   ├── homebrew/              # Retained Homebrew exceptions
+│   ├── npm/                   # Locked external npm tools
 │   ├── ios/                   # iOS tooling settings
 │   ├── macos/                 # macOS preference exports
 │   ├── mise/                  # Tool version config
 │   └── syncservice/           # Launch agent and sync config
 ├── tests/                     # Bats, Python, fixtures, and helpers
-└── zsh/                       # zsh, Prezto, Powerlevel10k, completions
+└── zsh/                       # zsh, Prezto, Starship, completions
 ```
 
 ## Validation
@@ -218,11 +247,18 @@ The Homebrew bundle captures CLI tools, GUI apps, VS Code extensions, and global
 Run the smallest useful check for the area you changed:
 
 ```bash
+# Nix migration scripts and evaluation
+nix-validate --static        # Works before Nix is installed
+nix-validate --target user   # Standalone Home Manager evaluation
+nix-validate --target system # nix-darwin evaluation
+nix-validate                 # Validate both modes
+
 # Shell syntax
 bash -n install
 zsh -n zsh/.zshrc
 
 # Installer, manifest, and linking
+./install --nix --dry-run
 ./install --dry-run
 python3 -m json.tool LinkingManifest.json >/dev/null
 python3 bin/core/link-dotfiles.py --dry-run
@@ -237,7 +273,7 @@ uv run pytest tests/ -v
 uv run mypy home_sync --strict
 ```
 
-GitHub Actions also validates pre-commit hooks, lowercase directory rules, emoji-free text files, shell scripts, the linking manifest, OpenSpec proposals, installation dry runs, and Linux/macOS test paths.
+GitHub Actions also runs a complete Home Manager installation on a fresh macOS runner, verifies the configured host identity, managed files, compiled shell, Nix packages, and pinned npm tools, and retains the existing static, integration, and documentation checks.
 
 ## Documentation
 
@@ -254,11 +290,14 @@ Dedicated files cover legal, contribution, and release-history details.
 
 | Symptom | Try this |
 | --- | --- |
-| A command is not found | Confirm `~/local/bin` is in `PATH`, then run `./install --scripts-only` |
-| Symlinks point to the wrong place | Run `python3 bin/core/link-dotfiles.py --dry-run`, then `python3 bin/core/link-dotfiles.py --apply --force` if needed |
+| A command is not found | Run `nix-activate`, then `exec zsh`; for repository scripts also run `./install --scripts-only` |
+| Nix activation reports an existing file | Inspect the file and its `.pre-nix` backup before retrying; do not delete either blindly |
+| Nix activation rejects `/etc/bashrc` or `/etc/zshrc` | Compare the file with Apple's stock version and the upstream Nix daemon additions. Update `knownSha256Hashes` in `nix/darwin.nix` only after confirming there are no user customizations. The current hashes correspond to the upstream Nix 2.35 daemon installer. |
+| `pi` is missing | Run `nix-npm-sync`, then verify `~/.local/share/dotfiles/npm/current/node_modules/.bin/pi` |
+| Nix conflicts with Determinate Nix | Set `manageNix = false` in `nix/host.nix` and rebuild |
 | Shell startup feels slow | Run `zsh-benchmark --detailed`, then `zsh-compile` |
 | Work profile did not apply | Run `work-mode status`, then `exec zsh` |
-| Homebrew packages drifted | Run `brew-sync generate` or `brew bundle --file packages/homebrew/Brewfile` |
+| Homebrew exceptions drifted | Run `nix-rebuild`; automatic cleanup is intentionally disabled |
 | Credentials are missing | Use `credmatch list`, `credfile list`, or re-store simple keys with `store-api-key` |
 
 If you are using this repository as a starting point for your own dotfiles, review every link target and script before applying it to your machine.

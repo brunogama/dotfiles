@@ -56,9 +56,9 @@ fi
 # load-work-secrets "" "true" &>/dev/null
 
 # ============================================================================
-# WELCOME MESSAGE - Removed to comply with Powerlevel10k instant prompt
+# WELCOME MESSAGE - Omitted to keep interactive startup and prompt output clean
 # ============================================================================
-# Console output during zsh initialization interferes with instant prompt.
+# Keep initialization silent so prompt rendering remains clean.
 # The prompt indicator already shows WORK, so this message is redundant.
 
 # ============================================================================

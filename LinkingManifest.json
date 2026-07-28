@@ -27,9 +27,9 @@
           "description": "Prezto configuration"
         },
         {
-          "source": "zsh/.p10k.zsh",
-          "target": "~/.config/zsh/.p10k.zsh",
-          "description": "Powerlevel10k theme configuration"
+          "source": "zsh/starship.toml",
+          "target": "~/.config/starship.toml",
+          "description": "Starship prompt configuration"
         },
         {
           "source": "zsh/work-config.zsh",
