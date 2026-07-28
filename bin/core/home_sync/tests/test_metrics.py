@@ -2,6 +2,7 @@
 
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -27,25 +28,22 @@ class TestMetrics:
         assert metrics.pushes_attempted == 0
         assert metrics.pushes_succeeded == 0
         assert metrics.credentials_synced == 0
+        assert metrics.hostname is None
         assert metrics.machine_profile == "default"
         assert metrics.end_time is None
         assert metrics.duration_seconds is None
 
-    def test_metrics_finish_success(self) -> None:
+    def test_metrics_finish_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test finishing metrics with success."""
-        metrics = Metrics()
-        start = metrics.start_time
+        metrics = Metrics(start_time=100.0)
+        monkeypatch.setattr(time, "time", lambda: 112.5)
 
-        time.sleep(0.1)  # Small delay
-
-        metrics.finish(success=True)
+        metrics.finish()
 
         assert metrics.success is True
         assert metrics.error_message is None
-        assert metrics.end_time is not None
-        assert metrics.end_time > start
-        assert metrics.duration_seconds is not None
-        assert metrics.duration_seconds > 0
+        assert metrics.end_time == 112.5
+        assert metrics.duration_seconds == 12.5
 
     def test_metrics_finish_failure(self) -> None:
         """Test finishing metrics with failure."""
@@ -73,7 +71,9 @@ class TestMetrics:
         assert data["files_changed"] == 5
         assert data["commits_created"] == 1
         assert data["success"] is True
-        assert "timestamp" in data
+        assert (
+            data["timestamp"] == datetime.fromtimestamp(metrics.start_time).isoformat()
+        )
         assert "start_time" in data
         assert "end_time" in data
         assert "duration_seconds" in data
@@ -124,11 +124,21 @@ class TestMetricsCollector:
         assert collector.metrics_file == metrics_file
         assert collector.current_metrics is None
 
+    def test_collector_default_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test the default metrics path."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        collector = MetricsCollector()
+
+        assert collector.metrics_file == tmp_path / ".config/home-sync/metrics.json"
+
     def test_collector_start(self, tmp_path: Path) -> None:
         """Test starting metrics collection."""
         collector = MetricsCollector(metrics_file=tmp_path / "metrics.json")
 
-        metrics = collector.start("sync")
+        metrics = collector.start()
 
         assert metrics is not None
         assert metrics.operation == "sync"
@@ -140,7 +150,7 @@ class TestMetricsCollector:
         collector = MetricsCollector(metrics_file=tmp_path / "metrics.json")
 
         collector.start("sync")
-        result = collector.finish(success=True)
+        result = collector.finish()
 
         assert result is not None
         assert result.success is True
@@ -197,16 +207,18 @@ class TestMetricsCollector:
         metrics_file = tmp_path / "metrics.json"
         collector = MetricsCollector(metrics_file=metrics_file)
 
-        # Create 1005 entries
-        for i in range(1005):
-            collector.start("sync")
-            collector.finish(success=True)
+        existing = [{"sequence": index} for index in range(1000)]
+        metrics_file.write_text(json.dumps(existing))
+
+        collector.start("sync")
+        collector.finish(success=True)
 
         with open(metrics_file) as f:
             data = json.load(f)
 
-        # Should keep only last 1000
         assert len(data) == 1000
+        assert data[0]["sequence"] == 1
+        assert data[-1]["operation"] == "sync"
 
     def test_collector_handles_corrupt_file(self, tmp_path: Path) -> None:
         """Test that collector handles corrupt JSON file."""
@@ -257,6 +269,20 @@ class TestWriteMetrics:
 
 class TestReadMetrics:
     """Test cases for read_metrics function."""
+
+    def test_read_metrics_default_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test reading from the default metrics path."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        metrics_file = tmp_path / ".config/home-sync/metrics.json"
+        metrics_file.parent.mkdir(parents=True)
+        metrics_file.write_text(json.dumps([Metrics(operation="default").to_dict()]))
+
+        result = read_metrics()
+
+        assert len(result) == 1
+        assert result[0].operation == "default"
 
     def test_read_metrics_empty_file(self, tmp_path: Path) -> None:
         """Test reading from nonexistent file."""
@@ -331,11 +357,10 @@ class TestMetricsIntegration:
         metrics.files_removed = 2
         metrics.commits_created = 1
 
-        time.sleep(0.1)  # Simulate work
-
         # Finish operation
         result = collector.finish(success=True)
         assert result is not None
+        assert result.duration_seconds is not None
         assert result.duration_seconds > 0
 
         # Read back and verify
@@ -352,13 +377,13 @@ class TestMetricsIntegration:
         collector = MetricsCollector(metrics_file=metrics_file)
 
         # Operation 1: Success
-        collector.start("sync")
-        collector.current_metrics.files_changed = 5
+        success_metrics = collector.start("sync")
+        success_metrics.files_changed = 5
         collector.finish(success=True)
 
         # Operation 2: Failure
-        collector.start("sync")
-        collector.current_metrics.files_changed = 0
+        failure_metrics = collector.start("sync")
+        failure_metrics.files_changed = 0
         collector.finish(success=False, error_message="Network error")
 
         # Operation 3: Success
