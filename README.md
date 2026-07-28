@@ -292,6 +292,7 @@ Dedicated files cover legal, contribution, and release-history details.
 | --- | --- |
 | A command is not found | Run `nix-activate`, then `exec zsh`; for repository scripts also run `./install --scripts-only` |
 | Nix activation reports an existing file | Inspect the file and its `.pre-nix` backup before retrying; do not delete either blindly |
+| Nix activation rejects `/etc/bashrc` or `/etc/zshrc` | Compare the file with Apple's stock version and the upstream Nix daemon additions. Update `knownSha256Hashes` in `nix/darwin.nix` only after confirming there are no user customizations. The current hashes correspond to the upstream Nix 2.35 daemon installer. |
 | `pi` is missing | Run `nix-npm-sync`, then verify `~/.local/share/dotfiles/npm/current/node_modules/.bin/pi` |
 | Nix conflicts with Determinate Nix | Set `manageNix = false` in `nix/host.nix` and rebuild |
 | Shell startup feels slow | Run `zsh-benchmark --detailed`, then `zsh-compile` |

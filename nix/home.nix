@@ -78,10 +78,6 @@ let
     link:
     "migrate_legacy_link ${lib.escapeShellArg link.target} ${lib.escapeShellArg (legacyLinkSource link)}"
   ) legacyLinks;
-  legacyLinkCheckCommands = lib.concatMapStringsSep "\n" (
-    link:
-    "check_legacy_link ${lib.escapeShellArg link.target} ${lib.escapeShellArg (legacyLinkSource link)}"
-  ) legacyLinks;
 in
 {
   home = {
@@ -106,21 +102,6 @@ in
   xdg.enable = true;
 
   home.activation.migrateLegacyDotfileLinks = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    check_legacy_link() {
-      local relative="$1"
-      local expected="$2"
-      local target="$HOME/$relative"
-      local backup="$target.pre-nix"
-
-      if [[ ! -L "$target" ]] || ! cmp -s -- "$target" "$expected"; then
-        return 0
-      fi
-      if [[ ( -e "$backup" || -L "$backup" ) ]] && ! cmp -s -- "$backup" "$expected"; then
-        echo "Home Manager migration: refusing to overwrite $backup" >&2
-        return 1
-      fi
-    }
-
     migrate_legacy_link() {
       local relative="$1"
       local expected="$2"
@@ -139,7 +120,6 @@ in
       echo "Home Manager migration: preserved $target as $backup" >&2
     }
 
-    ${legacyLinkCheckCommands}
     ${legacyLinkCommands}
   '';
 

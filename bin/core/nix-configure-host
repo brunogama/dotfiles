@@ -90,7 +90,7 @@ validate_machine_name() {
     local value="$1"
 
     case "$value" in
-        ''|*$'\n'*|*$'\r'*|*\"*|*\\*|*\$*)
+        ''|*$'\n'*|*$'\r'*|*\"*|*\\*|*\$*|*\**|*\?*|*\[*|*\]*)
             echo "nix-configure-host: machine name is empty or contains unsupported characters" >&2
             exit 2
             ;;
@@ -107,7 +107,6 @@ normalize_host_name() {
             LC_ALL=C sed -E "s/['’]//g; s/[^a-z0-9]+/-/g; s/^-+//; s/-+$//" |
             cut -c 1-63
     )"
-    normalized="${normalized%-}"
 
     if [[ -z "$normalized" ]]; then
         echo "nix-configure-host: machine name cannot produce an empty host name" >&2
@@ -121,15 +120,14 @@ update_host_file() {
     local username="$1"
     local machine_name="$2"
     local normalized_name="$3"
-    local host_dir temp_file file_mode
+    local temp_file file_mode
 
     [[ -f "$HOST_FILE" ]] || {
         echo "nix-configure-host: host configuration not found: $HOST_FILE" >&2
         exit 2
     }
 
-    host_dir="$(dirname "$HOST_FILE")"
-    temp_file="$(mktemp "$host_dir/.host.nix.XXXXXX")"
+    temp_file="$(mktemp "${TMPDIR:-/tmp}/dotfiles-host.nix.XXXXXX")"
     trap 'rm -f "$temp_file"' RETURN
 
     if ! awk \
