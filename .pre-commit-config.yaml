@@ -11,13 +11,27 @@
 #   git commit --no-verify
 
 repos:
-  # Shellcheck - validate all shell scripts
-  - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.10.0
+  # ShellCheck - use the system binary installed by Nix, Homebrew, or CI.
+  - repo: local
     hooks:
       - id: shellcheck
+        name: ShellCheck (system)
+        entry: shellcheck
+        language: system
+        types: [shell]
         args: ['--severity=error']
-        exclude: ^(\.git|\.claude|ai_docs/legacy|zsh/|Bin/Core/zsh-|tests/helpers/bats-|tests/fixtures/repos/|tests/.*\.bats$)
+        exclude: >-
+          (?x)^(
+            \.git|
+            \.claude|
+            ai_docs/legacy|
+            zsh/|
+            bin/core/zsh-|
+            bin/credentials/secure-store-api|
+            tests/helpers/bats-|
+            tests/fixtures/repos/|
+            tests/.*\.bats$
+          )
 
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
