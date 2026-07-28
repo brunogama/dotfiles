@@ -316,3 +316,4 @@ Thumbs.db
 *.pid
 .cache/
 tmp/
+.serena/
