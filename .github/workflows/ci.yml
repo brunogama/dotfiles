@@ -1,11 +1,15 @@
+---
 name: CI
 
-on:
+"on":
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   validate:
@@ -17,6 +21,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -85,12 +90,82 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
 
       - name: Evaluate Home Manager and nix-darwin configurations
         run: ./bin/core/nix-validate
+
+      - name: Verify instant Dock timing
+        run: |
+          dock_defaults="$(
+            nix eval --json \
+              .#darwinConfigurations.default.config.system.defaults.dock
+          )"
+          jq -e '
+            ."autohide-delay" == 0 and
+            ."autohide-time-modifier" == 0
+          ' <<< "$dock_defaults"
+
+  install-nix-macos:
+    name: End-to-end Nix install (macOS)
+    runs-on: macos-latest
+    needs: validate-nix
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
+
+      - name: Run a complete user installation
+        run: |
+          ./install --nix --yes \
+            --username "$USER" \
+            --machine-name "Dotfiles CI"
+
+      - name: Verify configured host identity
+        run: |
+          grep -Fq "username = \"$USER\";" nix/host.nix
+          grep -Fq 'configurationName = "dotfiles-ci";' nix/host.nix
+          grep -Fq 'computerName = "Dotfiles CI";' nix/host.nix
+          grep -Fq 'hostName = "dotfiles-ci";' nix/host.nix
+          grep -Fq 'localHostName = "dotfiles-ci";' nix/host.nix
+
+      - name: Verify managed files and shell
+        run: |
+          profile_path="/etc/profiles/per-user/$USER/bin"
+          export PATH="$HOME/.nix-profile/bin:$profile_path:$PATH"
+          for path in \
+            "$HOME/.zshenv" \
+            "$HOME/.config/zsh/.zshrc" \
+            "$HOME/.config/starship.toml" \
+            "$HOME/.pi/agent/AGENTS.md" \
+            "$HOME/.codex/AGENTS.md" \
+            "$HOME/.claude/CLAUDE.md"; do
+            test -L "$path"
+          done
+          test -f "$HOME/.config/zsh/.zshrc.zwc"
+          ZDOTDIR="$HOME/.config/zsh" zsh -lic \
+            'command -v starship >/dev/null && command -v git >/dev/null'
+
+      - name: Verify installed tools
+        run: |
+          profile_path="/etc/profiles/per-user/$USER/bin"
+          export PATH="$HOME/.nix-profile/bin:$profile_path:$PATH"
+          for command in git home-manager jq rg shellcheck starship zsh; do
+            command -v "$command" >/dev/null
+          done
+          test -x \
+            "$HOME/.local/share/dotfiles/npm/current/node_modules/.bin/pi"
+          home-manager generations
 
   test-macos:
     name: Test on macOS
@@ -100,6 +175,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Test dry-run installation
         run: |
@@ -126,6 +203,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Install dependencies
         run: |
@@ -148,6 +227,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -191,6 +272,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -246,6 +329,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Install bats-core
         run: |
@@ -280,6 +364,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Install bats-core
         run: |
@@ -312,6 +397,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Check for broken markdown links
         uses: "gaurav-nelson/github-action-markdown-link-check@\
