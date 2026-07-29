@@ -177,19 +177,15 @@ fi
 # ============================================================================
 # Lazy Load: FZF (fuzzy finder)
 # ============================================================================
-# Load fzf shell integration on first Ctrl+R instead of during startup.
+# Load fzf shell integration so history and file search work on the first keypress.
 if [[ -o interactive ]] && command -v fzf &>/dev/null; then
-    _lazy_fzf_history_widget() {
-        zle -I
-        source <(fzf --zsh) 2>/dev/null
+    export FZF_COMPLETION_TRIGGER=''
+    export FZF_CTRL_R_OPTS="${FZF_CTRL_R_OPTS-} --height=60% --layout=reverse --border"
+    export FZF_CTRL_T_OPTS="${FZF_CTRL_T_OPTS-} --height=60% --layout=reverse --border --walker=file,follow,hidden --walker-skip=.git,node_modules,target,.direnv"
 
-        if zle -l fzf-history-widget &>/dev/null; then
-            zle fzf-history-widget
-        else
-            zle reset-prompt
-        fi
-    }
+    if command -v bat &>/dev/null; then
+        export FZF_CTRL_T_OPTS="${FZF_CTRL_T_OPTS} --preview='bat --color=always --style=numbers --line-range=:200 {}'"
+    fi
 
-    zle -N _lazy_fzf_history_widget
-    bindkey '^R' _lazy_fzf_history_widget
+    source <(fzf --zsh) 2>/dev/null
 fi
