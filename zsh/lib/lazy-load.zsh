@@ -179,6 +179,7 @@ fi
 # ============================================================================
 # Load fzf shell integration so history and file search work on the first keypress.
 if [[ -o interactive ]] && command -v fzf &>/dev/null; then
+    export FZF_COMPLETION_TRIGGER=''
     export FZF_CTRL_R_OPTS="${FZF_CTRL_R_OPTS-} --height=60% --layout=reverse --border"
     export FZF_CTRL_T_OPTS="${FZF_CTRL_T_OPTS-} --height=60% --layout=reverse --border --walker=file,follow,hidden --walker-skip=.git,node_modules,target,.direnv"
 
