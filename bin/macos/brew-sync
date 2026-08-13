@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
-BREWFILE_PATH="$DOTFILES_ROOT/packages/homebrew/Brewfile"
+BREWFILE_PATH="$DOTFILES_ROOT/home-darwin/Brewfile"
 BACKUP_DIR="$HOME/.homebrew-backups"
 
 # Function to log messages

@@ -291,7 +291,7 @@ phase_bundle() {
 
     log_phase "Phase 4: Homebrew Bundle"
 
-    local brewfile="$DOTFILES_ROOT/packages/homebrew/Brewfile"
+    local brewfile="$DOTFILES_ROOT/home-darwin/Brewfile"
 
     if [[ ! -f "$brewfile" ]]; then
         log_warning "Brewfile not found at: $brewfile"
