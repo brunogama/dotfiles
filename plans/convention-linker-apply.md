@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [linking-platform-source-tree]
 specs:
   - specs/linking-architecture.md
@@ -41,7 +41,8 @@ Replace manifest parsing in `bin/core/link-dotfiles.py` with deterministic disco
 
 ## Notes
 
-(Populated at closeout.)
+- Initial slice replaces manifest parsing with deterministic `home/`, platform, hostname, and command discovery, collision preflight, and an atomic local ownership ledger.
+- Nix and Home Manager exclusion integration, partial-apply fault injection, backup mode, pruning, and manifest deletion remain follow-up slices.
 
 ## Follow-ups
 
