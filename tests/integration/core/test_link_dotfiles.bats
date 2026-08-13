@@ -218,6 +218,52 @@ assert_link_points_to() {
     assert_output --partial "Would prune"
 }
 
+@test "link-dotfiles: migrates a proven legacy command link" {
+    create_command core legacy-command
+    mkdir -p "$HOME/local/bin"
+    ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    assert_success
+    refute test -L "$HOME/local/bin/legacy-command"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/.local/bin/legacy-command"
+}
+
+@test "link-dotfiles: migration preserves unmanaged legacy entries" {
+    create_command core managed-command
+    mkdir -p "$HOME/local/bin"
+    printf 'custom\n' > "$HOME/local/bin/custom-command"
+    ln -s /tmp/unmanaged "$HOME/local/bin/managed-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    assert_success
+    assert_file_exists "$HOME/local/bin/custom-command"
+    assert_symlink_exists "$HOME/local/bin/managed-command"
+    refute test -e "$HOME/.local/bin/managed-command"
+    assert_output --partial "Preserving"
+}
+
+@test "link-dotfiles: migration dry-run changes neither legacy nor command links" {
+    create_command core legacy-command
+    mkdir -p "$HOME/local/bin"
+    ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --dry-run
+    assert_success
+    assert_symlink_exists "$HOME/local/bin/legacy-command"
+    refute test -e "$HOME/.local/bin/legacy-command"
+    assert_output --partial "Would migrate"
+}
+
+@test "link-dotfiles: migration refuses a conflicting command target" {
+    create_command core legacy-command
+    mkdir -p "$HOME/local/bin" "$HOME/.local/bin"
+    ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
+    printf 'conflict\n' > "$HOME/.local/bin/legacy-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    assert_failure
+    assert_symlink_exists "$HOME/local/bin/legacy-command"
+    assert_file_exists "$HOME/.local/bin/legacy-command"
+    assert_output --partial "Collision"
+}
+
 @test "link-dotfiles: source symlinks are not managed" {
     create_home_file ".real"
     ln -s "$TEST_DOTFILES/home/.real" "$TEST_DOTFILES/home/.source-link"
