@@ -6,28 +6,28 @@
     "shell": {
       "zsh": [
         {
-          "source": "zsh/.zshenv",
+          "source": "home/.zshenv",
           "target": "~/.zshenv",
           "description": "Zsh environment file (sets ZDOTDIR)",
           "note": "This MUST be in $HOME to bootstrap ZDOTDIR"
         },
         {
-          "source": "zsh/.zshrc",
+          "source": "home/.config/zsh/.zshrc",
           "target": "~/.config/zsh/.zshrc",
           "description": "Zsh main configuration"
         },
         {
-          "source": "zsh/.zprofile",
+          "source": "home/.config/zsh/.zprofile",
           "target": "~/.config/zsh/.zprofile",
           "description": "Zsh profile (login shell)"
         },
         {
-          "source": "zsh/.zpreztorc",
+          "source": "home/.config/zsh/.zpreztorc",
           "target": "~/.config/zsh/.zpreztorc",
           "description": "Prezto configuration"
         },
         {
-          "source": "zsh/starship.toml",
+          "source": "home/.config/starship.toml",
           "target": "~/.config/starship.toml",
           "description": "Starship prompt configuration"
         },

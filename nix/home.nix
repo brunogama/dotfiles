@@ -10,23 +10,23 @@ let
   legacyLinks = [
     {
       target = ".zshenv";
-      source = ../zsh/.zshenv;
+      source = ../home/.zshenv;
     }
     {
       target = ".config/zsh/.zshrc";
-      source = ../zsh/.zshrc;
+      source = ../home/.config/zsh/.zshrc;
     }
     {
       target = ".config/zsh/.zprofile";
-      source = ../zsh/.zprofile;
+      source = ../home/.config/zsh/.zprofile;
     }
     {
       target = ".config/zsh/.zpreztorc";
-      source = ../zsh/.zpreztorc;
+      source = ../home/.config/zsh/.zpreztorc;
     }
     {
       target = ".config/starship.toml";
-      source = ../zsh/starship.toml;
+      source = ../home/.config/starship.toml;
     }
     {
       target = ".config/zsh/work-config.zsh";
@@ -141,9 +141,9 @@ in
       enable = true;
       dotDir = "${config.xdg.configHome}/zsh";
       enableCompletion = false;
-      envExtra = builtins.readFile ../zsh/.zshenv;
-      profileExtra = builtins.readFile ../zsh/.zprofile;
-      initContent = lib.mkOrder 1000 (builtins.readFile ../zsh/.zshrc);
+      envExtra = builtins.readFile ../home/.zshenv;
+      profileExtra = builtins.readFile ../home/.config/zsh/.zprofile;
+      initContent = lib.mkOrder 1000 (builtins.readFile ../home/.config/zsh/.zshrc);
     };
   };
 
@@ -157,8 +157,8 @@ in
     ".config/git/conventional-commits-gitmessage".source = ../git/conventional-commits-gitmessage;
     ".config/git/ios.gitattributes".source = ../git/ios.gitattributes;
 
-    ".config/zsh/.zpreztorc".source = ../zsh/.zpreztorc;
-    ".config/starship.toml".source = ../zsh/starship.toml;
+    ".config/zsh/.zpreztorc".source = ../home/.config/zsh/.zpreztorc;
+    ".config/starship.toml".source = ../home/.config/starship.toml;
     ".config/zsh/work-config.zsh".source = ../zsh/work-config.zsh;
     ".config/zsh/personal-config.zsh".source = ../zsh/personal-config.zsh;
     ".config/zsh/lib" = {
