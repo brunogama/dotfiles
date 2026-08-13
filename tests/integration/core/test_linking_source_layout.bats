@@ -101,6 +101,20 @@
     done
 }
 
+@test "Darwin launch agent lives in the platform home source tree" {
+    local repository_root
+    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
+
+    [[ -f "$repository_root/home-darwin/Library/LaunchAgents/com.brunogama.home-sync.plist" ]]
+}
+
+@test "legacy Darwin launch-agent source path is retired" {
+    local repository_root
+    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
+
+    [[ ! -e "$repository_root/packages/syncservice/com.brunogama.home-sync.plist" ]]
+}
+
 @test "legacy shell core source paths are retired" {
     local repository_root
     repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
