@@ -77,6 +77,30 @@
     done
 }
 
+@test "Darwin Git and Homebrew files live in the platform home source tree" {
+    local repository_root
+    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
+
+    local path
+    for path in \
+        .config/git/ios.gitattributes \
+        Brewfile; do
+        [[ -f "$repository_root/home-darwin/$path" ]]
+    done
+}
+
+@test "legacy Darwin Git and Homebrew source paths are retired" {
+    local repository_root
+    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
+
+    local path
+    for path in \
+        git/ios.gitattributes \
+        packages/homebrew/Brewfile; do
+        [[ ! -e "$repository_root/$path" ]]
+    done
+}
+
 @test "legacy shell core source paths are retired" {
     local repository_root
     repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"

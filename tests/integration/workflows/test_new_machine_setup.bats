@@ -40,7 +40,7 @@ teardown() {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_exists "$dotfiles_root/bin/core/link-dotfiles"
+    assert_file_exists "$dotfiles_root/bin/core/link-dotfiles.py"
 }
 
 @test "new machine: work-mode available" {
@@ -180,21 +180,21 @@ teardown() {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_exists "$dotfiles_root/packages/homebrew/Brewfile"
+    assert_file_exists "$dotfiles_root/home-darwin/Brewfile"
 }
 
 @test "config files: gitconfig exists" {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_exists "$dotfiles_root/git/.gitconfig"
+    assert_file_exists "$dotfiles_root/home/.gitconfig"
 }
 
 @test "config files: zshrc exists" {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_exists "$dotfiles_root/zsh/.zshrc"
+    assert_file_exists "$dotfiles_root/home/.config/zsh/.zshrc"
 }
 
 # Setup Time Estimation Tests
@@ -259,7 +259,7 @@ teardown() {
     dotfiles_root="$(get_dotfiles_root)"
 
     cd "$dotfiles_root"
-    run git status
+    run jj --no-pager status
     assert_success
 }
 
@@ -302,7 +302,7 @@ teardown() {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    run "$dotfiles_root/bin/core/link-dotfiles" --dry-run
+    run python3 "$dotfiles_root/bin/core/link-dotfiles.py" --dry-run
     # May succeed depending on environment
 }
 

@@ -18,7 +18,7 @@ setup() {
 
     # Create necessary directories
     mkdir -p bin/core
-    mkdir -p packages/homebrew
+    mkdir -p home-darwin
 
     # Create mock scripts
     cat > bin/core/link-dotfiles.py << 'EOF'
@@ -45,7 +45,7 @@ EOF
     chmod +x bin/core/nix-bootstrap
 
     # Create mock Brewfile
-    cat > packages/homebrew/Brewfile << 'EOF'
+    cat > home-darwin/Brewfile << 'EOF'
 # Test Brewfile
 brew "jq"
 EOF
@@ -642,7 +642,7 @@ teardown() {
 @test "install: handles missing Brewfile gracefully" {
     skip_on_linux "Homebrew is only configured on macOS"
 
-    rm -f "$DOTFILES_ROOT/packages/homebrew/Brewfile"
+    rm -f "$DOTFILES_ROOT/home-darwin/Brewfile"
 
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
