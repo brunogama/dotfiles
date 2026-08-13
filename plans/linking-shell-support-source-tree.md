@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [linking-shell-core-source-tree]
 specs:
   - specs/linking-architecture.md
