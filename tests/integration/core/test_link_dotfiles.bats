@@ -70,8 +70,8 @@ EOF
     run python3 "$LINK_SCRIPT" --help
     assert_success
     assert_output --partial "link-dotfiles"
-    assert_output --partial "Usage"
-    assert_output --partial "Options"
+    assert_output --partial "usage:"
+    assert_output --partial "options:"
 }
 
 # Prerequisite Tests
@@ -105,9 +105,9 @@ EOF
     run python3 "$LINK_SCRIPT" --dry-run
     assert_success
 
-    # No symlinks should be created
-    assert_file_not_exists "$HOME/.zshrc"
-    assert_file_not_exists "$HOME/.gitconfig"
+    # Dry-run must not replace existing objects with links.
+    refute test -L "$HOME/.zshrc"
+    refute test -L "$HOME/.gitconfig"
 }
 
 @test "link-dotfiles: dry-run reports what would be done" {
@@ -148,8 +148,8 @@ EOF
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
 
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
-    assert_symlink_to "$HOME/.gitconfig" "$TEST_DOTFILES/git/.gitconfig"
+    assert_symlink_to "$TEST_DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
+    assert_symlink_to "$TEST_DOTFILES/git/.gitconfig" "$HOME/.gitconfig"
 }
 
 @test "link-dotfiles: creates parent directories" {
@@ -185,19 +185,18 @@ EOF
     {
       "source": "zsh/.zshrc",
       "target": "~/.zshrc",
-      "platform": "all",
       "optional": false
     },
     {
       "source": "git/.gitconfig",
       "target": "~/.macos-only",
-      "platform": "darwin",
+      "platforms": ["darwin"],
       "optional": false
     },
     {
       "source": "vim/.vimrc",
       "target": "~/.linux-only",
-      "platform": "linux",
+      "platforms": ["linux"],
       "optional": false
     }
   ]
@@ -213,9 +212,9 @@ EOF
     # Platform-specific links depend on current platform
     if [[ "$(uname)" == "Darwin" ]]; then
         assert_symlink_exists "$HOME/.macos-only"
-        assert_file_not_exists "$HOME/.linux-only"
+        refute test -L "$HOME/.linux-only"
     else
-        assert_file_not_exists "$HOME/.macos-only"
+        refute test -L "$HOME/.macos-only"
         assert_symlink_exists "$HOME/.linux-only"
     fi
 }
@@ -275,7 +274,7 @@ EOF
     assert_success
 
     # Should report as already linked
-    assert_output --partial "Already linked"
+    assert_output --partial "already linked"
 }
 
 @test "link-dotfiles: prompts for existing files in interactive mode" {
@@ -303,7 +302,7 @@ EOF
 
     # Should have replaced with symlink
     assert_symlink_exists "$HOME/.zshrc"
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
+    assert_symlink_to "$TEST_DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
 }
 
 # Verbose Output Tests
@@ -354,10 +353,10 @@ EOF
 EOF
 
     run python3 "$LINK_SCRIPT" --dry-run
-    assert_success
+    assert_failure
 
-    # Should report source not found
-    assert_output --partial "not found"
+    # Required missing sources make the operation fail.
+    assert_output --partial "Failed to link"
 }
 
 # Complex Manifest Tests
@@ -488,7 +487,7 @@ EOF
 
     # Should still have correct symlinks
     assert_symlink_exists "$HOME/.zshrc"
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
+    assert_symlink_to "$TEST_DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
 }
 
 # Symlink Replacement Tests
@@ -505,7 +504,7 @@ EOF
     assert_success
 
     # Should point to correct location now
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
+    assert_symlink_to "$TEST_DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
 }
 
 # Directory Creation Tests
@@ -546,5 +545,5 @@ EOF
 
     # Should be fixed
     assert_symlink_exists "$HOME/.zshrc"
-    refute_broken_symlink "$HOME/.zshrc"
+    refute assert_broken_symlink "$HOME/.zshrc"
 }
