@@ -81,7 +81,7 @@
         "note": "Can be included in .gitconfig with [include] path"
       },
       {
-        "source": "git/ios.gitattributes",
+        "source": "home-darwin/.config/git/ios.gitattributes",
         "target": "~/.config/git/ios.gitattributes",
         "description": "iOS-specific git attributes (text handling, diff drivers)",
         "platforms": ["darwin"],
@@ -92,7 +92,7 @@
     "packages": {
       "homebrew": [
         {
-          "source": "packages/homebrew/Brewfile",
+          "source": "home-darwin/Brewfile",
           "target": "~/Brewfile",
           "description": "Homebrew bundle file",
           "platforms": ["darwin"]

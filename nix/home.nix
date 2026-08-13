@@ -66,7 +66,7 @@ let
     }
     {
       target = ".config/git/ios.gitattributes";
-      source = ../git/ios.gitattributes;
+      source = ../home-darwin/.config/git/ios.gitattributes;
     }
   ];
   legacyLinkSource =
@@ -155,7 +155,7 @@ in
     ".gitignore_global".source = ../home/.gitignore_global;
     ".config/git/github-flow-aliases.gitconfig".source = ../home/.config/git/github-flow-aliases.gitconfig;
     ".config/git/conventional-commits-gitmessage".source = ../home/.config/git/conventional-commits-gitmessage;
-    ".config/git/ios.gitattributes".source = ../git/ios.gitattributes;
+    ".config/git/ios.gitattributes".source = ../home-darwin/.config/git/ios.gitattributes;
 
     ".config/zsh/.zpreztorc".source = ../home/.config/zsh/.zpreztorc;
     ".config/starship.toml".source = ../home/.config/starship.toml;
