@@ -13,7 +13,7 @@ fi
 # Fallback: Check common locations
 if [[ -z "$DOTFILES_DIR" ]]; then
     for dir in "$HOME/.config-fixing-dot-files-bugs" "$HOME/.config" "$HOME/.dotfiles"; do
-        if [[ -f "$dir/LinkingManifest.json" && -d "$dir/zsh" ]]; then
+        if [[ -f "$dir/LinkingManifest.json" && -d "$dir/home" ]]; then
             DOTFILES_DIR="$dir"
             break
         fi
@@ -29,17 +29,17 @@ fi
 # Open requested config file
 case "$1" in
     personal|personal-config)
-        code "$DOTFILES_DIR/zsh/personal-config.zsh"
+        code "$DOTFILES_DIR/home/.config/zsh/personal-config.zsh"
         ;;
     zsh|zshrc)
-        code "$DOTFILES_DIR/zsh/.zshrc"
+        code "$DOTFILES_DIR/home/.config/zsh/.zshrc"
         ;;
     git|gitconfig)
         # Open git config directory (gitconfig may not exist in repo)
         code "$DOTFILES_DIR/Git"
         ;;
     work|work-config)
-        code "$DOTFILES_DIR/zsh/work-config.zsh"
+        code "$DOTFILES_DIR/home/.config/zsh/work-config.zsh"
         ;;
     repo|dotfiles)
         code "$DOTFILES_DIR"

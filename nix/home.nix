@@ -30,23 +30,23 @@ let
     }
     {
       target = ".config/zsh/work-config.zsh";
-      source = ../zsh/work-config.zsh;
+      source = ../home/.config/zsh/work-config.zsh;
     }
     {
       target = ".config/zsh/personal-config.zsh";
-      source = ../zsh/personal-config.zsh;
+      source = ../home/.config/zsh/personal-config.zsh;
     }
     {
       target = ".config/zsh/lib/lazy-load.zsh";
-      source = ../zsh/lib/lazy-load.zsh;
+      source = ../home/.config/zsh/lib/lazy-load.zsh;
     }
     {
       target = ".config/zsh/completion/_pi";
-      source = ../zsh/completion/_pi;
+      source = ../home/.config/zsh/completion/_pi;
     }
     {
       target = ".config/zsh/completion/git-ignore-completion";
-      source = ../zsh/completion/git-ignore-completion;
+      source = ../home/.config/zsh/completion/git-ignore-completion;
     }
     {
       target = ".gitconfig";
@@ -159,8 +159,8 @@ in
 
     ".config/zsh/.zpreztorc".source = ../home/.config/zsh/.zpreztorc;
     ".config/starship.toml".source = ../home/.config/starship.toml;
-    ".config/zsh/work-config.zsh".source = ../zsh/work-config.zsh;
-    ".config/zsh/personal-config.zsh".source = ../zsh/personal-config.zsh;
+    ".config/zsh/work-config.zsh".source = ../home/.config/zsh/work-config.zsh;
+    ".config/zsh/personal-config.zsh".source = ../home/.config/zsh/personal-config.zsh;
     ".config/zsh/lib" = {
       source = ../zsh/lib;
       recursive = true;
