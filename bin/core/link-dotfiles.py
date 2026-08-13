@@ -20,6 +20,7 @@ import os
 import shutil
 import socket
 import stat
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -66,11 +67,13 @@ class LinkManager:
         force: bool = False,
         yes: bool = False,
         verbose: bool = False,
+        prune: bool = False,
     ):
         self.dry_run = dry_run
         self.force = force
         self.yes = yes
         self.verbose = verbose
+        self.prune_mode = prune
 
         # Counters
         self.count_created = 0
@@ -217,14 +220,26 @@ class LinkManager:
                     if executable and not self.dry_run:
                         target_file.chmod(target_file.stat().st_mode | 0o111)
 
+    def repository_id(self) -> str:
+        """Use the Git origin as a relocation-stable repository identity."""
+        try:
+            origin = subprocess.check_output(
+                ["git", "-C", str(self.dotfiles_root), "config", "--get", "remote.origin.url"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except (OSError, subprocess.CalledProcessError):
+            origin = ""
+        return hashlib.sha256((origin or str(self.dotfiles_root)).encode()).hexdigest()
+
     def write_state(self) -> None:
         """Atomically persist only links confirmed during this apply."""
         state_file = Path.home() / ".local/state/dotfiles/links.json"
         payload = {
             "version": 1,
-            "repository_id": hashlib.sha256(str(self.dotfiles_root).encode()).hexdigest(),
+            "repository_id": self.repository_id(),
             "links": [
-                {"source": str(source.relative_to(self.dotfiles_root)), "target": str(target)}
+                {"source": str(source), "target": str(target)}
                 for source, target in self.applied_links
             ],
         }
@@ -232,6 +247,56 @@ class LinkManager:
         temporary = state_file.with_suffix(".tmp")
         temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         temporary.replace(state_file)
+
+    def desired_targets(self) -> Dict[Path, Path]:
+        """Return the current home-tree targets without consulting legacy metadata."""
+        targets: Dict[Path, Path] = {}
+        home = Path.home()
+        for tree_name in ("home", f"home-{self.platform}", f"home-host-{self.hostname}"):
+            tree = self.dotfiles_root / tree_name
+            if tree.is_dir():
+                for source in tree.rglob("*"):
+                    if stat.S_ISREG(source.lstat().st_mode):
+                        targets[home / source.relative_to(tree)] = source
+        return targets
+
+    def prune(self) -> None:
+        """Remove only stale symlinks whose ownership the ledger proves."""
+        state_file = Path.home() / ".local/state/dotfiles/links.json"
+        try:
+            state = json.loads(state_file.read_text())
+            if state.get("version") != 1 or not isinstance(state.get("repository_id"), str):
+                raise ValueError("unsupported ownership state")
+            links = state["links"]
+        except (FileNotFoundError, ValueError, json.JSONDecodeError, KeyError, TypeError):
+            self.log_error(f"Invalid or missing ownership ledger: {state_file}")
+            self.count_errors += 1
+            return
+
+        desired = self.desired_targets()
+        for recorded in links:
+            try:
+                target = Path(recorded["target"])
+                source = Path(recorded["source"])
+            except (KeyError, TypeError):
+                self.log_error("Invalid ownership ledger entry")
+                self.count_errors += 1
+                return
+            current_source = target.resolve() if target.is_symlink() else None
+            desired_source = desired.get(target)
+            stale = desired_source is None or current_source != desired_source.resolve()
+            if not stale:
+                continue
+            if not target.is_symlink() or current_source != source.resolve():
+                self.log_warning(f"Refusing unproven stale target: {target}")
+                self.count_skipped += 1
+                continue
+            if self.dry_run:
+                self.log_info(f"Would prune: {target}")
+            else:
+                target.unlink()
+                self.log_success(f"Pruned: {target}")
+            self.count_created += 1
 
     def process_links(self):
         """Discover and apply the convention-based link plan."""
@@ -359,7 +424,10 @@ class LinkManager:
         print("Processing links...")
         print()
 
-        self.process_links()
+        if self.prune_mode:
+            self.prune()
+        else:
+            self.process_links()
         self.show_summary()
 
         return 1 if self.count_errors > 0 else 0
@@ -386,6 +454,7 @@ def main():
         "--yes", action="store_true", help="Skip confirmation prompts"
     )
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
+    parser.add_argument("--prune", action="store_true", help="Remove stale links proven by ownership state")
 
     args = parser.parse_args()
 
@@ -398,6 +467,7 @@ def main():
         force=args.force,
         yes=args.yes,
         verbose=args.verbose,
+        prune=args.prune,
     )
 
     sys.exit(manager.run())
