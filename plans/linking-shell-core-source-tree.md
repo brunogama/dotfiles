@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [linking-conventions-foundation]
 specs:
   - specs/linking-architecture.md
