@@ -57,24 +57,24 @@
     },
     "git": [
       {
-        "source": "git/.gitconfig",
+        "source": "home/.gitconfig",
         "target": "~/.gitconfig",
         "description": "Git global configuration"
       },
       {
-        "source": "git/.gitignore_global",
+        "source": "home/.gitignore_global",
         "target": "~/.gitignore_global",
         "description": "Git global ignore patterns (400+ patterns for macOS, Swift, Python, AI agents)",
         "note": "Referenced by core.excludesfile in .gitconfig"
       },
       {
-        "source": "git/conventional-commits-gitmessage",
+        "source": "home/.config/git/conventional-commits-gitmessage",
         "target": "~/.config/git/conventional-commits-gitmessage",
         "description": "Conventional commits message template",
         "note": "Referenced by commit.template in .gitconfig"
       },
       {
-        "source": "git/github-flow-aliases.gitconfig",
+        "source": "home/.config/git/github-flow-aliases.gitconfig",
         "target": "~/.config/git/github-flow-aliases.gitconfig",
         "description": "GitHub Flow workflow git aliases",
         "optional": true,
@@ -100,7 +100,7 @@
       ],
       "mise": [
         {
-          "source": "packages/mise/config.toml",
+          "source": "home/.config/mise/config.toml",
           "target": "~/.config/mise/config.toml",
           "description": "Mise version manager configuration"
         }
@@ -113,7 +113,7 @@
           "platforms": ["darwin"]
         },
         {
-          "source": "packages/syncservice/config.yml",
+          "source": "home/.config/home-sync/config.yml",
           "target": "~/.config/home-sync/config.yml",
           "description": "Home sync service configuration"
         }

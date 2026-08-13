@@ -50,19 +50,19 @@ let
     }
     {
       target = ".gitconfig";
-      source = ../git/.gitconfig;
+      source = ../home/.gitconfig;
     }
     {
       target = ".gitignore_global";
-      source = ../git/.gitignore_global;
+      source = ../home/.gitignore_global;
     }
     {
       target = ".config/git/github-flow-aliases.gitconfig";
-      source = ../git/github-flow-aliases.gitconfig;
+      source = ../home/.config/git/github-flow-aliases.gitconfig;
     }
     {
       target = ".config/git/conventional-commits-gitmessage";
-      source = ../git/conventional-commits-gitmessage;
+      source = ../home/.config/git/conventional-commits-gitmessage;
     }
     {
       target = ".config/git/ios.gitattributes";
@@ -152,9 +152,9 @@ in
     ".codex/AGENTS.md".source = ../docs/agents/AGENTS.md;
     ".claude/CLAUDE.md".source = ../docs/agents/AGENTS.md;
 
-    ".gitignore_global".source = ../git/.gitignore_global;
-    ".config/git/github-flow-aliases.gitconfig".source = ../git/github-flow-aliases.gitconfig;
-    ".config/git/conventional-commits-gitmessage".source = ../git/conventional-commits-gitmessage;
+    ".gitignore_global".source = ../home/.gitignore_global;
+    ".config/git/github-flow-aliases.gitconfig".source = ../home/.config/git/github-flow-aliases.gitconfig;
+    ".config/git/conventional-commits-gitmessage".source = ../home/.config/git/conventional-commits-gitmessage;
     ".config/git/ios.gitattributes".source = ../git/ios.gitattributes;
 
     ".config/zsh/.zpreztorc".source = ../home/.config/zsh/.zpreztorc;
@@ -162,11 +162,11 @@ in
     ".config/zsh/work-config.zsh".source = ../home/.config/zsh/work-config.zsh;
     ".config/zsh/personal-config.zsh".source = ../home/.config/zsh/personal-config.zsh;
     ".config/zsh/lib" = {
-      source = ../zsh/lib;
+      source = ../home/.config/zsh/lib;
       recursive = true;
     };
     ".config/zsh/completion" = {
-      source = ../zsh/completion;
+      source = ../home/.config/zsh/completion;
       recursive = true;
     };
   };
