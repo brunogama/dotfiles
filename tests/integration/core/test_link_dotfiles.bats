@@ -168,8 +168,54 @@ assert_link_points_to() {
     assert_success
     local ledger="$HOME/.local/state/dotfiles/links.json"
     assert_file_exists "$ledger"
-    run python3 -c 'import json, sys; state = json.load(open(sys.argv[1])); assert state["version"] == 1; assert state["repository_id"]; assert state["links"] == [{"source": "home/.example", "target": sys.argv[2]}]' "$ledger" "$HOME/.example"
+    run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["version"] == 1; assert state["repository_id"]; assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}]' "$ledger" "$TEST_DOTFILES/home/.example" "$HOME/.example"
     assert_success
+}
+
+@test "link-dotfiles: prune removes a stale tracked symlink" {
+    create_home_file ".stale"
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    rm "$TEST_DOTFILES/home/.stale"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    refute test -L "$HOME/.stale"
+}
+
+@test "link-dotfiles: prune removes a tracked link from a prior checkout" {
+    local prior_root="$TEST_TEMP_DIR/prior-checkout"
+    mkdir -p "$prior_root/home" "$HOME/.local/state/dotfiles"
+    printf 'old\n' > "$prior_root/home/.moved"
+    ln -s "$prior_root/home/.moved" "$HOME/.moved"
+    create_home_file ".moved" new
+    printf '{"version": 1, "repository_id": "stable", "links": [{"source": "%s", "target": "%s"}]}\n' "$prior_root/home/.moved" "$HOME/.moved" > "$HOME/.local/state/dotfiles/links.json"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    refute test -L "$HOME/.moved"
+}
+
+@test "link-dotfiles: prune preserves untracked targets" {
+    mkdir -p "$HOME/.local/state/dotfiles"
+    printf '{"version": 1, "repository_id": "test", "links": []}\n' > "$HOME/.local/state/dotfiles/links.json"
+    ln -s /tmp/untracked "$HOME/.untracked"
+    printf 'regular\n' > "$HOME/.regular"
+    mkdir "$HOME/.directory"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    assert_symlink_exists "$HOME/.untracked"
+    assert_file_exists "$HOME/.regular"
+    assert_dir_exists "$HOME/.directory"
+}
+
+@test "link-dotfiles: prune dry-run leaves a stale tracked symlink" {
+    create_home_file ".stale"
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    rm "$TEST_DOTFILES/home/.stale"
+    run python3 "$LINK_SCRIPT" --prune --dry-run
+    assert_success
+    assert_symlink_exists "$HOME/.stale"
+    assert_output --partial "Would prune"
 }
 
 @test "link-dotfiles: source symlinks are not managed" {
