@@ -107,7 +107,7 @@
       ],
       "sync-service": [
         {
-          "source": "packages/syncservice/com.brunogama.home-sync.plist",
+          "source": "home-darwin/Library/LaunchAgents/com.brunogama.home-sync.plist",
           "target": "~/Library/LaunchAgents/com.brunogama.home-sync.plist",
           "description": "Home sync service launch agent",
           "platforms": ["darwin"]

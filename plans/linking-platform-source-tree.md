@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 depends: [linking-common-tool-source-tree]
 specs:
   - specs/linking-architecture.md
@@ -34,7 +34,8 @@ Migrate Darwin-only managed files into `home-darwin/` and classify the Folder Ac
 
 ## Notes
 
-(Populated at closeout.)
+- The Folder Action remains documented as an exceptional installer input. Its legacy destination extension mismatch is intentionally deferred to the installer implementation.
+- The Darwin Git attributes, Brewfile, and home-sync launch agent now map from `home-darwin/` to their destination-equivalent paths.
 
 ## Follow-ups
 
