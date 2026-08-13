@@ -41,7 +41,8 @@ Add explicit stale-link pruning and one-time `~/local/bin` migration on top of t
 
 - First lifecycle slice adds a dry-run-capable `--prune` operation. It deletes only a target that remains a symlink to the exact source recorded in valid ownership state.
 - Repository identity now prefers the Git origin URL so newly written state remains stable when the checkout relocates.
-- Explicit legacy `~/local/bin` migration remains the next slice.
+- Second lifecycle slice adds `--migrate-legacy-bin`: it migrates only legacy symlinks that point exactly to a currently discovered public command, while preserving unmanaged or unproven entries and refusing target collisions.
+- Backup/confirmation for explicitly accepted unmanaged legacy entries remains deferred.
 
 ## Follow-ups
 

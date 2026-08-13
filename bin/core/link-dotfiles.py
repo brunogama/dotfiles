@@ -68,12 +68,14 @@ class LinkManager:
         yes: bool = False,
         verbose: bool = False,
         prune: bool = False,
+        migrate_legacy_bin: bool = False,
     ):
         self.dry_run = dry_run
         self.force = force
         self.yes = yes
         self.verbose = verbose
         self.prune_mode = prune
+        self.migrate_legacy_bin = migrate_legacy_bin
 
         # Counters
         self.count_created = 0
@@ -298,6 +300,68 @@ class LinkManager:
                 self.log_success(f"Pruned: {target}")
             self.count_created += 1
 
+    def public_commands(self) -> Dict[str, Path]:
+        """Discover unique executable commands exposed from immediate domain entries."""
+        commands: Dict[str, Path] = {}
+        bin_root = self.dotfiles_root / "bin"
+        if not bin_root.is_dir():
+            return commands
+        for domain in sorted(bin_root.iterdir()):
+            if not domain.is_dir():
+                continue
+            for source in sorted(domain.iterdir()):
+                if not stat.S_ISREG(source.lstat().st_mode) or not os.access(source, os.X_OK):
+                    continue
+                if source.name in commands:
+                    raise ValueError(f"Duplicate command name: {source.name}")
+                commands[source.name] = source
+        return commands
+
+    def migrate_legacy_commands(self) -> None:
+        """Move only legacy symlinks proven to point at current public commands."""
+        legacy_bin = Path.home() / "local/bin"
+        try:
+            commands = self.public_commands()
+        except ValueError as error:
+            self.log_error(str(error))
+            self.count_errors += 1
+            return
+        if not legacy_bin.is_dir():
+            self.log_info(f"No legacy command directory: {legacy_bin}")
+            return
+
+        migrations: List[Tuple[Path, Path, Path]] = []
+        for legacy in sorted(legacy_bin.iterdir()):
+            source = commands.get(legacy.name)
+            if source is None:
+                self.log_info(f"Preserving unmanaged legacy entry: {legacy}")
+                self.count_skipped += 1
+                continue
+            if not legacy.is_symlink() or legacy.resolve() != source.resolve():
+                self.log_info(f"Preserving unproven legacy entry: {legacy}")
+                self.count_skipped += 1
+                continue
+            migrations.append((legacy, Path.home() / ".local/bin" / legacy.name, source))
+
+        for legacy, target, source in migrations:
+            if target.exists() or target.is_symlink():
+                correct = target.is_symlink() and target.resolve() == source.resolve()
+                if not correct:
+                    self.log_error(f"Collision at {target}; migration left {legacy} unchanged")
+                    self.count_errors += 1
+                    return
+
+        for legacy, target, source in migrations:
+            if self.dry_run:
+                self.log_info(f"Would migrate: {legacy} -> {target}")
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists() and not target.is_symlink():
+                target.symlink_to(source)
+            legacy.unlink()
+            self.log_success(f"Migrated: {legacy} -> {target}")
+            self.count_created += 1
+
     def process_links(self):
         """Discover and apply the convention-based link plan."""
         plan: Dict[Path, Tuple[Path, str]] = {}
@@ -311,20 +375,12 @@ class LinkManager:
                 if stat.S_ISREG(source.lstat().st_mode):
                     plan[home / source.relative_to(tree)] = (source, tree_name)
 
-        commands: Dict[str, Path] = {}
-        bin_root = self.dotfiles_root / "bin"
-        if bin_root.is_dir():
-            for domain in sorted(bin_root.iterdir()):
-                if not domain.is_dir():
-                    continue
-                for source in sorted(domain.iterdir()):
-                    if not stat.S_ISREG(source.lstat().st_mode) or not os.access(source, os.X_OK):
-                        continue
-                    if source.name in commands:
-                        self.log_error(f"Duplicate command name: {source.name}")
-                        self.count_errors += 1
-                        return
-                    commands[source.name] = source
+        try:
+            commands = self.public_commands()
+        except ValueError as error:
+            self.log_error(str(error))
+            self.count_errors += 1
+            return
         for name, source in commands.items():
             target = home / ".local/bin" / name
             if target in plan:
@@ -426,6 +482,8 @@ class LinkManager:
 
         if self.prune_mode:
             self.prune()
+        elif self.migrate_legacy_bin:
+            self.migrate_legacy_commands()
         else:
             self.process_links()
         self.show_summary()
@@ -455,6 +513,7 @@ def main():
     )
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
     parser.add_argument("--prune", action="store_true", help="Remove stale links proven by ownership state")
+    parser.add_argument("--migrate-legacy-bin", action="store_true", help="Migrate proven legacy ~/local/bin command links")
 
     args = parser.parse_args()
 
@@ -468,6 +527,7 @@ def main():
         yes=args.yes,
         verbose=args.verbose,
         prune=args.prune,
+        migrate_legacy_bin=args.migrate_legacy_bin,
     )
 
     sys.exit(manager.run())
