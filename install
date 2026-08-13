@@ -88,7 +88,7 @@ OPTIONS:
     --skip-brew        Skip Homebrew installation/bundle
     --skip-packages    Skip package installation
     --skip-links       Skip symlink creation
-    --scripts-only     Only link scripts to ~/local/bin (skip everything else)
+    --scripts-only     Only link public commands to ~/.local/bin (skip everything else)
     --verbose          Show detailed output
     --help             Show this help message
 
@@ -108,8 +108,11 @@ EXAMPLES:
     # Preview only
     ./install --dry-run
 
-    # Only update scripts in ~/local/bin
+    # Only update public commands in ~/.local/bin
     ./install --scripts-only
+
+    # Migrate proven legacy ~/local/bin command links
+    python3 bin/core/link-dotfiles.py --migrate-legacy-bin --apply
 
 EXIT CODES:
     0    Success
@@ -316,6 +319,7 @@ phase_bundle() {
     fi
 }
 
+# shellcheck disable=SC2329
 # Phase 4.5: Migrate ~/.local to ~/local
 phase_migrate_local_directory() {
     log_phase "Phase 4.5: Directory Migration"
@@ -362,7 +366,7 @@ phase_migrate_local_directory() {
         1)
             # Rename strategy
             if [[ -d "$new_local" ]]; then
-                log_error "~/local already exists - cannot rename ~/.local"
+                log_error "$HOME/local already exists - cannot rename $HOME/.local"
                 log_info "Please manually handle the conflict or choose option 2"
                 return 1
             fi
@@ -393,7 +397,8 @@ phase_migrate_local_directory() {
                         continue
                     fi
 
-                    local script_name=$(basename "$script")
+                    local script_name
+                    script_name=$(basename "$script")
                     local new_script="$new_local/bin/$script_name"
 
                     # Check if script will be installed by dotfiles
@@ -607,7 +612,7 @@ phase_mise() {
         log_success "mise installed"
 
         # Add mise to PATH for this session
-        export PATH="$HOME/local/bin:$PATH"
+        export PATH="$HOME/.local/bin:$PATH"
 
         # Verify installation
         if command_exists mise; then
@@ -824,6 +829,7 @@ phase_nvm() {
 
         # Source nvm for this session
         export NVM_DIR="$nvm_dir"
+        # shellcheck disable=SC1091
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
         # Check if any Node version is installed
@@ -873,6 +879,7 @@ phase_nvm() {
 
     # Source nvm for this session
     export NVM_DIR="$nvm_dir"
+    # shellcheck disable=SC1091
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
     log_info "Installing latest LTS Node.js version..."
@@ -1001,138 +1008,31 @@ phase_symlinks() {
     fi
 }
 
-# Phase 7-alt: Scripts-only linking
+# Phase 7-alt: Public command linking
 phase_scripts_only() {
-    log_phase "Phase 7: Scripts Linking (~/local/bin only)"
+    log_phase "Phase 7: Public Command Linking (~/.local/bin only)"
 
-    local target_dir="$HOME/local/bin"
-
-    # Ensure target directory exists
-    if [[ ! -d "$target_dir" ]]; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            log_info "Would create directory: $target_dir"
-        else
-            mkdir -p "$target_dir"
-            log_success "Created directory: $target_dir"
-        fi
-    fi
-
-    local bin_dirs=("core" "credentials" "git" "ide" "macos")
-    local linked_count=0
-    local skipped_count=0
-    local error_count=0
-
-    for dir in "${bin_dirs[@]}"; do
-        local source_dir="$DOTFILES_ROOT/bin/$dir"
-
-        # Skip if directory doesn't exist
-        if [[ ! -d "$source_dir" ]]; then
-            log_verbose "Skipping $dir (directory not found)"
-            continue
-        fi
-
-        # Skip macos on non-darwin platforms
-        if [[ "$dir" == "macos" ]] && [[ "$PLATFORM" != "darwin" ]]; then
-            log_verbose "Skipping $dir (not on macOS)"
-            continue
-        fi
-
-        log_info "Processing bin/$dir/..."
-
-        # Link each file in the directory
-        for source_file in "$source_dir"/*; do
-            # Skip if not a file
-            if [[ ! -f "$source_file" ]]; then
-                continue
-            fi
-
-            # Skip subdirectories like home_sync/, lib/, git-hooks/
-            if [[ -d "$source_file" ]]; then
-                continue
-            fi
-
-            local filename=$(basename "$source_file")
-            local target_file="$target_dir/$filename"
-
-            # Check if already linked correctly
-            if [[ -L "$target_file" ]] && [[ "$(readlink "$target_file")" == "$source_file" ]]; then
-                log_verbose "Already linked: $filename"
-                ((skipped_count++)) || true
-                continue
-            fi
-
-            # Create or update symlink
-            if [[ "$DRY_RUN" == "true" ]]; then
-                log_info "Would link: $filename -> bin/$dir/$filename"
-                ((linked_count++)) || true
-            else
-                if ln -sf "$source_file" "$target_file"; then
-                    # Make executable
-                    chmod +x "$target_file" 2>/dev/null || true
-                    log_success "Linked: $filename"
-                    ((linked_count++)) || true
-                else
-                    log_error "Failed to link: $filename"
-                    ((error_count++)) || true
-                fi
-            fi
-        done
-    done
-
-    # Also link lib directories
-    local lib_dirs=("bin/lib" "bin/git/lib")
-    for lib_dir in "${lib_dirs[@]}"; do
-        local source_lib="$DOTFILES_ROOT/$lib_dir"
-        if [[ -d "$source_lib" ]]; then
-            local target_lib="$target_dir/$(basename $(dirname "$lib_dir"))/lib"
-            local target_parent=$(dirname "$target_lib")
-
-            if [[ ! -d "$target_parent" ]]; then
-                if [[ "$DRY_RUN" != "true" ]]; then
-                    mkdir -p "$target_parent"
-                fi
-            fi
-
-            if [[ -L "$target_lib" ]] && [[ "$(readlink "$target_lib")" == "$source_lib" ]]; then
-                log_verbose "Already linked: $(basename $(dirname "$lib_dir"))/lib/"
-                ((skipped_count++)) || true
-            elif [[ "$DRY_RUN" == "true" ]]; then
-                log_info "Would link: $(basename $(dirname "$lib_dir"))/lib/ -> $lib_dir/"
-                ((linked_count++)) || true
-            else
-                if ln -sf "$source_lib" "$target_lib"; then
-                    log_success "Linked: $(basename $(dirname "$lib_dir"))/lib/"
-                    ((linked_count++)) || true
-                else
-                    log_error "Failed to link: $(basename $(dirname "$lib_dir"))/lib/"
-                    ((error_count++)) || true
-                fi
-            fi
-        fi
-    done
-
-    # Summary
-    echo ""
-    log_success "Linked: $linked_count scripts/libraries"
-    log_info "Skipped: $skipped_count (already linked)"
-    if [[ $error_count -gt 0 ]]; then
-        log_error "Errors: $error_count"
+    local linker="$DOTFILES_ROOT/bin/core/link-dotfiles.py"
+    if [[ ! -f "$linker" ]]; then
+        log_error "link-dotfiles.py script not found: $linker"
         return 1
     fi
 
-    # Fix permissions and ownership for all files in ~/local
+    local link_args=("--commands-only")
     if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would set executable permissions on all scripts in ~/local/bin"
-        log_info "Would set ownership to $(whoami) for ~/local"
+        link_args+=("--dry-run")
     else
-        log_info "Setting executable permissions on scripts..."
-        find "$target_dir" -type f -exec chmod +x {} \; 2>/dev/null || true
-
-        log_info "Setting ownership to $(whoami) for ~/local..."
-        chown -R "$(whoami)" "$HOME/local" 2>/dev/null || true
-
-        log_success "Permissions and ownership updated"
+        link_args+=("--apply")
     fi
+    if [[ "$YES" == "true" ]]; then
+        link_args+=("--yes")
+    fi
+    if [[ "$VERBOSE" == "true" ]]; then
+        link_args+=("--verbose")
+    fi
+
+    log_info "Running link-dotfiles for public commands..."
+    python3 "$linker" "${link_args[@]}"
 }
 
 # Phase 8: Shell configuration
@@ -1162,16 +1062,16 @@ phase_shell() {
     case "$current_shell" in
         zsh)
             if [[ -L "$HOME/.config/zsh/.zshrc" ]]; then
-                log_success "~/.config/zsh/.zshrc is linked"
+                log_success "$HOME/.config/zsh/.zshrc is linked"
             else
-                log_warning "~/.config/zsh/.zshrc is not linked"
+                log_warning "$HOME/.config/zsh/.zshrc is not linked"
             fi
             ;;
         bash)
             if [[ -L "$HOME/.bashrc" ]]; then
-                log_success "~/.bashrc is linked"
+                log_success "$HOME/.bashrc is linked"
             else
-                log_info "~/.bashrc not managed by these dotfiles"
+                log_info "$HOME/.bashrc is not managed by these dotfiles"
             fi
             ;;
         fish)
@@ -1332,7 +1232,7 @@ main() {
         phase_preflight
         phase_scripts_only
         log_phase "Scripts Update Complete!"
-        log_info "Scripts in ~/local/bin have been updated"
+        log_info "Public commands in ~/.local/bin have been updated"
         log_info "Run './install' without --scripts-only for full installation"
     else
         # Full installation
@@ -1340,7 +1240,6 @@ main() {
     phase_homebrew
     phase_dependencies
     phase_bundle
-        phase_migrate_local_directory
     phase_version_managers
     phase_prezto
     phase_symlinks
