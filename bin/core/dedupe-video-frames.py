@@ -242,7 +242,7 @@ def compare_frames_correlation(frame1_path: Path, frame2_path: Path, threshold: 
 
         # Handle NaN case (occurs when arrays are constant)
         if np.isnan(correlation):
-            return True
+            return np.array_equal(arr1, arr2)
 
         return correlation >= threshold
     except Exception as e:
@@ -440,7 +440,7 @@ def create_output_video_pts(
             probe = ffmpeg.probe(str(video_path))
             duration = float(probe["format"].get("duration", 0))
             original_frame_count = int(fps * duration)
-            speed_factor = len(frames_to_keep) / original_frame_count if original_frame_count > 0 else 1.0
+            speed_factor = len(frame_files) / original_frame_count if original_frame_count > 0 else 1.0
 
             print(f"  Audio speed adjustment: {speed_factor:.3f}x")
 
@@ -656,12 +656,14 @@ def process_video_in_chunks(
     duration = video_info["duration"]
 
     all_frames_to_keep = [0]  # Always keep first frame
+    frames_set = {0}  # Companion set for O(1) membership checks
 
     num_chunks = int(np.ceil(duration / chunk_duration))
     print(f"Processing video in {num_chunks} chunks of {chunk_duration}s each...")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
+        failed_chunks = []
 
         for chunk_idx in range(num_chunks):
             # Add overlap for proper comparison at chunk boundaries
@@ -682,10 +684,12 @@ def process_video_in_chunks(
                 )
             except Exception as e:
                 print(f"Error extracting chunk frames: {e}", file=sys.stderr)
+                failed_chunks.append(chunk_idx + 1)
                 continue
 
             if len(chunk_frames) == 0:
                 print(f"Warning: No frames extracted for chunk {chunk_idx + 1}")
+                failed_chunks.append(chunk_idx + 1)
                 continue
 
             # Determine frames to keep in this chunk
@@ -710,17 +714,26 @@ def process_video_in_chunks(
 
                 global_idx = start_frame + local_idx
                 # Avoid duplicates from overlapping chunks
-                if global_idx not in all_frames_to_keep:
+                if global_idx not in frames_set:
+                    frames_set.add(global_idx)
                     all_frames_to_keep.append(global_idx)
 
             # Clean up chunk frames
             for frame_path in chunk_frames:
                 try:
                     frame_path.unlink()
-                except:
-                    pass
+                except OSError as e:
+                    print(f"Error deleting frame {frame_path}: {e}", file=sys.stderr)
+                    raise
 
             print(f"Chunk {chunk_idx + 1} complete: {len(chunk_frames_to_keep)}/{len(chunk_frames)} frames kept")
+
+        # Check if any chunks failed
+        if failed_chunks:
+            raise ValueError(
+                f"Failed to process {len(failed_chunks)} chunk(s): {failed_chunks}. "
+                "Cannot proceed with incomplete data."
+            )
 
     # Sort final frame list
     all_frames_to_keep.sort()
@@ -874,16 +887,16 @@ Examples:
 
     # Suggest optimizations for long videos
     if video_info['duration'] > 1800 and not args.chunk_mode:  # > 30 minutes
-        print("\n⚠️  Warning: Video is longer than 30 minutes.")
+        print("\nWarning: Video is longer than 30 minutes.")
         print("   Consider using --chunk-mode for better memory management.")
 
     if video_info['frame_count'] > 10000 and args.sample_rate == 1:
         suggested_rate = max(2, video_info['frame_count'] // 5000)
-        print(f"\n💡 Tip: Consider using -s {suggested_rate} to speed up processing.")
+        print(f"\nTip: Consider using -s {suggested_rate} to speed up processing.")
 
     # Check if video is shorter than window
     if video_info["duration"] <= args.window:
-        print(f"\n⚠️  Warning: Video duration ({video_info['duration']:.2f}s) <= comparison window ({args.window}s)")
+        print(f"\nWarning: Video duration ({video_info['duration']:.2f}s) <= comparison window ({args.window}s)")
         print("   Will compare to first frame instead.")
 
     print(f"\nConfiguration:")

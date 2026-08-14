@@ -14,8 +14,11 @@
 
 set -euo pipefail
 
-DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Resolve symlinks to find the physical repository root
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+DOTFILES_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 readonly DOTFILES_ROOT
+export DOTFILES_ROOT
 
 # Validate python3 is available
 if ! command -v python3 >/dev/null 2>&1; then
