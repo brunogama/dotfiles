@@ -1507,6 +1507,7 @@ fi
 ```
 
 **Graceful Degradation:**
+
 ```bash
 # Optional features degrade gracefully
 if command -v fzf &>/dev/null; then
@@ -1517,12 +1518,14 @@ fi
 ```
 
 **User-Friendly Messages:**
+
 ```bash
 log_error "Failed to create symlink: $target"
 log_info "Run 'link-dotfiles --verbose' for details"
 ```
 
 **Exit Codes:**
+
 - 0: Success
 - 1: General error
 - 2: Prerequisites not met
@@ -1534,22 +1537,26 @@ log_info "Run 'link-dotfiles --verbose' for details"
 **Logging Strategy:**
 
 **Console Output:**
+
 - Color-coded by severity (red=error, yellow=warning, blue=info, green=success)
 - Structured format: `[LEVEL] message`
 - Progress indicators for long operations
 
 **File Logging:**
+
 - Optional: `logs/` directory for verbose output
 - Install log: `logs/install.log`
 - Sync log: `logs/sync.log`
 - Rotated manually (not automated)
 
 **No Telemetry:**
+
 - No external monitoring
 - No usage tracking
 - Fully local
 
 **Debugging:**
+
 ```bash
 # Verbose output
 ./install --verbose
@@ -1569,15 +1576,18 @@ zsh -xv 2>&1 | tee zsh-debug.log
 #### 1. Credential Storage
 
 **Mechanism:** OS-level encrypted storage
+
 - macOS: Keychain (encrypted by FileVault)
 - Linux: gnome-keyring or kwallet
 
 **Access Control:**
+
 - Requires user login password
 - Per-user isolation
 - No plaintext storage
 
 **Audit:**
+
 ```bash
 # List stored credentials
 security dump-keychain | grep dotfiles
@@ -1591,6 +1601,7 @@ security delete-generic-password -s "dotfiles-OPENAI_API_KEY"
 **Problem:** Secrets exposed in history via positional args
 
 **Solution:** Interactive input only
+
 ```bash
 # INSECURE (deprecated)
 store-api-key KEY "secret"  # Shows in history!
@@ -1600,6 +1611,7 @@ store-api-key KEY  # Prompts for value (hidden)
 ```
 
 **Cleanup:**
+
 ```bash
 # Remove exposed secrets from history
 clear-secret-history
@@ -1612,11 +1624,13 @@ clear-secret-history
 #### 3. Pre-commit Secret Scanning
 
 **Hooks Check:**
+
 - .env files for plaintext secrets
 - Scripts for hardcoded credentials
 - Commit messages for accidentally included secrets
 
 **Block Commit If:**
+
 - API keys detected (pattern: `sk-...`, `ghp_...`)
 - Passwords in plaintext
 - Private keys (.pem, .key files)
@@ -1624,6 +1638,7 @@ clear-secret-history
 #### 4. Repository Security
 
 **Recommendations:**
+
 - Keep repository private
 - Use SSH keys for GitHub (not HTTPS passwords)
 - Enable 2FA on GitHub
@@ -1631,6 +1646,7 @@ clear-secret-history
 - Use different credentials per environment (dev/staging/prod)
 
 **Gitignore Patterns:**
+
 ```gitignore
 # Secrets
 .env
@@ -1653,6 +1669,7 @@ secrets/
 **Optimizations:**
 
 **Compiled Configs (.zwc):**
+
 ```bash
 # Compile all zsh files
 zsh-compile
@@ -1662,10 +1679,12 @@ zsh-compile
 ```
 
 **Lazy Loading:**
+
 - Defer mise, nvm, rbenv, SDKMAN until used
 - Save 400-850ms per startup
 
 **Completion Caching:**
+
 ```zsh
 # Cache for 24 hours
 zstyle ':completion:*' cache-path ~/.zcompcache
@@ -1681,22 +1700,26 @@ fi
 ```
 
 **Reduced History:**
+
 - 10k entries (vs 100k default)
 - Faster history searches
 - Less disk I/O
 
 **Single compinit Call:**
+
 - Was: Called 3 times (prezto, plugins, manual)
 - Now: Called once with cache
 - Save: 50-100ms
 
 **Background Operations:**
+
 ```zsh
 # Load FZF in background (non-blocking)
 (source <(fzf --zsh) &)
 ```
 
 **Measurement:**
+
 ```bash
 # Quick benchmark (10 runs)
 zsh-benchmark
@@ -1710,6 +1733,7 @@ zsh-benchmark --detailed
 #### 2. Script Performance
 
 **Caching:**
+
 ```bash
 # Cache expensive operations
 if [[ ! -f /tmp/package-list.cache ]] || \
@@ -1719,6 +1743,7 @@ fi
 ```
 
 **Parallel Execution:**
+
 ```bash
 # Run independent tasks in parallel
 task1 &
@@ -1727,6 +1752,7 @@ wait
 ```
 
 **Avoid Subshells:**
+
 ```bash
 # Slow (subshell)
 count=$(grep -c pattern file)
@@ -1741,12 +1767,14 @@ done < <(grep pattern file)
 #### 3. Git Operations
 
 **Shallow Clones:**
+
 ```bash
 # Don't need full history
 git clone --depth 1 https://...
 ```
 
 **Sparse Checkout:**
+
 ```bash
 # Only checkout needed directories
 git sparse-checkout set bin/ zsh/
@@ -1928,25 +1956,19 @@ export MY_VAR="value"
 source "${ZDOTDIR:-$HOME}/.config/zsh/my-custom-config.zsh"
 ```
 
-#### 4. Add Symlink to Manifest (if needed)
+#### 4. Add a Convention-Based Source (if needed)
 
 ```bash
-# Edit LinkingManifest.json
-jq '.links.shell.zsh += [{
-    "source": "zsh/my-custom-config.zsh",
-    "target": "~/.config/zsh/my-custom-config.zsh",
-    "description": "My custom configuration"
-}]' LinkingManifest.json > tmp.json && mv tmp.json LinkingManifest.json
+# A path under home/ maps directly below $HOME
+mkdir -p home/.config/zsh
+cp zsh/my-custom-config.zsh home/.config/zsh/my-custom-config.zsh
 ```
 
 #### 5. Test
 
 ```bash
-# Validate manifest
-jq empty LinkingManifest.json
-
-# Test linking
-bin/core/link-dotfiles --dry-run
+# Preview the discovered link plan
+python3 bin/core/link-dotfiles.py --dry-run
 
 # Source and test
 source zsh/my-custom-config.zsh
@@ -2052,6 +2074,7 @@ bats tests/test-new-script.bats
 #### Error: "jq: command not found"
 
 **Symptom:**
+
 ```
 ./install: line 45: jq: command not found
 ```
@@ -2059,6 +2082,7 @@ bats tests/test-new-script.bats
 **Cause:** jq not installed
 
 **Debug:**
+
 ```bash
 # Check if jq exists
 command -v jq || echo "jq not found"
@@ -2071,6 +2095,7 @@ which jq 2>/dev/null || echo "Not in PATH"
 ```
 
 **Fix:**
+
 ```bash
 # macOS
 brew install jq
@@ -2088,6 +2113,7 @@ jq --version
 #### Error: "Permission denied" on symlink creation
 
 **Symptom:**
+
 ```
 ln: ~/.zshrc: Permission denied
 ```
@@ -2095,6 +2121,7 @@ ln: ~/.zshrc: Permission denied
 **Cause:** Target already exists or parent directory not writable
 
 **Debug:**
+
 ```bash
 # Check if target exists
 ls -la ~/.zshrc
@@ -2107,6 +2134,7 @@ readlink ~/.zshrc
 ```
 
 **Fix:**
+
 ```bash
 # Backup existing file
 cp ~/.zshrc ~/.zshrc.backup
@@ -2126,6 +2154,7 @@ bin/core/link-dotfiles --apply --backup
 **Symptom:** Shell takes 2-3 seconds to start
 
 **Debug:**
+
 ```bash
 # Measure startup
 zsh-benchmark
@@ -2141,6 +2170,7 @@ grep "lazy-load" ~/.zshrc
 ```
 
 **Fix:**
+
 ```bash
 # Compile configs
 zsh-compile
@@ -2234,6 +2264,7 @@ git commit -m "chore(deps): update Prezto framework"
 **Gotcha:** If file missing or corrupted, defaults to personal mode
 
 **Fix:**
+
 ```bash
 # Check current state
 cat ~/.work_mode
@@ -2256,6 +2287,7 @@ work-mode work
 **Gotcha:** Editing .zshrc doesn't update .zshrc.zwc automatically
 
 **Fix:**
+
 ```bash
 # Remove all .zwc files
 find ~/.config/zsh -name "*.zwc" -delete
@@ -2267,26 +2299,25 @@ zsh-compile
 source ~/.zshrc
 ```
 
-#### 3. LinkingManifest.json Platform Filters
+#### 3. Convention-Based Platform Overlays
 
-**What:** Symlinks can be platform-specific
+**What:** Platform-specific links live in `home-darwin/` or `home-linux/`.
 
-**Location:** `LinkingManifest.json` `"platform": ["darwin"]`
+**Impact:** A platform overlay can override the same path from `home/`.
 
-**Impact:** Some configs only linked on macOS or Linux
-
-**Gotcha:** Missing symlinks on one platform, present on another
+**Gotcha:** A source only present in one platform tree will not be linked elsewhere.
 
 **Fix:**
+
 ```bash
 # Check platform
 uname -s
 
-# Preview what will be linked
-bin/core/link-dotfiles --dry-run
+# Preview the sources selected on this platform
+python3 bin/core/link-dotfiles.py --dry-run
 
-# Verify platform filters in manifest
-jq '.links[][] | select(.platform) | {source, platform}' LinkingManifest.json
+# Inspect platform-specific sources
+find home-darwin home-linux -type f 2>/dev/null
 ```
 
 ### Required Environment Variables
@@ -2306,6 +2337,7 @@ jq '.links[][] | select(.platform) | {source, platform}' LinkingManifest.json
 **Gotcha:** If .zprofile not sourced, ZDOTDIR not set
 
 **Fix:**
+
 ```bash
 # Check current value
 echo $ZDOTDIR
@@ -2324,7 +2356,8 @@ export ZDOTDIR="${HOME}/.config/zsh"
 **What:** Custom paths added to PATH in .zprofile
 
 **Additions:**
-- `~/local/bin` - Custom scripts
+
+- `~/.local/bin` - Convention-linked public commands
 - `/opt/homebrew/bin` - Homebrew (Apple Silicon)
 - `/usr/local/bin` - Homebrew (Intel)
 
@@ -2333,17 +2366,18 @@ export ZDOTDIR="${HOME}/.config/zsh"
 **Gotcha:** PATH can be overwritten by other configs
 
 **Fix:**
+
 ```bash
 # Check current PATH
 echo $PATH
 
-# Should include: ~/local/bin, /opt/homebrew/bin
+# Should include: ~/.local/bin, /opt/homebrew/bin
 
 # If missing, source .zprofile
 source ~/.zprofile
 
 # Or manually add
-export PATH="${HOME}/local/bin:/opt/homebrew/bin:$PATH"
+export PATH="${HOME}/.local/bin:/opt/homebrew/bin:$PATH"
 ```
 
 ### External Service Dependencies
@@ -2357,11 +2391,13 @@ export PATH="${HOME}/local/bin:/opt/homebrew/bin:$PATH"
 **Impact:** Without Keychain access, credentials fail
 
 **Gotchas:**
+
 - Keychain locked: Need to unlock with login password
 - Different keychain: `security list-keychains` shows active
 - Keychain permissions: May need to authorize access
 
 **Fix:**
+
 ```bash
 # List keychains
 security list-keychains
@@ -2386,11 +2422,13 @@ get-api-key TEST_KEY
 **Impact:** Sync features require remote access
 
 **Gotchas:**
+
 - No internet: Sync fails
 - SSH key not configured: Authentication fails
 - HTTPS with password: Deprecated, use SSH or token
 
 **Fix:**
+
 ```bash
 # Check remote URL
 git remote -v
@@ -2419,6 +2457,7 @@ cat ~/.ssh/id_ed25519.pub
 **Cause:** Homebrew installation + Xcode Command Line Tools download
 
 **Workaround:**
+
 - Pre-install Homebrew: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
 - Or run with `--skip-brew` and install packages manually
 
@@ -2429,6 +2468,7 @@ cat ~/.ssh/id_ed25519.pub
 **Cause:** 24-hour cache not refreshed
 
 **Fix:**
+
 ```bash
 # Force recompile
 rm ~/.zcompdump*
@@ -2442,12 +2482,13 @@ zsh
 **Cause:** Symlinks are absolute paths, repo moved location
 
 **Fix:**
-```bash
-# Re-run link-dotfiles from new location
-cd /new/location/.dotfiles
-bin/core/link-dotfiles --apply --force
 
-# Or update LinkingManifest.json if hardcoded paths
+```bash
+# Re-run the linker from the new location
+cd /new/location/.dotfiles
+python3 bin/core/link-dotfiles.py --apply --yes
+
+# The ownership ledger recognizes links from a prior checkout
 ```
 
 #### 4. Pre-commit Hooks Reject Valid Commits
@@ -2457,6 +2498,7 @@ bin/core/link-dotfiles --apply --force
 **Cause:** Hook script has bug or dependency missing
 
 **Workaround:**
+
 ```bash
 # Skip hooks temporarily (not recommended)
 git commit --no-verify -m "message"
@@ -2480,6 +2522,7 @@ shellcheck bin/git/hooks/problematic-hook
 **Impact:** 100-200ms added to startup
 
 **Fix:**
+
 ```bash
 # Check history size
 wc -l ~/.zsh_history
@@ -2500,6 +2543,7 @@ zsh-benchmark
 **Impact:** Each plugin adds 50-200ms
 
 **Fix:**
+
 ```bash
 # Review loaded modules
 grep "zstyle ':prezto:load' pmodule" ~/.zpreztorc
@@ -2521,6 +2565,7 @@ zsh-benchmark --detailed
 **Impact:** 500-2000ms added, unpredictable
 
 **Fix:**
+
 ```bash
 # Identify network calls
 strace -e connect zsh 2>&1 | grep connect
@@ -2539,6 +2584,7 @@ strace -e connect zsh 2>&1 | grep connect
 **Debt:** Hard to test, maintain, extend
 
 **Plan:** Break into modular scripts:
+
 - `install-homebrew`
 - `install-dependencies`
 - `install-packages`
@@ -2551,6 +2597,7 @@ strace -e connect zsh 2>&1 | grep connect
 **Debt:** Regressions not caught, refactoring risky
 
 **Plan:** Add BATS test framework:
+
 - Unit tests for individual scripts
 - Integration tests for install flow
 - CI runs test suite on PRs
@@ -2610,6 +2657,7 @@ strace -e connect zsh 2>&1 | grep connect
 **Coverage:** Quick lookups by task/category/frequency
 
 **Interactive Help:**
+
 ```bash
 dotfiles-help              # Interactive menu
 dotfiles-help script-name  # Specific script help
@@ -2625,10 +2673,11 @@ dotfiles-help --search keyword  # Search scripts
 
 #### Configuration Documentation
 
-**LinkingManifest.json** - Self-documenting symlink definitions
-Each entry has `"description"` field explaining purpose
+**`specs/linking-architecture.md`** - Convention-based linking contract
+The repository source tree documents each link through its destination path
 
 **Inline Comments:**
+
 - Shell scripts: `#` comments
 - Zsh configs: `#` comments
 - Git configs: `#` comments
@@ -2639,87 +2688,105 @@ Each entry has `"description"` field explaining purpose
 #### Zsh & Prezto
 
 **Zsh Manual:**
-- https://zsh.sourceforge.io/Doc/
+
+- <https://zsh.sourceforge.io/Doc/>
 - Man pages: `man zsh`, `man zshbuiltins`
 
 **Prezto Framework:**
-- https://github.com/sorin-ionescu/prezto
-- Module docs: https://github.com/sorin-ionescu/prezto/tree/master/modules
+
+- <https://github.com/sorin-ionescu/prezto>
+- Module docs: <https://github.com/sorin-ionescu/prezto/tree/master/modules>
 
 **Starship Prompt:**
-- https://starship.rs/
+
+- <https://starship.rs/>
 - Configuration: `zsh/starship.toml`
 
 #### Git
 
 **Git Documentation:**
-- https://git-scm.com/doc
+
+- <https://git-scm.com/doc>
 - Man pages: `man git`, `man git-config`
 
 **Conventional Commits:**
-- https://www.conventionalcommits.org/
+
+- <https://www.conventionalcommits.org/>
 - Guide: Commit message specification
 
 **GitHub Flow:**
-- https://guides.github.com/introduction/flow/
+
+- <https://guides.github.com/introduction/flow/>
 - Workflow: Branch, PR, merge
 
 #### Homebrew
 
 **Homebrew Docs:**
-- https://docs.brew.sh/
+
+- <https://docs.brew.sh/>
 - Man pages: `man brew`, `brew help`
 
 **Brewfile:**
-- https://github.com/Homebrew/homebrew-bundle
+
+- <https://github.com/Homebrew/homebrew-bundle>
 - Usage: `brew bundle --help`
 
 #### Security
 
 **macOS Keychain:**
+
 - Man pages: `man security`
-- Guide: https://developer.apple.com/documentation/security/keychain_services
+- Guide: <https://developer.apple.com/documentation/security/keychain_services>
 
 **OpenSSL:**
-- https://www.openssl.org/docs/
+
+- <https://www.openssl.org/docs/>
 - Encryption guide for credfile/credmatch
 
 #### Development Tools
 
 **Shellcheck:**
-- https://www.shellcheck.net/
-- Wiki: https://github.com/koalaman/shellcheck/wiki
+
+- <https://www.shellcheck.net/>
+- Wiki: <https://github.com/koalaman/shellcheck/wiki>
 
 **jq:**
-- https://stedolan.github.io/jq/
+
+- <https://stedolan.github.io/jq/>
 - Manual: `man jq`
 
 **OpenSpec:**
-- https://github.com/openspec-dev/openspec (if public)
+
+- <https://github.com/openspec-dev/openspec> (if public)
 - CLI help: `openspec --help`
 
 ### Style Guides
 
 **Shell Scripting:**
-- Google Shell Style Guide: https://google.github.io/styleguide/shellguide.html
-- Bash Best Practices: https://github.com/anordal/shellharden/blob/master/how_to_do_things_safely_in_bash.md
+
+- Google Shell Style Guide: <https://google.github.io/styleguide/shellguide.html>
+- Bash Best Practices: <https://github.com/anordal/shellharden/blob/master/how_to_do_things_safely_in_bash.md>
 
 **Python:**
-- PEP 8: https://www.python.org/dev/peps/pep-0008/
-- Type Hints: https://docs.python.org/3/library/typing.html
+
+- PEP 8: <https://www.python.org/dev/peps/pep-0008/>
+- Type Hints: <https://docs.python.org/3/library/typing.html>
 
 **Markdown:**
-- CommonMark: https://commonmark.org/
-- GitHub Flavored: https://github.github.com/gfm/
+
+- CommonMark: <https://commonmark.org/>
+- GitHub Flavored: <https://github.github.com/gfm/>
 
 ### Internal Knowledge Base
 
 **ai_docs/knowledge_base/**
+
 - IDE-specific AI configurations
 - Custom prompts and workflows
 - Architecture decision records (informal)
 
 **ai_docs/reports/**
+
 - Code review outputs
 - Session summaries
 - Task completion reports
@@ -2727,6 +2794,7 @@ Each entry has `"description"` field explaining purpose
 ### Getting Help
 
 **In-Project:**
+
 ```bash
 # Interactive help system
 dotfiles-help
@@ -2742,6 +2810,7 @@ cat docs/scripts/quick-reference.md
 ```
 
 **External:**
+
 - GitHub Issues: Report bugs, request features
 - GitHub Discussions: Ask questions, share tips
 - Pull Requests: Propose changes with context
@@ -2753,6 +2822,7 @@ cat docs/scripts/quick-reference.md
 ### Day 1: Environment Setup
 
 **Phase 1: Prerequisites (30 minutes)**
+
 - [ ] Verify Git 2.30+ installed: `git --version`
 - [ ] Verify Bash 4.0+ installed: `bash --version`
 - [ ] Install jq: `brew install jq` (macOS) or `sudo apt-get install jq` (Linux)
@@ -2760,6 +2830,7 @@ cat docs/scripts/quick-reference.md
 - [ ] Verify Perl available: `perl --version`
 
 **Phase 2: Clone and Install (30 minutes)**
+
 - [ ] Clone repository: `git clone <repo-url> ~/.dotfiles`
 - [ ] Change to directory: `cd ~/.dotfiles`
 - [ ] Review structure: `ls -la`
@@ -2768,6 +2839,7 @@ cat docs/scripts/quick-reference.md
 - [ ] Verify prompt shows environment (WORK or HOME:PERSONAL)
 
 **Phase 3: Basic Configuration (30 minutes)**
+
 - [ ] Set environment mode: `work-mode personal` (or work)
 - [ ] Restart shell: `exec zsh`
 - [ ] Measure performance: `zsh-benchmark` (should be < 500ms)
@@ -2778,6 +2850,7 @@ cat docs/scripts/quick-reference.md
 ### Day 2: Understanding the Codebase
 
 **Phase 4: Read Documentation (2 hours)**
+
 - [ ] Read README.md - Project overview
 - [ ] Read ONBOARDING.md (this file) - Comprehensive guide
 - [ ] Read MINDSET.MD - Constitutional rules
@@ -2785,16 +2858,18 @@ cat docs/scripts/quick-reference.md
 - [ ] Read docs/scripts/quick-reference.md - Script cheat sheet
 
 **Phase 5: Explore Structure (2 hours)**
+
 - [ ] Review `bin/` - Understand script categories (core, credentials, git, macos)
 - [ ] Review `zsh/` - Understand shell configuration layout
 - [ ] Review `git/` - Understand git configuration consolidation
 - [ ] Review `packages/` - Understand package management approach
 - [ ] Review `openspec/` - Understand proposal process
-- [ ] Review `LinkingManifest.json` - Understand symlink declarations
+- [ ] Review `home/` and `specs/linking-architecture.md` - Understand link conventions
 
 **Phase 6: Review Key Scripts (2 hours)**
+
 - [ ] Read `install` - Understand installation flow
-- [ ] Read `bin/core/link-dotfiles` - Understand symlink management
+- [ ] Read `bin/core/link-dotfiles.py` - Understand symlink management
 - [ ] Read `bin/core/work-mode` - Understand environment switching
 - [ ] Read `bin/credentials/store-api-key` - Understand secure credential storage
 - [ ] Read `zsh/.zshrc` - Understand shell initialization
@@ -2803,6 +2878,7 @@ cat docs/scripts/quick-reference.md
 ### Day 3: Making Changes
 
 **Phase 7: Setup Development Tools (1 hour)**
+
 - [ ] Install pre-commit hooks: `bin/core/setup-git-hooks`
 - [ ] Test hooks: `pre-commit run --all-files`
 - [ ] Install shellcheck: `brew install shellcheck` (macOS) or `sudo apt-get install shellcheck` (Linux)
@@ -2811,6 +2887,7 @@ cat docs/scripts/quick-reference.md
 - [ ] Configure Git email: `git config user.email "your@email.com"`
 
 **Phase 8: Make a Test Change (2 hours)**
+
 - [ ] Create feature branch: `git checkout -b feat/test-onboarding-change`
 - [ ] Add simple script: `touch bin/core/hello-world` && `chmod +x bin/core/hello-world`
 - [ ] Write basic script with --help
@@ -2820,6 +2897,7 @@ cat docs/scripts/quick-reference.md
 - [ ] Verify commit format: `git log -1`
 
 **Phase 9: Test Workflow (1 hour)**
+
 - [ ] Test dry-run installation: `./install --dry-run`
 - [ ] Test symlink management: `bin/core/link-dotfiles --dry-run`
 - [ ] Test interactive help: `dotfiles-help`
@@ -2830,6 +2908,7 @@ cat docs/scripts/quick-reference.md
 ### Day 4: Advanced Topics
 
 **Phase 10: OpenSpec Workflow (2 hours)**
+
 - [ ] Review existing proposals: `ls openspec/changes/`
 - [ ] Read a proposal: `cat openspec/changes/add-pre-commit-hooks-and-ci/proposal.md`
 - [ ] Review specs: `cat openspec/changes/add-pre-commit-hooks-and-ci/specs/*/spec.md`
@@ -2841,6 +2920,7 @@ cat docs/scripts/quick-reference.md
 Choose one area and explore deeply:
 
 **Option A: Shell Configuration**
+
 - [ ] Profile shell startup: `zsh -xv 2>&1 | tee profile.log`
 - [ ] Review lazy loading: `cat zsh/lib/lazy-load.zsh`
 - [ ] Test without lazy loading (comment out, measure difference)
@@ -2848,6 +2928,7 @@ Choose one area and explore deeply:
 - [ ] Measure impact: `zsh-benchmark --detailed`
 
 **Option B: Credential Management**
+
 - [ ] Review security architecture: `cat bin/credentials/store-api-key`
 - [ ] Test different input modes (interactive, stdin, file)
 - [ ] Review macOS Keychain integration: `man security`
@@ -2855,6 +2936,7 @@ Choose one area and explore deeply:
 - [ ] Test history cleaning: `clear-secret-history --dry-run`
 
 **Option C: Installation System**
+
 - [ ] Trace install flow: `./install --verbose --dry-run`
 - [ ] Review phase implementations in install script
 - [ ] Test platform detection
@@ -2862,6 +2944,7 @@ Choose one area and explore deeply:
 - [ ] Review error handling patterns
 
 **Option D: Git Integration**
+
 - [ ] Review git config: `cat git/.gitconfig`
 - [ ] Test conventional commit: `bin/git/conventional-commit`
 - [ ] Review pre-commit hooks: `cat bin/git/hooks/*`
@@ -2869,6 +2952,7 @@ Choose one area and explore deeply:
 - [ ] Review CI workflow: `cat .github/workflows/ci.yml`
 
 **Phase 12: Contributing (1 hour)**
+
 - [ ] Review CONTRIBUTING.md (if exists) or this ONBOARDING.md section 5
 - [ ] Identify a small improvement (typo, doc update, minor fix)
 - [ ] Create branch following naming convention
@@ -2880,18 +2964,21 @@ Choose one area and explore deeply:
 ### Ongoing: Best Practices
 
 **Daily:**
+
 - [ ] Use `work-mode` to switch contexts as needed
 - [ ] Use `syncenv` or `home-sync` to keep dotfiles synchronized
 - [ ] Use `conventional-commit` for proper commit messages
 - [ ] Check `zsh-benchmark` periodically to maintain performance
 
 **Weekly:**
+
 - [ ] Review `dotfiles-help` for scripts you haven't tried
 - [ ] Check for Homebrew updates: `brew outdated`
 - [ ] Run `clear-secret-history` for security hygiene
 - [ ] Review `git log` to understand recent changes
 
 **Monthly:**
+
 - [ ] Update dependencies: `brew upgrade`
 - [ ] Review and close completed OpenSpec proposals
 - [ ] Clean up old branches: `git branch -d merged-branch-name`
@@ -2900,18 +2987,21 @@ Choose one area and explore deeply:
 ### Optional: Advanced Setup
 
 **For Contributors:**
+
 - [ ] Set up OpenSpec CLI: `pipx install openspec`
 - [ ] Configure GitHub CLI: `gh auth login`
 - [ ] Set up BATS testing framework: `brew install bats-core`
 - [ ] Configure pre-commit locally: `pre-commit install --install-hooks`
 
 **For macOS Developers:**
+
 - [ ] Review iOS tools: `ls bin/ios/`
 - [ ] Review macOS tools: `ls bin/macos/`
 - [ ] Configure Xcode integration: `bin/ide/open-dotfiles-config`
 - [ ] Review Brewfile: `cat packages/homebrew/Brewfile`
 
 **For Multi-Machine Users:**
+
 - [ ] Set up `syncenv` on all machines
 - [ ] Configure work-mode appropriately per machine
 - [ ] Test sync: `syncenv` on machine 1, verify on machine 2
@@ -2919,9 +3009,10 @@ Choose one area and explore deeply:
 
 ---
 
-## Congratulations!
+## Congratulations
 
 You've completed the comprehensive onboarding process. You should now:
+
 - Have a working development environment
 - Understand the repository structure and architecture
 - Know how to make changes following the project's workflows
@@ -2930,12 +3021,14 @@ You've completed the comprehensive onboarding process. You should now:
 - Understand how to get help and where to find documentation
 
 **Next Actions:**
+
 - Look for "good first issue" labels in GitHub Issues
 - Review open pull requests to understand code review standards
 - Join discussions to learn about planned features
 - Start contributing to areas that interest you
 
 **Need Help?**
+
 - Interactive help: `dotfiles-help`
 - Documentation: `docs/scripts/`
 - Quick reference: `docs/scripts/quick-reference.md`
