@@ -22,6 +22,11 @@ reviews:
   sequence_diagrams: false
   poem: false
 
+  finishing_touches:
+    autofix:
+      # Preserve executable modes; accept review suggestions manually.
+      enabled: false
+
   auto_review:
     enabled: true
     auto_incremental_review: true
@@ -68,7 +73,8 @@ reviews:
         behavior,
         and clear error handling. For home_sync changes, require focused pytest
         coverage and compatibility with mypy --strict; do not lower the existing
-        91 percent coverage gate or the 80 percent mutation score for metrics.py.
+        91 percent coverage gate or the 80 percent mutation score for
+        metrics.py.
     - path: "bin/core/home_sync/**"
       instructions: >-
         Review CLI, sync, locking, and daemon changes for data loss, races,
@@ -92,7 +98,8 @@ reviews:
     - path: "home-darwin/Library/**"
       instructions: >-
         The uppercase `Library` and `LaunchAgents` directories intentionally
-        mirror required macOS target paths. Do not report their capitalization as
+        mirror required macOS target paths. Do not report their
+        capitalization as
         a naming violation; review all other changes normally.
     - path: "**/*.nix"
       instructions: >-
