@@ -286,6 +286,41 @@ assert_link_points_to() {
     assert_output --partial "Collision"
 }
 
+@test "link-dotfiles: Folder Actions link uses the canonical script extension" {
+    mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts"
+    printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
+    run python3 "$LINK_SCRIPT" --folder-actions --apply --yes
+    assert_success
+    assert_link_points_to "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt" "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
+    refute test -e "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scptn"
+}
+
+@test "link-dotfiles: Folder Actions dry-run does not create target directories" {
+    mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts"
+    printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
+    run python3 "$LINK_SCRIPT" --folder-actions --dry-run
+    assert_success
+    refute test -e "$HOME/Library"
+    assert_output --partial "Would create"
+}
+
+@test "link-dotfiles: Folder Actions collision preserves existing target" {
+    mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts" "$HOME/Library/Scripts/Folder Action Scripts"
+    printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
+    printf 'existing\n' > "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
+    run python3 "$LINK_SCRIPT" --folder-actions --apply --yes
+    assert_failure
+    assert_file_exists "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
+    assert_output --partial "Collision"
+}
+
+@test "install-folder-actions: delegates to the shared linker" {
+    local installer="$(get_dotfiles_root)/bin/macos/install-folder-actions"
+    run "$installer" --dry-run
+    assert_success
+    assert_output --partial "Folder Action Scripts"
+}
+
 @test "link-dotfiles: source symlinks are not managed" {
     create_home_file ".real"
     ln -s "$TEST_DOTFILES/home/.real" "$TEST_DOTFILES/home/.source-link"

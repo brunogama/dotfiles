@@ -11,6 +11,7 @@ Options:
   --yes           Skip confirmation prompts
   --verbose       Show detailed output
   --commands-only Link only public commands to ~/.local/bin
+  --folder-actions Install Darwin Folder Actions scripts
   --help          Show this help message
 """
 
@@ -71,6 +72,7 @@ class LinkManager:
         prune: bool = False,
         migrate_legacy_bin: bool = False,
         commands_only: bool = False,
+        folder_actions: bool = False,
     ):
         self.dry_run = dry_run
         self.force = force
@@ -79,6 +81,7 @@ class LinkManager:
         self.prune_mode = prune
         self.migrate_legacy_bin = migrate_legacy_bin
         self.commands_only = commands_only
+        self.folder_actions = folder_actions
 
         # Counters
         self.count_created = 0
@@ -376,6 +379,30 @@ class LinkManager:
             self.log_success(f"Migrated: {legacy} -> {target}")
             self.count_created += 1
 
+    def install_folder_actions(self) -> None:
+        """Install the Darwin Folder Actions scripts under the user's Library."""
+        if self.platform != "darwin":
+            self.log_info("Skipping Folder Actions (not on macOS)")
+            return
+        source = self.dotfiles_root / "bin/folder-action-scripts/compress-video-automation.scpt"
+        target = Path.home() / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
+        if not source.is_file():
+            self.log_error(f"Folder Actions source not found: {source}")
+            self.count_errors += 1
+            return
+        ret = self.create_link(str(source), str(target))
+        if ret == 0:
+            self.count_created += 1
+            self.applied_links.append((source, target))
+        elif ret == 2:
+            self.count_skipped += 1
+            self.applied_links.append((source, target))
+        else:
+            self.count_errors += 1
+            return
+        if not self.dry_run:
+            self.write_state(preserve_existing=True)
+
     def process_links(self):
         """Discover and apply the convention-based link plan."""
         plan: Dict[Path, Tuple[Path, str]] = {}
@@ -499,6 +526,8 @@ class LinkManager:
             self.prune()
         elif self.migrate_legacy_bin:
             self.migrate_legacy_commands()
+        elif self.folder_actions:
+            self.install_folder_actions()
         else:
             self.process_links()
         self.show_summary()
@@ -530,6 +559,7 @@ def main():
     parser.add_argument("--prune", action="store_true", help="Remove stale links proven by ownership state")
     parser.add_argument("--migrate-legacy-bin", action="store_true", help="Migrate proven legacy ~/local/bin command links")
     parser.add_argument("--commands-only", action="store_true", help="Link only public commands to ~/.local/bin")
+    parser.add_argument("--folder-actions", action="store_true", help="Install Darwin Folder Actions scripts")
 
     args = parser.parse_args()
 
@@ -545,6 +575,7 @@ def main():
         prune=args.prune,
         migrate_legacy_bin=args.migrate_legacy_bin,
         commands_only=args.commands_only,
+        folder_actions=args.folder_actions,
     )
 
     sys.exit(manager.run())

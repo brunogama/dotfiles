@@ -50,7 +50,7 @@ to `PATH`; the lifecycle plan owns the explicit legacy-directory migration.
 
 | Legacy source | Legacy destination | Convention category | Notes |
 | --- | --- | --- | --- |
-| `bin/folder-action-scripts/compress-video-automation.scpt` | `~/Library/Scripts/Folder Action Scripts/compress-video-automation.scptn` | Darwin installer module | Preserve outside home mirroring and validate the legacy extension mismatch before implementation. |
+| `bin/folder-action-scripts/compress-video-automation.scpt` | `~/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt` | `bin/macos/install-folder-actions` | The module delegates to the shared linker, which supplies dry-run, collision, confirmation, and ownership-ledger behavior. |
 
 ## Unsupported Trees
 
