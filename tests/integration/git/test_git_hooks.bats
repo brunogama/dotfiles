@@ -45,7 +45,7 @@ teardown() {
 
     run "$HOOKS_DIR/check-lowercase-dirs"
     assert_failure
-    assert_output --partial "uppercase"
+    assert_output --partial "Uppercase"
 }
 
 @test "check-lowercase-dirs: fails with mixed case directory" {
@@ -126,43 +126,15 @@ teardown() {
     skip "Requires commit-msg hook context"
 }
 
-# Validate-manifest Hook Tests
+# Manifest Validation Retirement Tests
 
-@test "validate-manifest: passes with valid LinkingManifest.json" {
-    # Create valid manifest
-    cat > LinkingManifest.json << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "test/.testrc",
-      "target": "~/.testrc",
-      "platform": "all",
-      "optional": false
-    }
-  ]
-}
-EOF
-    git add LinkingManifest.json
-
-    run "$HOOKS_DIR/validate-manifest"
-    assert_success
-}
-
-@test "validate-manifest: fails with invalid JSON" {
-    echo "invalid json" > LinkingManifest.json
-    git add LinkingManifest.json
-
-    run "$HOOKS_DIR/validate-manifest"
+@test "manifest validation: has no active hook or CI registration" {
+    local dotfiles_root hook_name
+    dotfiles_root="$(get_dotfiles_root)"
+    hook_name="validate-""manifest"
+    refute test -e "$HOOKS_DIR/$hook_name"
+    run grep -R "$hook_name" "$dotfiles_root/.pre-commit-config.yaml" "$dotfiles_root/.github/workflows/ci.yml"
     assert_failure
-}
-
-@test "validate-manifest: skips when manifest not changed" {
-    create_test_file "other.txt" "content"
-    git add other.txt
-
-    run "$HOOKS_DIR/validate-manifest"
-    assert_success
 }
 
 # Validate-openspec Hook Tests

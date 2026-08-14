@@ -86,13 +86,6 @@ repos:
         pass_filenames: false
         exclude: ^(\.git|\.claude)
 
-      # Validate LinkingManifest.json
-      - id: validate-manifest
-        name: Validate LinkingManifest.json
-        entry: bin/git/hooks/validate-manifest
-        language: script
-        files: LinkingManifest\.json$
-
       # OpenSpec validation
       - id: openspec-validate
         name: Validate OpenSpec proposals

@@ -60,11 +60,12 @@ teardown() {
     assert_dir_exists "$dotfiles_root/packages"
 }
 
-@test "new machine: LinkingManifest.json exists" {
+@test "new machine: convention linker source trees exist" {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_exists "$dotfiles_root/LinkingManifest.json"
+    assert_dir_exists "$dotfiles_root/home"
+    assert_file_exists "$dotfiles_root/bin/core/link-dotfiles.py"
 }
 
 @test "new machine: install dry-run works" {

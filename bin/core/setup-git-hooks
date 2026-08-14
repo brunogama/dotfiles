@@ -36,7 +36,6 @@ DESCRIPTION:
     - Code quality (shellcheck)
     - OpenSpec proposal validation
     - Conventional commit messages
-    - LinkingManifest.json validation
 
 EXAMPLES:
     # Install hooks
@@ -178,7 +177,6 @@ ${BLUE}What's configured:${NC}
   - Shellcheck validation (errors only)
   - No emojis check (MINDSET Rule 2)
   - Lowercase directories check (MINDSET Rule 1)
-  - LinkingManifest.json validation
   - OpenSpec proposal validation
   - Conventional commit messages
   - Trailing whitespace removal
