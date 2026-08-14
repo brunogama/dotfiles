@@ -6,9 +6,22 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$HOME/.local/bin/prints"
 
-repo_path="${1:-$(pwd)}"
+# Parse options
+repo_path="$(pwd)"
+while getopts "r:" opt; do
+	case "$opt" in
+	r)
+		repo_path="$OPTARG"
+		;;
+	*)
+		echo "Usage: $0 [-r repository_path]" >&2
+		exit 1
+		;;
+	esac
+done
+
 repo_root="$(git -C "$repo_path" rev-parse --show-toplevel)"
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
+DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 installation_script="$DOTFILES_ROOT/bin/git/install-conventional-commit-pre-commit-hook.sh"
 

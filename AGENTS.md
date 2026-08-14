@@ -26,7 +26,8 @@ Modern Unix dotfiles with environment management, automated sync, and secure cre
 - `./install --dry-run` - Preview installation without changes
 - `./install --yes` - Non-interactive installation for CI
 - `link-dotfiles` - Preview convention-based links
-- `link-dotfiles --apply --yes` - Create managed links after collision confirmation
+- `link-dotfiles --apply --yes` - Create collision-free managed links
+- `link-dotfiles --force --yes --apply` - Replace non-matching existing targets
 
 ## Project Structure
 

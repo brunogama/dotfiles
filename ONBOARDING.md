@@ -138,7 +138,6 @@ bin/
 │   └── hooks/             # Pre-commit hook scripts
 │       ├── check-no-emojis
 │       ├── check-lowercase-dirs
-│       ├── validate-manifest
 │       └── validate-openspec
 ├── macos/                 # 3 macOS tools
 │   ├── brew-sync          # Brewfile management
@@ -497,7 +496,7 @@ zsh-benchmark --detailed
 python3 bin/core/link-dotfiles.py --dry-run
 
 # Inspect collisions or sources with detailed output
-python3 bin/core/link-dotfiles.py --apply --yes --verbose
+python3 bin/core/link-dotfiles.py --dry-run --verbose
 ```
 
 #### Issue 5: "openspec: command not found"

@@ -92,11 +92,10 @@ sudo yum install jq  # CentOS/RHEL
 ```
 
 **Problem:** `link-dotfiles not found`
-**Solution:** Add to your PATH:
+**Solution:** Re-run the linker to ensure commands are linked:
 
 ```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-exec zsh
+~/.dotfiles/bin/core/link-dotfiles.py --commands-only --apply --yes
 ```
 
 **Problem:** Symlinks not working

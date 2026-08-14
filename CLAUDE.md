@@ -59,11 +59,12 @@ See `openspec/AGENTS.md` for complete workflow.
 
 ### Installation & Setup
 ```bash
-./install                    # Interactive installation (10-20 minutes)
-./install --dry-run          # Preview changes
-./install --yes              # Non-interactive mode
-link-dotfiles --dry-run      # Preview convention-based links
-link-dotfiles --apply --yes  # Apply links after collision confirmation
+./install                          # Interactive installation (10-20 minutes)
+./install --dry-run                # Preview changes
+./install --yes                    # Non-interactive mode
+link-dotfiles --dry-run            # Preview convention-based links
+link-dotfiles --apply --yes        # Apply collision-free links
+link-dotfiles --force --yes --apply # Replace non-matching existing targets
 ```
 
 ### Language Runtime Management
@@ -300,8 +301,9 @@ All commits scanned for:
 ### Adding a Managed Link
 1. Add a regular file beneath `home/`, the appropriate platform/host overlay, or an executable command beneath `bin/<domain>/`
 2. Validate: `link-dotfiles --dry-run`
-3. Apply: `link-dotfiles --apply --yes`
-4. Commit the source file and its focused tests
+3. Apply collision-free links: `link-dotfiles --apply --yes`
+4. Replace non-matching targets (if needed): `link-dotfiles --force --yes --apply`
+5. Commit the source file and its focused tests
 
 ### Adding New Feature (Major)
 1. Create OpenSpec proposal in `openspec/changes/<change-id>/`

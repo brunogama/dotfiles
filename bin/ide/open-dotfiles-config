@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+# Default to empty if no argument provided
+CONFIG_TYPE="${1:-}"
+
 # Find dotfiles directory by checking convention linker sources.
 DOTFILES_DIR=""
 
@@ -29,7 +32,7 @@ if [[ -z "$DOTFILES_DIR" || ! -d "$DOTFILES_DIR" ]]; then
 fi
 
 # Open requested config file
-case "$1" in
+case "$CONFIG_TYPE" in
     personal|personal-config)
         code "$DOTFILES_DIR/home/.config/zsh/personal-config.zsh"
         ;;
@@ -37,8 +40,8 @@ case "$1" in
         code "$DOTFILES_DIR/home/.config/zsh/.zshrc"
         ;;
     git|gitconfig)
-        # Open git config directory (gitconfig may not exist in repo)
-        code "$DOTFILES_DIR/git"
+        # Open git config files from migrated paths
+        code "$DOTFILES_DIR/home/.gitconfig" "$DOTFILES_DIR/home/.config/git"
         ;;
     work|work-config)
         code "$DOTFILES_DIR/home/.config/zsh/work-config.zsh"
