@@ -52,7 +52,7 @@ assert_link_points_to() {
     assert_output --partial "Convention-based"
 }
 
-@test "link-dotfiles: ignores a malformed legacy manifest" {
+@test "link-dotfiles: ignores a malformed historical manifest" {
     create_home_file ".example"
     printf 'not json' > "$TEST_DOTFILES/LinkingManifest.json"
     run python3 "$LINK_SCRIPT" --dry-run
@@ -177,6 +177,24 @@ assert_link_points_to() {
     assert_link_points_to "$TEST_DOTFILES/home/.collision" "$HOME/.collision"
 }
 
+@test "link-dotfiles: preserves Nix-managed targets even with force" {
+    create_home_file ".gitconfig"
+    create_home_file ".linker-test/unmanaged"
+    local nix_source="$TEST_TEMP_DIR/nix-managed-gitconfig"
+    printf 'nix-managed\n' > "$nix_source"
+    nix_source="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$nix_source")"
+    rm -f "$HOME/.gitconfig"
+    ln -s "$nix_source" "$HOME/.gitconfig"
+
+    run python3 "$LINK_SCRIPT" --apply --force --yes
+
+    assert_success
+    assert_output --partial "Skipped (Nix-managed): $HOME/.gitconfig"
+    assert_link_points_to "$nix_source" "$HOME/.gitconfig"
+    assert_link_points_to "$TEST_DOTFILES/home/.linker-test/unmanaged" "$HOME/.linker-test/unmanaged"
+    refute grep -Fq '"target": "'"$HOME/.gitconfig"'"' "$HOME/.local/state/dotfiles/links.json"
+}
+
 @test "link-dotfiles: correct existing links are idempotent" {
     create_home_file ".example"
     ln -s "$TEST_DOTFILES/home/.example" "$HOME/.example"
@@ -192,6 +210,27 @@ assert_link_points_to() {
     local ledger="$HOME/.local/state/dotfiles/links.json"
     assert_file_exists "$ledger"
     run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["version"] == 1; assert state["repository_id"]; assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}]' "$ledger" "$TEST_DOTFILES/home/.example" "$HOME/.example"
+    assert_success
+}
+
+@test "link-dotfiles: records completed links after an apply failure and converges on rerun" {
+    create_home_file ".first"
+    create_home_file ".second"
+
+    run env LINK_DOTFILES_TEST_FAIL_AFTER=1 python3 "$LINK_SCRIPT" --apply --yes
+    assert_failure
+    assert_output --partial "injected filesystem failure"
+
+    local ledger="$HOME/.local/state/dotfiles/links.json"
+    run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}]' "$ledger" "$TEST_DOTFILES/home/.first" "$HOME/.first"
+    assert_success
+    assert_link_points_to "$TEST_DOTFILES/home/.first" "$HOME/.first"
+    refute test -e "$HOME/.second"
+
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    assert_link_points_to "$TEST_DOTFILES/home/.second" "$HOME/.second"
+    run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}, {"source": str(pathlib.Path(sys.argv[4]).resolve()), "target": sys.argv[5]}]' "$ledger" "$TEST_DOTFILES/home/.first" "$HOME/.first" "$TEST_DOTFILES/home/.second" "$HOME/.second"
     assert_success
 }
 

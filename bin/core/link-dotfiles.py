@@ -30,6 +30,23 @@ from typing import Dict, List, Optional, Tuple
 
 VERSION = "3.0.0"
 
+# Home Manager declarations in nix/home.nix own these targets. Directory entries
+# protect every descendant because Home Manager manages them recursively.
+NIX_MANAGED_HOME_PATHS = frozenset(
+    {
+        ".config/git/ios.gitattributes",
+        ".config/starship.toml",
+        ".config/zsh/.zpreztorc",
+        ".config/zsh/.zprofile",
+        ".config/zsh/.zshrc",
+        ".config/zsh/completion",
+        ".config/zsh/lib",
+        ".gitconfig",
+        ".gitignore_global",
+        ".zshenv",
+    }
+)
+
 # ANSI colors
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
@@ -44,10 +61,10 @@ def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
     Find the project root from the convention-linker layout.
 
     A checkout contains the linker and either a managed home tree or repository marker.
-    
+
     Args:
         start_path: Path to start searching from (default: current working directory)
-        
+
     Returns:
         Path to project root if found, None otherwise
     """
@@ -55,10 +72,12 @@ def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
         start_path = Path.cwd()
     else:
         start_path = Path(start_path).resolve()
-    
+
     for current in (start_path, *start_path.parents):
         linker = current / "bin/core/link-dotfiles.py"
-        if linker.is_file() and ((current / "home").is_dir() or (current / ".git").exists()):
+        if linker.is_file() and (
+            (current / "home").is_dir() or (current / ".git").exists()
+        ):
             return current
     return None
 
@@ -112,7 +131,7 @@ class LinkManager:
             else:
                 # Fallback to old behavior (3 levels up from script)
                 self.dotfiles_root = Path(__file__).parent.parent.parent.resolve()
-        
+
         self.hostname = os.environ.get("DOTFILES_HOSTNAME", socket.gethostname())
 
     def log_info(self, msg: str):
@@ -176,7 +195,9 @@ class LinkManager:
                 return 2
 
             if not self.force:
-                self.log_error(f"Collision at {target_path}; rerun with --force --yes to replace it")
+                self.log_error(
+                    f"Collision at {target_path}; rerun with --force --yes to replace it"
+                )
                 return 1
             if not self.yes:
                 self.log_error("--force requires --yes for non-interactive replacement")
@@ -186,7 +207,9 @@ class LinkManager:
 
         elif target_path.exists():
             if not self.force:
-                self.log_error(f"Collision at {target_path}; rerun with --force --yes to replace it")
+                self.log_error(
+                    f"Collision at {target_path}; rerun with --force --yes to replace it"
+                )
                 return 1
             if not self.yes:
                 self.log_error("--force requires --yes for non-interactive replacement")
@@ -200,6 +223,10 @@ class LinkManager:
         # Create the symlink
         if not self.dry_run:
             target_path.parent.mkdir(parents=True, exist_ok=True)
+            if os.environ.get("LINK_DOTFILES_TEST_FAIL_AFTER") == str(
+                len(self.applied_links)
+            ):
+                raise OSError("injected filesystem failure")
             target_path.symlink_to(source_path)
             self.log_success(f"Created: {target_path} -> {source_path}")
         else:
@@ -233,7 +260,14 @@ class LinkManager:
         """Use the Git origin as a relocation-stable repository identity."""
         try:
             origin = subprocess.check_output(
-                ["git", "-C", str(self.dotfiles_root), "config", "--get", "remote.origin.url"],
+                [
+                    "git",
+                    "-C",
+                    str(self.dotfiles_root),
+                    "config",
+                    "--get",
+                    "remote.origin.url",
+                ],
                 text=True,
                 stderr=subprocess.DEVNULL,
             ).strip()
@@ -268,22 +302,50 @@ class LinkManager:
         temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         temporary.replace(state_file)
 
+    def record_applied_link(self, source: Path, target: Path) -> None:
+        """Persist a created or adopted link before processing the next target."""
+        self.applied_links.append((source, target))
+        self.write_state(preserve_existing=self.commands_only)
+
+    def is_nix_managed_target(self, target: Path) -> bool:
+        """Return whether Home Manager owns target according to nix/home.nix."""
+        try:
+            relative_target = target.relative_to(Path.home())
+        except ValueError:
+            return False
+        return any(
+            relative_target == Path(path) or Path(path) in relative_target.parents
+            for path in NIX_MANAGED_HOME_PATHS
+        )
+
     def desired_targets(self) -> Dict[Path, Path]:
         """Return every target managed by the current convention sources."""
         targets: Dict[Path, Path] = {}
         home = Path.home()
-        for tree_name in ("home", f"home-{self.platform}", f"home-host-{self.hostname}"):
+        for tree_name in (
+            "home",
+            f"home-{self.platform}",
+            f"home-host-{self.hostname}",
+        ):
             tree = self.dotfiles_root / tree_name
             if tree.is_dir():
                 for source in tree.rglob("*"):
                     if stat.S_ISREG(source.lstat().st_mode):
-                        targets[home / source.relative_to(tree)] = source
+                        target = home / source.relative_to(tree)
+                        if not self.is_nix_managed_target(target):
+                            targets[target] = source
         for name, source in self.public_commands().items():
             targets[home / ".local/bin" / name] = source
         if self.platform == "darwin":
-            source = self.dotfiles_root / "bin/folder-action-scripts/compress-video-automation.scpt"
+            source = (
+                self.dotfiles_root
+                / "bin/folder-action-scripts/compress-video-automation.scpt"
+            )
             if source.is_file():
-                targets[home / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"] = source
+                targets[
+                    home
+                    / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
+                ] = source
         return targets
 
     def prune(self) -> None:
@@ -291,10 +353,19 @@ class LinkManager:
         state_file = Path.home() / ".local/state/dotfiles/links.json"
         try:
             state = json.loads(state_file.read_text())
-            if state.get("version") != 1 or state.get("repository_id") != self.repository_id():
+            if (
+                state.get("version") != 1
+                or state.get("repository_id") != self.repository_id()
+            ):
                 raise ValueError("ownership state belongs to a different repository")
             links = state["links"]
-        except (FileNotFoundError, ValueError, json.JSONDecodeError, KeyError, TypeError):
+        except (
+            FileNotFoundError,
+            ValueError,
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+        ):
             self.log_error(f"Invalid or missing ownership ledger: {state_file}")
             self.count_errors += 1
             return
@@ -350,7 +421,9 @@ class LinkManager:
             if not domain.is_dir():
                 continue
             for source in sorted(domain.iterdir()):
-                if not stat.S_ISREG(source.lstat().st_mode) or not os.access(source, os.X_OK):
+                if not stat.S_ISREG(source.lstat().st_mode) or not os.access(
+                    source, os.X_OK
+                ):
                     continue
                 if source.name in commands:
                     raise ValueError(f"Duplicate command name: {source.name}")
@@ -367,9 +440,18 @@ class LinkManager:
         try:
             state = json.loads(state_file.read_text())
             backups = state["backups"]
-            if state.get("version") != 1 or state.get("repository_id") != self.repository_id():
+            if (
+                state.get("version") != 1
+                or state.get("repository_id") != self.repository_id()
+            ):
                 raise ValueError("foreign backup state")
-        except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ):
             backups = []
         backups.append({"backup": str(backup), "legacy": str(legacy)})
         payload = {
@@ -415,8 +497,14 @@ class LinkManager:
         unproven_entries: List[Path] = []
         for legacy in sorted(legacy_bin.iterdir()):
             source = commands.get(legacy.name)
-            if source is not None and legacy.is_symlink() and legacy.resolve() == source.resolve():
-                migrations.append((legacy, Path.home() / ".local/bin" / legacy.name, source))
+            if (
+                source is not None
+                and legacy.is_symlink()
+                and legacy.resolve() == source.resolve()
+            ):
+                migrations.append(
+                    (legacy, Path.home() / ".local/bin" / legacy.name, source)
+                )
             else:
                 unproven_entries.append(legacy)
 
@@ -424,7 +512,9 @@ class LinkManager:
             if target.exists() or target.is_symlink():
                 correct = target.is_symlink() and target.resolve() == source.resolve()
                 if not correct:
-                    self.log_error(f"Collision at {target}; migration left {legacy} unchanged")
+                    self.log_error(
+                        f"Collision at {target}; migration left {legacy} unchanged"
+                    )
                     self.count_errors += 1
                     return
 
@@ -449,7 +539,11 @@ class LinkManager:
                 self.count_skipped += 1
             return
 
-        backup_root = self.xdg_state_home() / "dotfiles/legacy-bin-backups" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        backup_root = (
+            self.xdg_state_home()
+            / "dotfiles/legacy-bin-backups"
+            / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        )
         for legacy in unproven_entries:
             self.back_up_unproven_legacy_entry(legacy, backup_root)
 
@@ -458,8 +552,14 @@ class LinkManager:
         if self.platform != "darwin":
             self.log_info("Skipping Folder Actions (not on macOS)")
             return
-        source = self.dotfiles_root / "bin/folder-action-scripts/compress-video-automation.scpt"
-        target = Path.home() / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
+        source = (
+            self.dotfiles_root
+            / "bin/folder-action-scripts/compress-video-automation.scpt"
+        )
+        target = (
+            Path.home()
+            / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
+        )
         if not source.is_file():
             self.log_error(f"Folder Actions source not found: {source}")
             self.count_errors += 1
@@ -489,7 +589,12 @@ class LinkManager:
                     continue
                 for source in sorted(tree.rglob("*")):
                     if stat.S_ISREG(source.lstat().st_mode):
-                        plan[home / source.relative_to(tree)] = (source, tree_name)
+                        target = home / source.relative_to(tree)
+                        if self.is_nix_managed_target(target):
+                            self.log_info(f"Skipped (Nix-managed): {target}")
+                            self.count_skipped += 1
+                            continue
+                        plan[target] = (source, tree_name)
 
         try:
             commands = self.public_commands()
@@ -508,11 +613,21 @@ class LinkManager:
         # Validate the entire plan before creating directories or links.
         for target, (source, _) in plan.items():
             correct = target.is_symlink() and target.resolve() == source.resolve()
-            if (target.exists() or target.is_symlink()) and not correct and not self.force:
-                self.log_error(f"Collision at {target}; rerun with --force --yes to replace it")
+            if (
+                (target.exists() or target.is_symlink())
+                and not correct
+                and not self.force
+            ):
+                self.log_error(
+                    f"Collision at {target}; rerun with --force --yes to replace it"
+                )
                 self.count_errors += 1
                 return
-            if (target.exists() or target.is_symlink()) and not correct and not self.yes:
+            if (
+                (target.exists() or target.is_symlink())
+                and not correct
+                and not self.yes
+            ):
                 self.log_error("--force requires --yes for non-interactive replacement")
                 self.count_errors += 1
                 return
@@ -526,20 +641,25 @@ class LinkManager:
 
         for target, (source, provenance) in sorted(plan.items()):
             self.log_verbose(f"Processing: {target} -> {source} ({provenance})")
-            ret = self.create_link(str(source), str(target))
-            if ret == 0:
-                self.count_created += 1
-                self.applied_links.append((source, target))
-            elif ret == 2:
-                self.count_skipped += 1
-                self.applied_links.append((source, target))
-            else:
+            try:
+                ret = self.create_link(str(source), str(target))
+                if ret == 0:
+                    self.count_created += 1
+                    if not self.dry_run:
+                        self.record_applied_link(source, target)
+                elif ret == 2:
+                    self.count_skipped += 1
+                    if not self.dry_run:
+                        self.record_applied_link(source, target)
+                else:
+                    self.count_errors += 1
+                    return
+            except OSError as error:
+                self.log_error(f"Failed to link: {target}: {error}")
                 self.count_errors += 1
-                if not self.dry_run:
-                    self.write_state()
                 return
 
-        if not self.dry_run:
+        if not self.dry_run and not self.applied_links:
             self.write_state(preserve_existing=self.commands_only)
 
     def show_summary(self):
@@ -565,7 +685,9 @@ class LinkManager:
             self.log_info(f"Skipped: {self.count_platform_skip} (platform mismatch)")
 
         if self.count_optional_skip > 0:
-            self.log_info(f"Skipped: {self.count_optional_skip} (optional, source missing)")
+            self.log_info(
+                f"Skipped: {self.count_optional_skip} (optional, source missing)"
+            )
 
         if self.count_errors > 0:
             self.log_error(f"Errors: {self.count_errors}")
@@ -620,20 +742,32 @@ def main():
         default=True,
         help="Preview changes without applying (default)",
     )
-    parser.add_argument(
-        "--apply", action="store_true", help="Actually create symlinks"
-    )
+    parser.add_argument("--apply", action="store_true", help="Actually create symlinks")
     parser.add_argument(
         "--force", action="store_true", help="Overwrite existing files/symlinks"
     )
-    parser.add_argument(
-        "--yes", action="store_true", help="Skip confirmation prompts"
-    )
+    parser.add_argument("--yes", action="store_true", help="Skip confirmation prompts")
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
-    parser.add_argument("--prune", action="store_true", help="Remove stale links proven by ownership state")
-    parser.add_argument("--migrate-legacy-bin", action="store_true", help="Migrate proven legacy ~/local/bin command links")
-    parser.add_argument("--commands-only", action="store_true", help="Link only public commands to ~/.local/bin")
-    parser.add_argument("--folder-actions", action="store_true", help="Install Darwin Folder Actions scripts")
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Remove stale links proven by ownership state",
+    )
+    parser.add_argument(
+        "--migrate-legacy-bin",
+        action="store_true",
+        help="Migrate proven legacy ~/local/bin command links",
+    )
+    parser.add_argument(
+        "--commands-only",
+        action="store_true",
+        help="Link only public commands to ~/.local/bin",
+    )
+    parser.add_argument(
+        "--folder-actions",
+        action="store_true",
+        help="Install Darwin Folder Actions scripts",
+    )
 
     args = parser.parse_args()
 
