@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# ///
 """
 link-dotfiles - Convention-based symlink creation
 
@@ -18,15 +21,14 @@ Options:
 import argparse
 import hashlib
 import json
-from datetime import datetime, timezone
 import os
 import shutil
 import socket
 import stat
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 VERSION = "3.0.0"
 
@@ -34,10 +36,14 @@ VERSION = "3.0.0"
 # protect every descendant because Home Manager manages them recursively.
 NIX_MANAGED_HOME_PATHS = frozenset(
     {
+        ".config/git/conventional-commits-gitmessage",
+        ".config/git/github-flow-aliases.gitconfig",
         ".config/git/ios.gitattributes",
         ".config/starship.toml",
         ".config/zsh/.zpreztorc",
         ".config/zsh/.zprofile",
+        ".config/zsh/personal-config.zsh",
+        ".config/zsh/work-config.zsh",
         ".config/zsh/.zshrc",
         ".config/zsh/completion",
         ".config/zsh/lib",
@@ -56,7 +62,7 @@ CYAN = "\033[0;36m"
 NC = "\033[0m"
 
 
-def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
+def find_project_root(start_path: Path | None = None) -> Path | None:
     """
     Find the project root from the convention-linker layout.
 
@@ -93,7 +99,7 @@ class LinkManager:
         migrate_legacy_bin: bool = False,
         commands_only: bool = False,
         folder_actions: bool = False,
-        self_test_fail_after: Optional[int] = None,
+        self_test_fail_after: int | None = None,
     ):
         self.dry_run = dry_run
         self.force = force
@@ -113,7 +119,7 @@ class LinkManager:
         self.count_optional_skip = 0
         self.count_pruned = 0
         self.count_backed_up = 0
-        self.applied_links: List[Tuple[Path, Path]] = []
+        self.applied_links: list[tuple[Path, Path]] = []
 
         # Detect platform
         self.platform = sys.platform
@@ -164,7 +170,7 @@ class LinkManager:
         """Expand tilde in path."""
         return Path(path).expanduser()
 
-    def matches_platform(self, platforms: Optional[List[str]]) -> bool:
+    def matches_platform(self, platforms: list[str] | None) -> bool:
         """Check if link matches current platform."""
         if not platforms:
             return True
@@ -219,10 +225,14 @@ class LinkManager:
                 self.log_error("--force requires --yes for non-interactive replacement")
                 return 1
             if not self.dry_run:
-                if target_path.is_dir():
-                    shutil.rmtree(target_path)
-                else:
-                    target_path.unlink()
+                try:
+                    if target_path.is_dir():
+                        shutil.rmtree(target_path)
+                    else:
+                        target_path.unlink()
+                except OSError as error:
+                    self.log_error(f"Failed to replace {target_path}: {error}")
+                    return 1
 
         # Create the symlink
         if not self.dry_run:
@@ -257,9 +267,8 @@ class LinkManager:
 
                 ret = self.create_link(str(rel_source), str(target_file))
 
-                if ret == 0:
-                    if executable and not self.dry_run:
-                        target_file.chmod(target_file.stat().st_mode | 0o111)
+                if ret == 0 and executable and not self.dry_run:
+                    target_file.chmod(target_file.stat().st_mode | 0o111)
 
     def repository_id(self) -> str:
         """Use the Git origin as a relocation-stable repository identity."""
@@ -323,35 +332,84 @@ class LinkManager:
             for path in NIX_MANAGED_HOME_PATHS
         )
 
-    def desired_targets(self) -> Dict[Path, Path]:
-        """Return every target managed by the current convention sources."""
-        targets: Dict[Path, Path] = {}
+    def build_link_plan(
+        self,
+        *,
+        include_home: bool,
+        include_commands: bool,
+        include_folder_actions: bool,
+        report_skipped_nix: bool = False,
+    ) -> dict[Path, tuple[Path, str]]:
+        """Build the canonical plan shared by linking and stale-link pruning."""
+        plan: dict[Path, tuple[Path, str]] = {}
+        categories: dict[Path, str] = {}
         home = Path.home()
-        for tree_name in (
-            "home",
-            f"home-{self.platform}",
-            f"home-host-{self.hostname}",
-        ):
-            tree = self.dotfiles_root / tree_name
-            if tree.is_dir():
-                for source in tree.rglob("*"):
-                    if stat.S_ISREG(source.lstat().st_mode):
-                        target = home / source.relative_to(tree)
-                        if not self.is_nix_managed_target(target):
-                            targets[target] = source
-        for name, source in self.public_commands().items():
-            targets[home / ".local/bin" / name] = source
-        if self.platform == "darwin":
+
+        def add_target(
+            source: Path, target: Path, provenance: str, category: str
+        ) -> None:
+            existing_category = categories.get(target)
+            if existing_category is not None and not (
+                category == existing_category == "home"
+            ):
+                raise ValueError(f"Target collision: {target}")
+            plan[target] = (source, provenance)
+            categories[target] = category
+
+        if include_home:
+            for tree_name in (
+                "home",
+                f"home-{self.platform}",
+                f"home-host-{self.hostname}",
+            ):
+                tree = self.dotfiles_root / tree_name
+                if not tree.is_dir():
+                    continue
+                for source in sorted(tree.rglob("*")):
+                    if not stat.S_ISREG(source.lstat().st_mode):
+                        continue
+                    target = home / source.relative_to(tree)
+                    if self.is_nix_managed_target(target):
+                        if report_skipped_nix:
+                            self.log_info(f"Skipped (Nix-managed): {target}")
+                            self.count_skipped += 1
+                        continue
+                    add_target(source, target, tree_name, "home")
+
+        if include_commands:
+            for name, source in self.public_commands().items():
+                add_target(
+                    source,
+                    home / ".local/bin" / name,
+                    f"bin/{source.parent.name}",
+                    "command",
+                )
+
+        if include_folder_actions and self.platform == "darwin":
             source = (
                 self.dotfiles_root
                 / "bin/folder-action-scripts/compress-video-automation.scpt"
             )
             if source.is_file():
-                targets[
+                add_target(
+                    source,
                     home
-                    / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
-                ] = source
-        return targets
+                    / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt",
+                    "bin/folder-action-scripts",
+                    "folder-action",
+                )
+        return plan
+
+    def desired_targets(self) -> dict[Path, Path]:
+        """Return every target managed by the current convention sources."""
+        return {
+            target: source
+            for target, (source, _) in self.build_link_plan(
+                include_home=True,
+                include_commands=True,
+                include_folder_actions=True,
+            ).items()
+        }
 
     def prune(self) -> None:
         """Remove only stale symlinks whose ownership the ledger proves."""
@@ -416,9 +474,9 @@ class LinkManager:
             temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
             temporary.replace(state_file)
 
-    def public_commands(self) -> Dict[str, Path]:
+    def public_commands(self) -> dict[str, Path]:
         """Discover unique executable commands exposed from immediate domain entries."""
-        commands: Dict[str, Path] = {}
+        commands: dict[str, Path] = {}
         bin_root = self.dotfiles_root / "bin"
         if not bin_root.is_dir():
             return commands
@@ -426,9 +484,15 @@ class LinkManager:
             if not domain.is_dir():
                 continue
             for source in sorted(domain.iterdir()):
-                if not stat.S_ISREG(source.lstat().st_mode) or not os.access(
-                    source, os.X_OK
-                ):
+                try:
+                    is_regular = stat.S_ISREG(source.lstat().st_mode)
+                except FileNotFoundError:
+                    continue
+                try:
+                    is_public = is_regular and os.access(source, os.X_OK)
+                except OSError:
+                    continue
+                if not is_public:
                     continue
                 if source.name in commands:
                     raise ValueError(f"Duplicate command name: {source.name}")
@@ -499,8 +563,8 @@ class LinkManager:
             self.log_info(f"No legacy command directory: {legacy_bin}")
             return
 
-        migrations: List[Tuple[Path, Path, Path]] = []
-        unproven_entries: List[Path] = []
+        migrations: list[tuple[Path, Path, Path]] = []
+        unproven_entries: list[Path] = []
         for legacy in sorted(legacy_bin.iterdir()):
             source = commands.get(legacy.name)
             if (
@@ -558,18 +622,21 @@ class LinkManager:
         if self.platform != "darwin":
             self.log_info("Skipping Folder Actions (not on macOS)")
             return
-        source = (
-            self.dotfiles_root
-            / "bin/folder-action-scripts/compress-video-automation.scpt"
-        )
-        target = (
-            Path.home()
-            / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
-        )
-        if not source.is_file():
-            self.log_error(f"Folder Actions source not found: {source}")
+        try:
+            plan = self.build_link_plan(
+                include_home=False,
+                include_commands=False,
+                include_folder_actions=True,
+            )
+        except ValueError as error:
+            self.log_error(str(error))
             self.count_errors += 1
             return
+        if not plan:
+            self.log_error("Folder Actions source not found")
+            self.count_errors += 1
+            return
+        target, (source, _) = next(iter(plan.items()))
         ret = self.create_link(str(source), str(target))
         if ret == 0:
             self.count_created += 1
@@ -585,36 +652,18 @@ class LinkManager:
 
     def process_links(self):
         """Discover and apply the convention-based link plan."""
-        plan: Dict[Path, Tuple[Path, str]] = {}
         home = Path.home()
-        if not self.commands_only:
-            tree_names = ("home", f"home-{self.platform}", f"home-host-{self.hostname}")
-            for tree_name in tree_names:
-                tree = self.dotfiles_root / tree_name
-                if not tree.is_dir():
-                    continue
-                for source in sorted(tree.rglob("*")):
-                    if stat.S_ISREG(source.lstat().st_mode):
-                        target = home / source.relative_to(tree)
-                        if self.is_nix_managed_target(target):
-                            self.log_info(f"Skipped (Nix-managed): {target}")
-                            self.count_skipped += 1
-                            continue
-                        plan[target] = (source, tree_name)
-
         try:
-            commands = self.public_commands()
+            plan = self.build_link_plan(
+                include_home=not self.commands_only,
+                include_commands=True,
+                include_folder_actions=False,
+                report_skipped_nix=True,
+            )
         except ValueError as error:
             self.log_error(str(error))
             self.count_errors += 1
             return
-        for name, source in commands.items():
-            target = home / ".local/bin" / name
-            if target in plan:
-                self.log_error(f"Target collision: {target}")
-                self.count_errors += 1
-                return
-            plan[target] = (source, f"bin/{source.parent.name}")
 
         # Validate the entire plan before creating directories or links.
         for target, (source, _) in plan.items():

@@ -34,7 +34,8 @@ Migrate the remaining common shell configuration, library, and completion files 
 
 ## Notes
 
-(Populated at closeout.)
+- Support files retain destination-equivalent paths so relative Zsh library and completion references continue to resolve after linking.
+- Home Manager-owned support targets are excluded from convention linking; `nix/home.nix` remains their authority.
 
 ## Follow-ups
 
