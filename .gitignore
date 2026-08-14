@@ -259,7 +259,13 @@ zsh/.zcompdump
 *.mdc.local
 
 # Claude Code
-.claude/
+.claude/*
+!.claude/agents/
+!.claude/agents/**
+!.claude/commands/
+!.claude/commands/**
+!.claude/skills/
+!.claude/skills/**
 .claudeignore
 .claude/settings.local.json
 .claude/commands/personal/
