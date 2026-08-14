@@ -14,8 +14,6 @@ fixtures/
 ├── config/             # Configuration file fixtures
 │   ├── test-gitconfig         # Sample git configuration
 │   └── test-zshrc             # Sample zsh configuration
-└── manifests/          # LinkingManifest fixtures
-    └── test-linking-manifest.json
 ```
 
 ## Using Fixtures in Tests
@@ -180,35 +178,6 @@ setup() {
 }
 ```
 
-## Manifest Fixtures
-
-### test-linking-manifest.json
-
-**Description**: Sample LinkingManifest with various link types.
-
-**Contents**:
-- Platform-agnostic links (zsh, git)
-- Platform-specific links (darwin: Brewfile, linux: bash_profile)
-- Optional and required links
-- Metadata section
-
-**Use Cases**:
-- Testing manifest parsing
-- Testing link creation
-- Testing platform filtering
-- Testing optional link handling
-
-**Example**:
-```bash
-@test "manifest has darwin-specific links" {
-    setup_with_fixtures "manifests/test-linking-manifest.json"
-
-    run jq '.links[] | select(.platform == "darwin") | .source' \
-        "$TEST_TEMP_DIR/test-linking-manifest.json"
-    assert_output --partial "macos/Brewfile"
-}
-```
-
 ## Fixture Maintenance
 
 ### Adding New Fixtures
@@ -253,15 +222,6 @@ When creating config file fixtures:
 - Include comments explaining sections
 - Use test-specific values (test@example.com, not real emails)
 - Document any special features
-
-### Manifest Fixtures
-
-When creating manifest fixtures:
-
-- Follow JSON schema validation
-- Include platform diversity (darwin, linux, all)
-- Include optional and required links
-- Add meaningful metadata
 
 ## Troubleshooting
 
@@ -316,8 +276,7 @@ load '../helpers/bats-assert/load'
 setup() {
     setup_with_fixtures \
         "repos/simple-repo" \
-        "config/test-gitconfig" \
-        "manifests/test-linking-manifest.json"
+        "config/test-gitconfig"
 }
 
 teardown() {
@@ -332,10 +291,5 @@ teardown() {
     # Use config
     assert_file_exists "$TEST_TEMP_DIR/test-gitconfig"
     assert_file_contains "$TEST_TEMP_DIR/test-gitconfig" "Test User"
-
-    # Use manifest
-    assert_file_exists "$TEST_TEMP_DIR/test-linking-manifest.json"
-    run jq '.version' "$TEST_TEMP_DIR/test-linking-manifest.json"
-    assert_output '"1.0"'
 }
 ```

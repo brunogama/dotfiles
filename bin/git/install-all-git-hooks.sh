@@ -1,38 +1,34 @@
 #!/usr/bin/env bash
+# shellcheck shell=bash
 
-source ~/local/bin/prints
-GIT_DIR=$1
+set -euo pipefail
 
-# Check if hooks directory alreaqdy exists
+# shellcheck source=/dev/null
+source "$HOME/.local/bin/prints"
 
-if [ ! -d $GIT_DIR/hooks ]; then
-  mkdir -p $GIT_DIR/hooks
+# Parse options
+repo_path="$(pwd)"
+while getopts "r:" opt; do
+	case "$opt" in
+	r)
+		repo_path="$OPTARG"
+		;;
+	*)
+		echo "Usage: $0 [-r repository_path]" >&2
+		exit 1
+		;;
+	esac
+done
+
+repo_root="$(git -C "$repo_path" rev-parse --show-toplevel)"
+DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+installation_script="$DOTFILES_ROOT/bin/git/install-conventional-commit-pre-commit-hook.sh"
+
+if [[ ! -x "$installation_script" ]]; then
+	echo "Missing hook installer: $installation_script" >&2
+	exit 1
 fi
 
-rm -rf $GIT_DIR/hooks/pre-commit
-
-toucn $GIT_DIR/hooks/pre-commit
-
-echo "#!/usr/bin/env bash" > $GIT_DIR/hooks/pre-commit
-
-chmod +x $GIT_DIR/hooks/pre-commit
-
-chown -R $USER:$USER $HOME/local/bin/*
-
-chmod +x $HOME/local/bin/*
-
-pgreen "Making all scripts executable in $DIR"
-
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
-
-hooks_scripts=(
-    $DOTFILES_ROOT/bin/git/install-conventional-commit-pre-commit-hook.sh
-    $DOTFILES_ROOT/bin/git/install-sourcery-pre-commit-hook.sh
-    $DOTFILES_ROOT/bin/git/install-swift-format-pre-commit-hook.sh
-    $DOTFILES_ROOT/bin/git/install-swiftlint-pre-commit-hook.sh
-)
-
-for installation_script in $hooks_scripts; do
-  pwarning "Installing git hooks from $installation_script"
-  sh $installation_script "$GIT_DIR/hooks"
-done
+pwarning "Installing git hooks in $repo_root"
+"$installation_script" "$repo_root"

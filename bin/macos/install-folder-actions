@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# install-folder-actions - Install macOS Folder Actions scripts via convention linker
+#
+# Usage: install-folder-actions [OPTIONS]
+#
+# Delegates to bin/core/link-dotfiles.py --folder-actions to install Folder Action
+# scripts under ~/Library/Scripts/Folder Action Scripts/. All linker options
+# (--dry-run, --apply, --force, --yes, --verbose) are forwarded.
+#
+# Purpose:
+#   Provides a macOS-specific entry point for installing Folder Actions scripts
+#   while reusing the convention linker's collision detection, ownership tracking,
+#   and dry-run capabilities.
+
+set -euo pipefail
+
+# Resolve symlinks to find the physical repository root
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+DOTFILES_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
+readonly DOTFILES_ROOT
+export DOTFILES_ROOT
+
+# Validate python3 is available
+if ! command -v python3 >/dev/null 2>&1; then
+	echo "Error: python3 is required but not found in PATH" >&2
+	exit 1
+fi
+
+exec python3 "$DOTFILES_ROOT/bin/core/link-dotfiles.py" --folder-actions "$@"

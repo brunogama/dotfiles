@@ -52,7 +52,7 @@ Select a category to see available scripts:
   ${CYAN}0${NC}) Exit
 
 EOF
-    read -p "Choice: " choice
+    read -r -p "Choice: " choice
 
     case "$choice" in
         1) show_category "core" ;;
@@ -79,8 +79,9 @@ show_category() {
     local count=0
     for script in "$REPO_ROOT/bin/$category"/*; do
         if [[ -x "$script" && -f "$script" ]]; then
-            local name=$(basename "$script")
-            local desc=$("$script" --help 2>&1 | head -1 || echo "$name")
+            local name desc
+            name=$(basename "$script")
+            desc=$("$script" --help 2>&1 | head -1 || echo "$name")
             printf "  ${YELLOW}%-30s${NC} %s\n" "$name" "$desc"
             count=$((count + 1))
         fi
@@ -89,7 +90,7 @@ show_category() {
     echo ""
     echo -e "${CYAN}Found $count scripts${NC}"
     echo ""
-    read -p "Enter script name for details (or press Enter to continue): " script_name
+    read -r -p "Enter script name for details (or press Enter to continue): " script_name
 
     if [[ -n "$script_name" ]] && [[ -x "$REPO_ROOT/bin/$category/$script_name" ]]; then
         clear
@@ -101,7 +102,7 @@ show_category() {
 
 search_scripts() {
     clear
-    read -p "Search keyword: " keyword
+    read -r -p "Search keyword: " keyword
 
     if [[ -z "$keyword" ]]; then
         show_menu
@@ -113,17 +114,18 @@ search_scripts() {
     echo ""
 
     local found=0
-    find "$REPO_ROOT/bin" -type f -executable 2>/dev/null | while read script; do
+    find "$REPO_ROOT/bin" -type f -executable 2>/dev/null | while read -r script; do
         if grep -qi "$keyword" "$script" 2>/dev/null; then
-            local name=$(basename "$script")
-            local category=$(basename "$(dirname "$script")")
+            local name category
+            name=$(basename "$script")
+            category=$(basename "$(dirname "$script")")
             echo -e "  ${YELLOW}$category/$name${NC}"
             found=$((found + 1))
         fi
     done
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -r -p "Press Enter to continue..."
     show_menu
 }
 
@@ -138,7 +140,7 @@ show_all() {
         column || find "$REPO_ROOT/bin" -type f -executable -exec basename {} \; 2>/dev/null | sort
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -r -p "Press Enter to continue..."
     show_menu
 }
 
@@ -165,7 +167,7 @@ ${YELLOW}update-dotfiles-scripts${NC}
   Usage: update-dotfiles-scripts
 
 EOF
-    read -p "Press Enter to continue..."
+    read -r -p "Press Enter to continue..."
     show_menu
 }
 
@@ -186,7 +188,7 @@ ${CYAN}Most Used Scripts:${NC}
   ${YELLOW}get-api-key${NC}            Retrieve credentials
   ${YELLOW}zsh-benchmark${NC}          Measure performance
   ${YELLOW}conventional-commit${NC}    Guided git commits
-  ${YELLOW}link-dotfiles${NC}          Apply symlinks from manifest
+  ${YELLOW}link-dotfiles${NC}          Apply convention-based links
 
 ${CYAN}By Task:${NC}
 
@@ -203,7 +205,7 @@ ${CYAN}Documentation:${NC}
   Onboarding: $REPO_ROOT/ONBOARDING.md
 
 EOF
-        read -p "Press Enter to continue..."
+        read -r -p "Press Enter to continue..."
     fi
     show_menu
 }
@@ -238,7 +240,7 @@ main() {
         --search)
             if [[ -n "${2:-}" ]]; then
                 keyword="$2"
-                find "$REPO_ROOT/bin" -type f -executable 2>/dev/null | while read script; do
+                find "$REPO_ROOT/bin" -type f -executable 2>/dev/null | while read -r script; do
                     if grep -qi "$keyword" "$script" 2>/dev/null; then
                         echo "$(basename "$(dirname "$script")")/$(basename "$script")"
                     fi

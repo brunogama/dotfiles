@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [linking-shell-support-source-tree]
 specs:
   - specs/linking-architecture.md
@@ -23,10 +23,10 @@ Migrate common Git, Mise, and home-sync configuration into `home/` after confirm
 
 ## Validation
 
-- [ ] Each migrated common tool file maps one-for-one from `home/` to its intended `$HOME` destination.
-- [ ] No target owned by existing Nix or Home Manager declarations is duplicated.
-- [ ] Git and tool configuration references resolve to the migrated paths.
-- [ ] The focused source-layout checks pass.
+- [x] Each migrated common tool file maps one-for-one from `home/` to its intended `$HOME` destination.
+- [x] No target owned by existing Nix or Home Manager declarations is duplicated.
+- [x] Git and tool configuration references resolve to the migrated paths.
+- [x] The focused source-layout checks pass.
 
 ## Risks / unknowns
 

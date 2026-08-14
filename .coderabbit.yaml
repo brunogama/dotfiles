@@ -1,0 +1,122 @@
+---
+# Review policy for the personal dotfiles repository.
+language: en-US
+tone_instructions: >-
+  Be direct and actionable. Prioritize correctness, security, idempotency, and
+  cross-platform behavior. Report only issues that need a code change; do not
+  repeat CI or formatter findings.
+
+chat:
+  # Restrict review chat access to organization members only.
+  allow_non_org_members: false
+
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_instructions: >-
+    State user-visible behavior, affected operating systems, validation run or
+    still needed, and any security or migration risk. Call out intentionally
+    omitted tests.
+  changed_files_summary: true
+  sequence_diagrams: false
+  poem: false
+
+  finishing_touches:
+    autofix:
+      # Preserve executable modes; accept review suggestions manually.
+      enabled: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 0
+    drafts: true
+    ignore_title_keywords:
+      - DO NOT MERGE
+    labels:
+      - "!wip"
+    base_branches:
+      - main
+      - develop
+
+  pre_merge_checks:
+    override_requested_reviewers_only: true
+    title:
+      mode: warning
+    description:
+      mode: warning
+
+  path_filters:
+    # Vendored Bats helpers and immutable git metadata are not maintained here.
+    - "!tests/helpers/**"
+    - "!tests/fixtures/repos/**/.git/**"
+
+  path_instructions:
+    - path: "bin/**"
+      instructions: >-
+        Preserve idempotency and safe failure behavior. For Bash, use
+        `set -euo pipefail`, quote expansions, prefer `[[ ... ]]`, clean up
+        temporary resources with traps, and require zero ShellCheck errors.
+        Apply MINDSET.MD's lowercase and emoji rules. Do not expose credentials
+        through command arguments, logs, or history.
+    - path: "bin/credentials/**"
+      instructions: >-
+        Treat every change as security-sensitive. Reject secret material in
+        code,
+        fixtures, comments, and logs. Preserve keychain and encrypted-file
+        handling, require explicit errors over unsafe fallbacks, and never pass
+        secrets as command-line arguments.
+    - path: "bin/**/*.py"
+      instructions: >-
+        Preserve Python 3.11+ compatibility, type safety, and deterministic
+        behavior,
+        and clear error handling. For home_sync changes, require focused pytest
+        coverage and compatibility with mypy --strict; do not lower the existing
+        91 percent coverage gate or the 80 percent mutation score for
+        metrics.py.
+    - path: "bin/core/home_sync/**"
+      instructions: >-
+        Review CLI, sync, locking, and daemon changes for data loss, races,
+        concurrent-process safety, network failures, and recovery behavior.
+        Require tests for behavior changes and regressions.
+    - path: "install"
+      instructions: >-
+        Preserve safe, idempotent installation and a useful dry-run mode. Review
+        filesystem changes, symlink collisions, rollback or recovery behavior,
+        and macOS/Linux compatibility.
+    - path: "tests/**"
+      instructions: >-
+        Keep tests deterministic, isolated, and portable across macOS and Linux.
+        Test observable behavior and error paths; do not weaken assertions,
+        coverage thresholds, or test fixtures to mask a production defect.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Review Actions changes for least-privilege permissions, pinned action
+        revisions, untrusted pull-request safety, secret handling, and parity
+        with the documented macOS and Linux validation matrix.
+    - path: "home-darwin/Library/**"
+      instructions: >-
+        The uppercase `Library` and `LaunchAgents` directories intentionally
+        mirror required macOS target paths. Do not report their
+        capitalization as
+        a naming violation; review all other changes normally.
+    - path: "**/*.nix"
+      instructions: >-
+        Preserve reproducible, declarative Nix behavior. Flag unpinned inputs,
+        imperative side effects, or platform assumptions that break macOS or
+        Linux.
+    - path: "**/*.md"
+      instructions: >-
+        Keep documentation accurate, concise, and emoji-free. Do not request
+        manual changes to CHANGELOG.md because it is generated. Require docs
+        when
+        a user-facing command, setup flow, or security behavior changes.
+
+  tools:
+    shellcheck:
+      enabled: true
+    actionlint:
+      enabled: true
+    gitleaks:
+      enabled: true

@@ -24,7 +24,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 ## Project Overview
 
 Modern dotfiles system with:
-- Declarative symlink management via `LinkingManifest.json`
+- Convention-based symlink management via `home/` trees and `bin/<domain>/` commands
 - Environment switching (work/personal modes)
 - Secure credential storage using macOS Keychain
 - Spec-driven development using OpenSpec framework
@@ -59,11 +59,12 @@ See `openspec/AGENTS.md` for complete workflow.
 
 ### Installation & Setup
 ```bash
-./install                    # Interactive installation (10-20 minutes)
-./install --dry-run          # Preview changes
-./install --yes              # Non-interactive mode
-link-dotfiles --dry-run      # Preview symlinks
-link-dotfiles --apply        # Apply symlinks from manifest
+./install                          # Interactive installation (10-20 minutes)
+./install --dry-run                # Preview changes
+./install --yes                    # Non-interactive mode
+link-dotfiles --dry-run            # Preview convention-based links
+link-dotfiles --apply --yes        # Apply collision-free links
+link-dotfiles --force --yes --apply # Replace non-matching existing targets
 ```
 
 ### Language Runtime Management
@@ -138,7 +139,8 @@ zsh-trim-history             # Reduce to 10k entries
 ```
 ~/.dotfiles/
 ├── install                  # Main installation script
-├── LinkingManifest.json     # Source of truth for symlinks
+├── home/                    # Common files mapped below $HOME
+├── home-darwin/             # macOS overrides mapped below $HOME
 ├── bin/                     # Executable scripts (lowercase names)
 │   ├── core/               # 25+ general utilities
 │   ├── credentials/        # Secure credential management
@@ -169,11 +171,11 @@ zsh-trim-history             # Reduce to 10k entries
 
 ### Key Design Patterns
 
-**Declarative Symlink Management**
-- `LinkingManifest.json` is source of truth
-- JSON schema validation
-- Platform-specific and optional links
-- `link-dotfiles` script applies manifest
+**Convention-Based Symlink Management**
+- `home/`, platform overlays, and hostname overlays map directly below `$HOME`
+- Immediate executable files in `bin/<domain>/` map to `~/.local/bin`
+- `link-dotfiles` validates the complete plan before applying it
+- Pruning and legacy command migration are explicit operations
 
 **Environment Switching**
 - `work-mode` script switches contexts
@@ -241,7 +243,6 @@ Located in `bin/git/hooks/`:
 - `check-lowercase-dirs` - Enforce constitutional rule
 - `check-no-emojis` - Enforce constitutional rule
 - `check-commit-msg` - Validate conventional commit format
-- `validate-manifest` - Validate LinkingManifest.json schema
 - `validate-openspec` - Validate OpenSpec changes
 
 ## Security
@@ -297,11 +298,12 @@ All commits scanned for:
 5. Run `shellcheck` before committing
 6. Update `docs/scripts/` documentation if user-facing
 
-### Adding New Symlink
-1. Edit `LinkingManifest.json`
+### Adding a Managed Link
+1. Add a regular file beneath `home/`, the appropriate platform/host overlay, or an executable command beneath `bin/<domain>/`
 2. Validate: `link-dotfiles --dry-run`
-3. Apply: `link-dotfiles --apply`
-4. Commit both manifest and source file
+3. Apply collision-free links: `link-dotfiles --apply --yes`
+4. Replace non-matching targets (if needed): `link-dotfiles --force --yes --apply`
+5. Commit the source file and its focused tests
 
 ### Adding New Feature (Major)
 1. Create OpenSpec proposal in `openspec/changes/<change-id>/`

@@ -81,7 +81,7 @@ Useful installer modes:
 ./install --nix --yes       # Auto-detect identity without prompting
 ./install --nix --username bruno --machine-name "Bruno’s MacBook Pro"
 ./install --nix --skip-npm  # Activate without the external npm tool set
-./install --scripts-only    # Refresh scripts in ~/local/bin only
+./install --scripts-only    # Refresh public commands in ~/.local/bin only
 ./install                   # Legacy Homebrew/version-manager installer
 ```
 
@@ -121,14 +121,14 @@ Work mode loads `~/.config/zsh/work-config.zsh` and personal mode loads `~/.conf
 
 ### Manage symlinks
 
-`LinkingManifest.json` is the source of truth for files linked into your home directory.
+The repository layout is the source of truth for links: files beneath `home/`, platform overlays such as `home-darwin/`, and immediate executable files in `bin/<domain>/`.
 
 ```bash
 python3 bin/core/link-dotfiles.py --dry-run
-python3 bin/core/link-dotfiles.py --apply
+python3 bin/core/link-dotfiles.py --apply --yes
 ```
 
-It links zsh files, Git configuration, package manager config, sync service files, and executable scripts into their target locations.
+The linker maps home trees below `$HOME` and exposes public commands in `~/.local/bin`.
 
 ### Manage credentials
 
@@ -193,7 +193,7 @@ Add CLI packages to `nix/packages.nix`. Homebrew exceptions live in both `nix/da
 
 ### Migration and rollback
 
-The first user activation moves shell and Git ownership from `LinkingManifest.json` to standalone Home Manager. The manifest remains for the legacy installer and script linking. Optional system activation reuses the same Home Manager module through nix-darwin, so the two modes do not maintain separate user configurations. `work-mode` stores mutable state in `~/.config/zsh/environment.zsh`, outside the Nix store. Keychain and encrypted credential files are never copied into Nix derivations.
+The first user activation moves shell and Git ownership from legacy repository linking to standalone Home Manager. Optional system activation reuses the same Home Manager module through nix-darwin, so the two modes do not maintain separate user configurations. `work-mode` stores mutable state in `~/.config/zsh/environment.zsh`, outside the Nix store. Keychain and encrypted credential files are never copied into Nix derivations.
 
 Homebrew is retained only for:
 
@@ -217,7 +217,8 @@ A nix-darwin rollback does not remove Nix. For a full return to the legacy flow,
 ├── flake.nix                  # Pinned nix-darwin/Home Manager entry point
 ├── flake.lock                 # Reproducible input revisions
 ├── install                    # Nix dispatcher and legacy installer
-├── LinkingManifest.json       # Legacy and script symlink manifest
+├── home/                      # Common files mapped below $HOME
+├── home-darwin/               # macOS overrides mapped below $HOME
 ├── bin/
 │   ├── core/                  # Core utilities and home-sync Python package
 │   ├── credentials/           # Secret and encrypted-file management
@@ -257,11 +258,11 @@ nix-validate                 # Validate both modes
 bash -n install
 zsh -n zsh/.zshrc
 
-# Installer, manifest, and linking
+# Installer and convention-based linking
 ./install --nix --dry-run
 ./install --dry-run
-python3 -m json.tool LinkingManifest.json >/dev/null
 python3 bin/core/link-dotfiles.py --dry-run
+python3 bin/core/link-dotfiles.py --prune --dry-run
 
 # Integration tests
 ./bin/test/run-tests
@@ -290,7 +291,7 @@ Dedicated files cover legal, contribution, and release-history details.
 
 | Symptom | Try this |
 | --- | --- |
-| A command is not found | Run `nix-activate`, then `exec zsh`; for repository scripts also run `./install --scripts-only` |
+| A command is not found | Run `nix-activate`, then `exec zsh`; for repository commands also run `./install --scripts-only` and confirm `~/.local/bin` is on `PATH` |
 | Nix activation reports an existing file | Inspect the file and its `.pre-nix` backup before retrying; do not delete either blindly |
 | Nix activation rejects `/etc/bashrc` or `/etc/zshrc` | Compare the file with Apple's stock version and the upstream Nix daemon additions. Update `knownSha256Hashes` in `nix/darwin.nix` only after confirming there are no user customizations. The current hashes correspond to the upstream Nix 2.35 daemon installer. |
 | `pi` is missing | Run `nix-npm-sync`, then verify `~/.local/share/dotfiles/npm/current/node_modules/.bin/pi` |

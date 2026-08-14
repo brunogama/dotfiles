@@ -209,4 +209,3 @@ Before declaring complete, verify:
 - Video duration is detected and displayed
 - All validation checks work correctly (time ranges, file existence, etc.)
 </success_criteria>
-

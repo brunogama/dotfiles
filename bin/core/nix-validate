@@ -101,7 +101,9 @@ for script in bin/core/nix-activate bin/core/nix-bootstrap bin/core/nix-npm-sync
     bin/core/nix-validate; do
     bash -n "$script"
 done
-zsh -n zsh/.zshenv zsh/.zprofile zsh/.zshrc
+for zsh_file in home/.zshenv home/.config/zsh/.zprofile home/.config/zsh/.zshrc; do
+    zsh -n -- "$zsh_file"
+done
 validate_json packages/npm/package.json
 validate_json packages/npm/package-lock.json
 git --no-pager diff --check

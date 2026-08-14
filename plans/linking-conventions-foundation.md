@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: []
 specs:
   - specs/linking-architecture.md
@@ -24,10 +24,10 @@ Record a complete, reviewable inventory of the legacy manifest and its destinati
 
 ## Validation
 
-- [ ] Every legacy manifest entry has a recorded destination in exactly one new category or a documented reason to remain temporarily unsupported.
-- [ ] The inventory identifies duplicate executable command basenames before source-tree migration begins.
-- [ ] The inventory records the Nix/Home Manager ownership boundary for each migrated target.
-- [ ] `bats tests/integration/core/test_link_dotfiles.bats` passes.
+- [x] Every legacy manifest entry has a recorded destination in exactly one new category or a documented reason to remain temporarily unsupported.
+- [x] The inventory identifies duplicate executable command basenames before source-tree migration begins.
+- [x] The inventory records the Nix/Home Manager ownership boundary for each migrated target.
+- [x] `bats tests/integration/core/test_link_dotfiles.bats` passes.
 
 ## Risks / unknowns
 

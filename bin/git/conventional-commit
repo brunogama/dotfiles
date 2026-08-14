@@ -33,4 +33,4 @@ fi
 
 echo "Not conventional commit"
 
-g commit -m "$1"
+g commit -m "$*"
