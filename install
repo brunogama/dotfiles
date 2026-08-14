@@ -17,14 +17,28 @@ readonly BLUE='\033[0;34m'
 readonly CYAN='\033[0;36m'
 readonly NC='\033[0m' # No Color
 
-# Flags
+# Shared flags
 DRY_RUN=false
 YES=false
+SCRIPTS_ONLY=false
+VERBOSE=false
+
+# Router flags
+BACKEND="auto"
+BACKEND_SELECTOR=""
+SYSTEM_MODE=false
+CONFIGURATION=""
+USERNAME_VALUE=""
+MACHINE_NAME=""
+SKIP_NPM=false
+NIX_DISTRIBUTION="upstream"
+NIX_DISTRIBUTION_EXPLICIT=false
+ALLOW_MIXED_BACKENDS=false
+
+# Legacy installer flags
 SKIP_BREW=false
 SKIP_PACKAGES=false
 SKIP_LINKS=false
-SCRIPTS_ONLY=false
-VERBOSE=false
 
 # Detect platform
 PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -78,35 +92,42 @@ USAGE:
     ./install [OPTIONS]
 
 OPTIONS:
-    --nix              Activate the user environment with Home Manager
-    --system           With --nix, activate privileged nix-darwin settings
-    --username NAME    With --nix, set the macOS account short name
+    --backend MODE     Select auto, nix, or legacy (default: auto)
+    --nix              Compatibility alias for --backend nix
+    --legacy           Alias for --backend legacy
+    --system           Activate privileged nix-darwin settings (Nix only)
+    --configuration NAME
+                       Select the Nix flake configuration (Nix only)
+    --username NAME    Set the macOS account short name (Nix only)
     --machine-name NAME
-                       With --nix, set the Mac and normalized host names
-    --dry-run          Preview what would be done
-    --yes              Non-interactive mode (assume yes)
-    --skip-brew        Skip Homebrew installation/bundle
-    --skip-packages    Skip package installation
-    --skip-links       Skip symlink creation
-    --scripts-only     Only link public commands to ~/.local/bin (skip everything else)
+                       Set the Mac and normalized host names (Nix only)
+    --nix-distribution MODE
+                       Declare upstream or determinate Nix ownership (Nix only)
+    --skip-npm         Do not synchronize pinned npm tools (Nix only)
+    --allow-mixed-backends
+                       Permit legacy mode on a Home Manager-managed macOS setup
+    --dry-run          Preview the selected backend without changing the system
+    --yes              Non-interactive mode (assume installer confirmations)
+    --skip-brew        Skip Homebrew installation/bundle (legacy only)
+    --skip-packages    Skip package installation (legacy only)
+    --skip-links       Skip symlink creation (legacy only)
+    --scripts-only     Only link public commands to ~/.local/bin
     --verbose          Show detailed output
     --help             Show this help message
 
 EXAMPLES:
-    # Sudo-free user activation (Nix must already be installed)
-    ./install --nix
+    # Preview automatic platform selection
+    ./install --dry-run
 
-    # Optional privileged macOS system activation
-    ./install --nix --system
-
-    # Legacy Homebrew-based installation
+    # Install the default user environment
     ./install
 
-    # Non-interactive (for CI)
-    ./install --yes
+    # Force a backend
+    ./install --backend nix
+    ./install --legacy
 
-    # Preview only
-    ./install --dry-run
+    # Optional privileged macOS system activation
+    ./install --system
 
     # Only update public commands in ~/.local/bin
     ./install --scripts-only
@@ -121,37 +142,92 @@ EXIT CODES:
 EOF
 }
 
-# Parse arguments
+# Record a single explicit backend selection.
+select_install_backend() {
+    local requested_backend="$1"
+
+    if [[ -n "$BACKEND_SELECTOR" && "$BACKEND" != "$requested_backend" ]]; then
+        log_error "Conflicting backend selectors: $BACKEND_SELECTOR and $requested_backend"
+        exit 2
+    fi
+
+    BACKEND="$requested_backend"
+    BACKEND_SELECTOR="$requested_backend"
+}
+
+# Parse router and backend arguments before selecting an installer.
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --backend)
+                [[ $# -ge 2 ]] || { log_error "--backend requires auto, nix, or legacy"; exit 2; }
+                case "$2" in
+                    auto|nix|legacy) select_install_backend "$2" ;;
+                    *) log_error "Unknown backend: $2"; exit 2 ;;
+                esac
+                shift
+                ;;
+            --nix)
+                select_install_backend "nix"
+                ;;
+            --legacy)
+                select_install_backend "legacy"
+                ;;
+            --system)
+                SYSTEM_MODE=true
+                ;;
+            --configuration)
+                [[ $# -ge 2 ]] || { log_error "--configuration requires a name"; exit 2; }
+                CONFIGURATION="$2"
+                shift
+                ;;
+            --username)
+                [[ $# -ge 2 ]] || { log_error "--username requires a name"; exit 2; }
+                USERNAME_VALUE="$2"
+                shift
+                ;;
+            --machine-name)
+                [[ $# -ge 2 ]] || { log_error "--machine-name requires a name"; exit 2; }
+                MACHINE_NAME="$2"
+                shift
+                ;;
+            --nix-distribution)
+                [[ $# -ge 2 ]] || { log_error "--nix-distribution requires upstream or determinate"; exit 2; }
+                case "$2" in
+                    upstream|determinate)
+                        NIX_DISTRIBUTION="$2"
+                        NIX_DISTRIBUTION_EXPLICIT=true
+                        ;;
+                    *) log_error "Unknown Nix distribution: $2"; exit 2 ;;
+                esac
+                shift
+                ;;
+            --skip-npm)
+                SKIP_NPM=true
+                ;;
+            --allow-mixed-backends)
+                ALLOW_MIXED_BACKENDS=true
+                ;;
             --dry-run)
                 DRY_RUN=true
-                shift
                 ;;
             --yes)
                 YES=true
-                shift
                 ;;
             --skip-brew)
                 SKIP_BREW=true
-                shift
                 ;;
             --skip-packages)
                 SKIP_PACKAGES=true
-                shift
                 ;;
             --skip-links)
                 SKIP_LINKS=true
-                shift
                 ;;
             --scripts-only)
                 SCRIPTS_ONLY=true
-                shift
                 ;;
             --verbose)
                 VERBOSE=true
-                shift
                 ;;
             --help|-h)
                 usage
@@ -159,10 +235,11 @@ parse_args() {
                 ;;
             *)
                 log_error "Unknown option: $1"
-                usage
-                exit 1
+                usage >&2
+                exit 2
                 ;;
         esac
+        shift
     done
 }
 
@@ -184,6 +261,25 @@ confirm() {
 # Check if command exists
 command_exists() {
     command -v "$1" &> /dev/null
+}
+
+# Download an installer before executing it so failures never execute partial content.
+run_remote_bash_installer() {
+    local installer_url="$1"
+    local installer
+
+    installer="$(mktemp)"
+    if ! curl --proto '=https' --tlsv1.2 -fsSL "$installer_url" -o "$installer"; then
+        rm -f "$installer"
+        return 1
+    fi
+
+    if ! /bin/bash "$installer"; then
+        rm -f "$installer"
+        return 1
+    fi
+
+    rm -f "$installer"
 }
 
 # Phase 1: Pre-flight checks
@@ -236,7 +332,13 @@ phase_homebrew() {
 
         if confirm "Install Homebrew now?"; then
             log_info "Installing Homebrew..."
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            if [[ "$YES" == "true" ]]; then
+                NONINTERACTIVE=1 run_remote_bash_installer \
+                    "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+            else
+                run_remote_bash_installer \
+                    "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+            fi
             log_success "Homebrew installed"
         else
             log_warning "Skipped Homebrew installation"
@@ -244,37 +346,89 @@ phase_homebrew() {
     fi
 }
 
+# Install minimal Linux prerequisites through a supported native package manager.
+install_linux_dependencies() {
+    local packages=("$@")
+    local package_manager=""
+    local -a package_command=()
+    local -a privilege_command=()
+
+    if command_exists apt-get; then
+        package_manager="apt-get"
+        package_command=(env DEBIAN_FRONTEND=noninteractive apt-get install --yes)
+    elif command_exists dnf; then
+        package_manager="dnf"
+        package_command=(dnf install --assumeyes)
+    elif command_exists pacman; then
+        package_manager="pacman"
+        # Do not refresh pacman alone: `pacman -Sy package` risks a partial upgrade.
+        package_command=(pacman --sync --needed --noconfirm)
+    else
+        log_error "Unsupported Linux package manager; install these dependencies manually: ${packages[*]}"
+        exit 2
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "Would install Linux dependencies with $package_manager: ${packages[*]}"
+        return 0
+    fi
+
+    if [[ "$EUID" -ne 0 ]]; then
+        command_exists sudo || { log_error "sudo is required to install Linux dependencies"; exit 2; }
+        privilege_command=(sudo)
+    fi
+
+    if [[ "$YES" != "true" ]]; then
+        confirm "Install Linux dependencies with $package_manager: ${packages[*]}?" || {
+            log_error "Linux dependencies are required to continue"
+            exit 3
+        }
+    fi
+
+    if [[ "$package_manager" == "apt-get" ]]; then
+        if (( ${#privilege_command[@]} > 0 )); then
+            "${privilege_command[@]}" env DEBIAN_FRONTEND=noninteractive apt-get update
+        else
+            env DEBIAN_FRONTEND=noninteractive apt-get update
+        fi
+    fi
+
+    if (( ${#privilege_command[@]} > 0 )); then
+        "${privilege_command[@]}" "${package_command[@]}" "${packages[@]}"
+    else
+        "${package_command[@]}" "${packages[@]}"
+    fi
+}
+
 # Phase 3: Dependencies
 phase_dependencies() {
+    local missing_linux_dependencies=()
+
     log_phase "Phase 3: Dependencies"
 
-    # Check jq
     if command_exists jq; then
         log_success "jq is already installed ($(jq --version))"
-    else
-        log_warning "jq is not installed (required for symlink creation)"
-
+    elif [[ "$PLATFORM" == "darwin" ]]; then
         if [[ "$DRY_RUN" == "true" ]]; then
-            log_info "Would install jq"
-            return 0
-        fi
-
-        if [[ "$PLATFORM" == "darwin" ]]; then
-            if command_exists brew; then
-                log_info "Installing jq via Homebrew..."
-                brew install jq
-                log_success "jq installed"
-            else
-                log_error "Cannot install jq: Homebrew not available"
-                exit 2
-            fi
+            log_info "Would install jq via Homebrew"
+        elif command_exists brew; then
+            log_info "Installing jq via Homebrew..."
+            brew install jq
+            log_success "jq installed"
         else
-            log_error "Please install jq manually:"
-            log_info "  Ubuntu/Debian: sudo apt install jq"
-            log_info "  CentOS/RHEL: sudo yum install jq"
-            log_info "  Arch: sudo pacman -S jq"
+            log_error "Cannot install jq: Homebrew not available"
             exit 2
         fi
+    else
+        missing_linux_dependencies+=(jq)
+    fi
+
+    if [[ "$PLATFORM" == "linux" ]] && ! command_exists curl; then
+        missing_linux_dependencies+=(curl)
+    fi
+
+    if (( ${#missing_linux_dependencies[@]} > 0 )); then
+        install_linux_dependencies "${missing_linux_dependencies[@]}"
     fi
 }
 
@@ -725,7 +879,8 @@ phase_nvm() {
     fi
 
     log_info "Installing nvm via official installer..."
-    if curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash; then
+    if run_remote_bash_installer \
+        "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh"; then
         log_success "nvm installed to $nvm_dir"
     else
         log_error "Failed to install nvm"
@@ -825,6 +980,25 @@ phase_prezto() {
     fi
 }
 
+# Invoke the dotfile linker with the shared installer flags.
+run_linker() {
+    local commands_only="$1"
+    local linker="$DOTFILES_ROOT/bin/core/link-dotfiles.py"
+    local link_args=()
+
+    [[ -f "$linker" ]] || return 2
+    [[ "$commands_only" == "true" ]] && link_args+=("--commands-only")
+    if [[ "$DRY_RUN" == "true" ]]; then
+        link_args+=("--dry-run")
+    else
+        link_args+=("--apply")
+    fi
+    [[ "$YES" == "true" ]] && link_args+=("--yes")
+    [[ "$VERBOSE" == "true" ]] && link_args+=("--verbose")
+
+    python3 "$linker" "${link_args[@]}"
+}
+
 # Phase 7: Symlink creation
 phase_symlinks() {
     if [[ "$SKIP_LINKS" == "true" ]]; then
@@ -834,60 +1008,42 @@ phase_symlinks() {
 
     log_phase "Phase 7: Symlink Creation"
 
-    local linker="$DOTFILES_ROOT/bin/core/link-dotfiles.py"
-
-    if [[ ! -f "$linker" ]]; then
-        log_error "link-dotfiles.py script not found: $linker"
-        exit 2
-    fi
-
-    local link_args=()
-    if [[ "$DRY_RUN" == "true" ]]; then
-        link_args+=("--dry-run")
-    else
-        link_args+=("--apply")
-    fi
-    if [[ "$YES" == "true" ]]; then
-        link_args+=("--yes")
-    fi
-    if [[ "$VERBOSE" == "true" ]]; then
-        link_args+=("--verbose")
-    fi
+    local linker_status
 
     log_info "Running link-dotfiles..."
-    if python3 "$linker" "${link_args[@]}"; then
+    if run_linker false; then
         log_success "Symlinks created successfully"
+        return 0
     else
-        log_error "Symlink creation failed"
-        exit 1
+        linker_status=$?
     fi
+
+    if [[ "$linker_status" -eq 2 ]]; then
+        log_error "link-dotfiles.py script not found: $DOTFILES_ROOT/bin/core/link-dotfiles.py"
+        exit 2
+    fi
+    log_error "Symlink creation failed"
+    exit 1
 }
 
 # Phase 7-alt: Public command linking
 phase_scripts_only() {
-    log_phase "Phase 7: Public Command Linking (~/.local/bin only)"
+    local linker_status
 
-    local linker="$DOTFILES_ROOT/bin/core/link-dotfiles.py"
-    if [[ ! -f "$linker" ]]; then
-        log_error "link-dotfiles.py script not found: $linker"
+    log_phase "Phase 7: Public Command Linking (~/.local/bin only)"
+    log_info "Running link-dotfiles for public commands..."
+    if run_linker true; then
+        return 0
+    else
+        linker_status=$?
+    fi
+
+    if [[ "$linker_status" -eq 2 ]]; then
+        log_error "link-dotfiles.py script not found: $DOTFILES_ROOT/bin/core/link-dotfiles.py"
         return 1
     fi
-
-    local link_args=("--commands-only")
-    if [[ "$DRY_RUN" == "true" ]]; then
-        link_args+=("--dry-run")
-    else
-        link_args+=("--apply")
-    fi
-    if [[ "$YES" == "true" ]]; then
-        link_args+=("--yes")
-    fi
-    if [[ "$VERBOSE" == "true" ]]; then
-        link_args+=("--verbose")
-    fi
-
-    log_info "Running link-dotfiles for public commands..."
-    python3 "$linker" "${link_args[@]}"
+    log_error "Public command linking failed"
+    return "$linker_status"
 }
 
 # Phase 8: Shell configuration
@@ -1034,63 +1190,131 @@ show_summary() {
     echo "For help: ./install --help"
 }
 
-# Dispatch the Nix-first flow before parsing legacy installer flags.
-dispatch_nix_install() {
-    local arg
-    local nix_mode=false
-    local forwarded_args=()
-
-    for arg in "$@"; do
-        if [[ "$arg" == "--nix" ]]; then
-            nix_mode=true
-        else
-            forwarded_args+=("$arg")
-        fi
-    done
-
-    if [[ "$nix_mode" == "true" ]]; then
-        if [[ ! -x "$DOTFILES_ROOT/bin/core/nix-bootstrap" ]]; then
-            log_error "Nix bootstrap script not found: bin/core/nix-bootstrap"
-            exit 2
-        fi
-        if (( ${#forwarded_args[@]} > 0 )); then
-            exec "$DOTFILES_ROOT/bin/core/nix-bootstrap" "${forwarded_args[@]}"
-        else
-            exec "$DOTFILES_ROOT/bin/core/nix-bootstrap"
-        fi
+# Require a local Git worktree without fetching or synchronizing it.
+validate_dotfiles_worktree() {
+    if [[ ! -d "$DOTFILES_ROOT/.git" && ! -f "$DOTFILES_ROOT/.git" ]]; then
+        log_error "Not in a git repository"
+        log_info "Run this from your dotfiles repository"
+        exit 2
     fi
+    command_exists git || { log_error "git is not installed"; exit 2; }
 }
 
-# Main execution
-main() {
-    dispatch_nix_install "$@"
-    parse_args "$@"
+# Return success when Home Manager has previously activated this user profile.
+home_manager_profile_exists() {
+    local home_manager_profile="$HOME/.local/state/nix/profiles/home-manager"
+    [[ -e "$home_manager_profile" || -L "$home_manager_profile" ]]
+}
 
-    # Show banner
+# Resolve automatic selection from the supported platform contract.
+select_automatic_backend() {
+    case "$PLATFORM" in
+        darwin) printf '%s\n' "nix" ;;
+        linux) printf '%s\n' "legacy" ;;
+        *) return 1 ;;
+    esac
+}
+
+# Reject options that the selected mode would otherwise ignore.
+validate_install_options() {
+    local selected_backend="$1"
+
+    if [[ "$SCRIPTS_ONLY" == "true" ]]; then
+        if [[ -n "$BACKEND_SELECTOR" || "$SYSTEM_MODE" == "true" || -n "$CONFIGURATION" || \
+            -n "$USERNAME_VALUE" || -n "$MACHINE_NAME" || "$SKIP_NPM" == "true" || \
+            "$NIX_DISTRIBUTION_EXPLICIT" == "true" || "$ALLOW_MIXED_BACKENDS" == "true" || \
+            "$SKIP_BREW" == "true" || "$SKIP_PACKAGES" == "true" || "$SKIP_LINKS" == "true" ]]; then
+            log_error "--scripts-only cannot be combined with backend or package options"
+            exit 2
+        fi
+        return 0
+    fi
+
+    case "$selected_backend" in
+        nix)
+            [[ "$PLATFORM" == "darwin" ]] || { log_error "Nix backend is supported only on macOS"; exit 2; }
+            if [[ "$SKIP_BREW" == "true" || "$SKIP_PACKAGES" == "true" || "$SKIP_LINKS" == "true" || \
+                "$ALLOW_MIXED_BACKENDS" == "true" ]]; then
+                log_error "Legacy options cannot be used with the Nix backend"
+                exit 2
+            fi
+            ;;
+        legacy)
+            [[ "$PLATFORM" == "darwin" || "$PLATFORM" == "linux" ]] || {
+                log_error "Legacy backend is supported only on macOS and Linux"
+                exit 2
+            }
+            if [[ "$SYSTEM_MODE" == "true" || -n "$CONFIGURATION" || -n "$USERNAME_VALUE" || \
+                -n "$MACHINE_NAME" || "$SKIP_NPM" == "true" || "$NIX_DISTRIBUTION_EXPLICIT" == "true" ]]; then
+                log_error "Nix options cannot be used with the legacy backend"
+                exit 2
+            fi
+            if [[ "$PLATFORM" == "darwin" && "$ALLOW_MIXED_BACKENDS" != "true" ]] && home_manager_profile_exists; then
+                log_error "Legacy backend refused: Home Manager already manages this macOS user"
+                log_info "Use --allow-mixed-backends only for deliberate recovery"
+                exit 2
+            fi
+            ;;
+        *) log_error "Internal error: unknown selected backend $selected_backend"; exit 2 ;;
+    esac
+}
+
+# Show the shared installer banner before backend-specific output.
+show_install_banner() {
     echo "================================================="
     echo " Dotfiles Installation"
     echo "================================================="
     echo ""
+}
 
+# Print the top-level plan before invoking a backend.
+show_install_selection() {
+    local selected_backend="$1"
+    local selection_reason="$2"
+
+    log_info "Selected backend: $selected_backend ($selection_reason)"
     if [[ "$DRY_RUN" == "true" ]]; then
         log_warning "DRY RUN MODE - No changes will be made"
-        echo ""
     fi
+    if [[ -n "$(git -C "$DOTFILES_ROOT" status --porcelain 2>/dev/null || true)" ]]; then
+        log_warning "Using a dirty dotfiles worktree without Git synchronization"
+    fi
+}
 
-    # Trap errors
-    trap 'log_error "Installation failed"; exit 1' ERR
+# Run only the public command linker without selecting a package-management backend.
+run_scripts_only() {
+    log_info "Scripts-only mode: skipping backend selection"
+    phase_preflight
+    phase_scripts_only
+    log_phase "Scripts Update Complete!"
+    log_info "Public commands in ~/.local/bin have been updated"
+}
 
-    # Execute phases
-    if [[ "$SCRIPTS_ONLY" == "true" ]]; then
-        # Scripts-only mode: skip everything except scripts linking
-        log_info "Scripts-only mode: skipping full installation"
-        phase_preflight
-        phase_scripts_only
-        log_phase "Scripts Update Complete!"
-        log_info "Public commands in ~/.local/bin have been updated"
-        log_info "Run './install' without --scripts-only for full installation"
+# Delegate one explicit Nix backend invocation with its compatible options.
+run_nix_backend() {
+    local nix_bootstrap="$DOTFILES_ROOT/bin/core/nix-bootstrap"
+    local nix_args=()
+
+    [[ -x "$nix_bootstrap" ]] || { log_error "Nix bootstrap script not found: bin/core/nix-bootstrap"; exit 2; }
+    [[ "$SYSTEM_MODE" == "true" ]] && nix_args+=(--system)
+    [[ -n "$CONFIGURATION" ]] && nix_args+=(--configuration "$CONFIGURATION")
+    [[ -n "$USERNAME_VALUE" ]] && nix_args+=(--username "$USERNAME_VALUE")
+    [[ -n "$MACHINE_NAME" ]] && nix_args+=(--machine-name "$MACHINE_NAME")
+    [[ "$SKIP_NPM" == "true" ]] && nix_args+=(--skip-npm)
+    [[ "$NIX_DISTRIBUTION_EXPLICIT" == "true" ]] && nix_args+=(--nix-distribution "$NIX_DISTRIBUTION")
+    [[ "$DRY_RUN" == "true" ]] && nix_args+=(--dry-run)
+    [[ "$YES" == "true" ]] && nix_args+=(--yes)
+
+    log_info "Delegating to bin/core/nix-bootstrap"
+    if (( ${#nix_args[@]} > 0 )); then
+        exec "$nix_bootstrap" "${nix_args[@]}"
     else
-        # Full installation
+        exec "$nix_bootstrap"
+    fi
+}
+
+# Run the retained imperative installer after router validation.
+run_legacy_backend() {
     phase_preflight
     phase_homebrew
     phase_dependencies
@@ -1101,9 +1325,41 @@ main() {
     phase_shell
     phase_performance
     show_summary
+}
+
+# Main execution
+main() {
+    local selected_backend selection_reason
+
+    parse_args "$@"
+    trap 'log_error "Installation failed"; exit 1' ERR
+    validate_dotfiles_worktree
+    show_install_banner
+
+    if [[ "$SCRIPTS_ONLY" == "true" ]]; then
+        validate_install_options "scripts-only"
+        run_scripts_only
+        exit 0
     fi
 
-    exit 0
+    if [[ "$BACKEND" == "auto" ]]; then
+        if ! selected_backend="$(select_automatic_backend)"; then
+            log_error "Unsupported platform: $PLATFORM"
+            exit 2
+        fi
+        selection_reason="$PLATFORM default"
+    else
+        selected_backend="$BACKEND"
+        selection_reason="explicit --backend $BACKEND"
+    fi
+
+    validate_install_options "$selected_backend"
+    show_install_selection "$selected_backend" "$selection_reason"
+
+    case "$selected_backend" in
+        nix) run_nix_backend ;;
+        legacy) run_legacy_backend ;;
+    esac
 }
 
 main "$@"

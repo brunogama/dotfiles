@@ -37,6 +37,8 @@ SYSTEM_MODE=false
 CONFIGURATION="${DOTFILES_NIX_CONFIGURATION:-default}"
 USERNAME_VALUE=""
 MACHINE_NAME=""
+NIX_DISTRIBUTION="upstream"
+NIX_DISTRIBUTION_EXPLICIT=false
 
 usage() {
     cat <<'EOF'
@@ -51,6 +53,7 @@ Options:
   --configuration NAME    Select the mode's flake output (default: default)
   --username NAME         Set the macOS account short name
   --machine-name NAME     Set the Mac display name and normalized host names
+  --nix-distribution MODE Declare upstream or determinate Nix ownership
   --skip-npm              Do not synchronize pinned npm tools
   --dry-run               Print planned actions without changing the system
   --yes                   Confirm prerequisite installations non-interactively
@@ -93,6 +96,20 @@ while [[ $# -gt 0 ]]; do
             MACHINE_NAME="$2"
             shift
             ;;
+        --nix-distribution)
+            [[ $# -ge 2 ]] || { echo "nix-bootstrap: --nix-distribution requires upstream or determinate" >&2; exit 2; }
+            case "$2" in
+                upstream|determinate)
+                    NIX_DISTRIBUTION="$2"
+                    NIX_DISTRIBUTION_EXPLICIT=true
+                    ;;
+                *)
+                    echo "nix-bootstrap: unknown Nix distribution: $2" >&2
+                    exit 2
+                    ;;
+            esac
+            shift
+            ;;
         --skip-npm)
             SKIP_NPM=true
             ;;
@@ -117,8 +134,8 @@ done
 
 [[ "$(uname -s)" == "Darwin" ]] || { echo "nix-bootstrap: nix-darwin requires macOS" >&2; exit 2; }
 
-install_nix() {
-    local default_profile="/nix/var/nix/profiles/default"
+nix_command_available() {
+    local default_profile="${NIX_DAEMON_PROFILE:-/nix/var/nix/profiles/default}"
 
     if ! command -v nix >/dev/null 2>&1 && \
         [[ -r "$default_profile/etc/profile.d/nix-daemon.sh" ]]; then
@@ -132,7 +149,11 @@ install_nix() {
         export PATH="$default_profile/bin:$PATH"
     fi
 
-    if command -v nix >/dev/null 2>&1; then
+    command -v nix >/dev/null 2>&1
+}
+
+install_nix() {
+    if nix_command_available; then
         return 0
     fi
 
@@ -200,23 +221,36 @@ install_homebrew() {
     fi
 }
 
+home_manager_profile_exists() {
+    local home_manager_profile="$HOME/.local/state/nix/profiles/home-manager"
+    [[ -e "$home_manager_profile" || -L "$home_manager_profile" ]]
+}
+
+if [[ "$NIX_DISTRIBUTION" == "determinate" ]] && ! nix_command_available; then
+    echo "nix-bootstrap: Determinate Nix must be installed before this command" >&2
+    exit 2
+fi
+
 configure_script="$SCRIPT_DIR/nix-configure-host"
 [[ -x "$configure_script" ]] || {
     echo "nix-bootstrap: host configurator not found: $configure_script" >&2
     exit 2
 }
 configure_args=()
-[[ -n "$USERNAME_VALUE" ]] && configure_args+=(--username "$USERNAME_VALUE")
-[[ -n "$MACHINE_NAME" ]] && configure_args+=(--machine-name "$MACHINE_NAME")
-[[ "$DRY_RUN" == "true" ]] && configure_args+=(--dry-run)
-[[ "$YES" == "true" ]] && configure_args+=(--yes)
-if (( ${#configure_args[@]} > 0 )); then
+if ! home_manager_profile_exists || [[ -n "$USERNAME_VALUE" || -n "$MACHINE_NAME" || "$NIX_DISTRIBUTION_EXPLICIT" == "true" ]]; then
+    home_manager_profile_exists && configure_args+=(--preserve-identity)
+    [[ -n "$USERNAME_VALUE" ]] && configure_args+=(--username "$USERNAME_VALUE")
+    [[ -n "$MACHINE_NAME" ]] && configure_args+=(--machine-name "$MACHINE_NAME")
+    [[ "$NIX_DISTRIBUTION_EXPLICIT" == "true" ]] && configure_args+=(--nix-distribution "$NIX_DISTRIBUTION")
+    [[ "$DRY_RUN" == "true" ]] && configure_args+=(--dry-run)
+    [[ "$YES" == "true" ]] && configure_args+=(--yes)
     "$configure_script" "${configure_args[@]}"
-else
-    "$configure_script"
 fi
 
-install_nix
+if [[ "$NIX_DISTRIBUTION" == "upstream" ]]; then
+    install_nix
+fi
+
 if [[ "$SYSTEM_MODE" == "true" ]]; then
     install_homebrew
     activation_script="$SCRIPT_DIR/nix-rebuild"
@@ -224,8 +258,23 @@ else
     activation_script="$SCRIPT_DIR/nix-activate"
 fi
 
+run_command_linker() {
+    local linker="$DOTFILES_ROOT/bin/core/link-dotfiles.py"
+    local linker_args=(--commands-only)
+
+    [[ -f "$linker" ]] || { echo "nix-bootstrap: command linker not found: $linker" >&2; exit 2; }
+    [[ "$YES" == "true" ]] && linker_args+=(--yes)
+    if [[ "$DRY_RUN" == "true" ]]; then
+        linker_args+=(--dry-run)
+        print_command python3 "$linker" "${linker_args[@]}"
+    else
+        linker_args+=(--apply)
+        python3 "$linker" "${linker_args[@]}"
+    fi
+}
+
 if [[ "$DRY_RUN" == "true" ]]; then
-    print_command "$DOTFILES_ROOT/install" --scripts-only --yes --dry-run
+    run_command_linker
     activation_args=(--configuration "$CONFIGURATION" --dry-run)
     if [[ "$SKIP_NPM" == "true" ]]; then
         activation_args+=(--skip-npm)
@@ -235,7 +284,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
     exit 0
 fi
 
-"$DOTFILES_ROOT/install" --scripts-only --yes
+run_command_linker
 activation_args=(--configuration "$CONFIGURATION")
 if [[ "$SKIP_NPM" == "true" ]]; then
     activation_args+=(--skip-npm)
