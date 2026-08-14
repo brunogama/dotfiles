@@ -98,8 +98,7 @@ tests/
 │   └── workflows/       # End-to-end workflow tests
 ├── fixtures/            # Test data and fixtures
 │   ├── repos/          # Git repository fixtures
-│   ├── config/         # Configuration file fixtures
-│   └── manifests/      # LinkingManifest fixtures
+│   └── config/         # Configuration file fixtures
 ├── helpers/            # Helper functions and utilities
 │   ├── bats-support/   # Bats support library
 │   ├── bats-assert/    # Assertion library
