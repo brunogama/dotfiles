@@ -7,6 +7,7 @@ Welcome to the Modern Dotfiles project. This guide will help you understand, set
 ### Purpose
 
 A production-ready dotfiles management system that provides:
+
 - **Environment Management** - Switch between work/personal configurations seamlessly
 - **Secure Credentials** - Encrypted storage with macOS Keychain integration
 - **Automated Sync** - Keep dotfiles synchronized across multiple machines
@@ -16,6 +17,7 @@ A production-ready dotfiles management system that provides:
 ### Tech Stack
 
 **Primary Languages:**
+
 - **Bash/Shell** (67 scripts) - Core automation and utilities
 - **Zsh** - Shell configuration and environment
 - **Python 3.11+** - Advanced scripting with uv dependency management
@@ -24,6 +26,7 @@ A production-ready dotfiles management system that provides:
 **Key Dependencies:**
 
 **Runtime (Required):**
+
 - `git` 2.30+ - Version control
 - `jq` - JSON parsing in shell scripts
 - `bash` 4.0+ - Script execution
@@ -31,27 +34,32 @@ A production-ready dotfiles management system that provides:
 - `perl` - Text processing (regex, emoji detection)
 
 **Development (Optional):**
+
 - `shellcheck` - Shell script linting
 - `pre-commit` - Git hooks framework
 - `openspec` - Spec-driven development tool
 
 **macOS-specific:**
+
 - `brew` - Package management
 - macOS Keychain - Credential storage
 
 **Linux-specific:**
+
 - Native package manager (apt, yum, pacman)
 - `gnome-keyring` or `kwallet` - Credential storage
 
 ### Architecture Pattern
 
-**Declarative + Imperative Hybrid:**
-- **Declarative**: `LinkingManifest.json` defines desired symlink state
-- **Imperative**: Shell scripts apply and manage configurations
+**Convention-Based + Imperative Hybrid:**
+
+- **Convention-based**: Repository source trees define desired link state
+- **Imperative**: The linker and shell scripts apply and manage configurations
 - **Modular**: Small, focused scripts compose larger workflows
 - **Idempotent**: Scripts can run multiple times safely
 
 **Key Design Patterns:**
+
 - **Repository Pattern**: Configuration files stored in versioned repo
 - **Symlink Management**: Declarative manifest drives symlink creation
 - **Lazy Loading**: Heavy tools (mise, nvm, rbenv) load on first use
@@ -73,6 +81,7 @@ A production-ready dotfiles management system that provides:
 | `ripgrep` | Fast search tool | No | All |
 
 **Version Constraints:**
+
 - Git 2.30+ (for improved security)
 - Python 3.11+ (for uv script headers)
 - Bash 4.0+ (for associative arrays)
@@ -99,7 +108,7 @@ A production-ready dotfiles management system that provides:
 ├── .github/                # GitHub workflows and CI
 ├── .claude/                # Claude AI configuration
 ├── install                 # Root installation script
-└── LinkingManifest.json    # Declarative symlink definitions
+└── home/                   # Files mirrored below $HOME by the linker
 ```
 
 ### bin/ - Executable Scripts (67 files)
@@ -154,6 +163,7 @@ zsh/
 ```
 
 **Performance Optimization:**
+
 - Compiled `.zwc` bytecode files for faster loading
 - Lazy loading for heavy tools (mise, nvm, rbenv, SDKMAN)
 - 24-hour completion cache
@@ -174,9 +184,10 @@ git/
 ```
 
 **Why .gitignore in git/ but symlinked to root?**
+
 - Consolidates all git files in one directory (MINDSET Rule 1)
 - Git requires .gitignore at repository root
-- Solution: Store in git/, symlink to root via LinkingManifest.json
+- Solution: Store in git/ and retain the root symlink as a repository-managed file
 
 ### packages/ - Package Configurations
 
@@ -211,6 +222,7 @@ openspec/
 ```
 
 **Workflow:**
+
 1. Create proposal (problem statement, solution)
 2. Write specs (requirements with scenarios)
 3. Validate with `openspec validate <id> --strict`
@@ -256,10 +268,10 @@ ai_docs/
    - Enforced by pre-commit hooks
    - Reason: Accessibility, terminal compatibility, professionalism
 
-4. **Declarative Symlinks:**
-   - `LinkingManifest.json` defines all symlinks
-   - `bin/core/link-dotfiles` parses and applies
-   - Platform-aware, optional links, backup support
+4. **Convention-Based Links:**
+   - `home/`, platform overlays, and executable `bin/<domain>/` entries define links
+   - `bin/core/link-dotfiles.py` discovers and applies them
+   - Collision-safe, platform-aware, and ownership-tracked
 
 5. **Script Organization by Function:**
    - Traditional: scripts/bash/, scripts/python/
@@ -275,16 +287,19 @@ ai_docs/
 **Required Software:**
 
 **All Platforms:**
+
 - Git 2.30+: `git --version`
 - Bash 4.0+: `bash --version`
 - jq: `command -v jq`
 - Perl: `command -v perl`
 
 **macOS:**
+
 - Xcode Command Line Tools: `xcode-select --version`
 - Homebrew (optional): `brew --version`
 
 **Linux:**
+
 - Build essentials: `gcc --version`
 - Package manager: apt, yum, or pacman
 
@@ -317,11 +332,12 @@ Expected output: `bin/`, `zsh/`, `git/`, `packages/`, `install`, etc.
 ```
 
 **Installation Phases:**
+
 1. Prerequisites check
 2. Homebrew setup (macOS only)
 3. Dependency installation (jq, git, zsh, etc.)
 4. Package installation (from Brewfile)
-5. Symlink creation (from LinkingManifest.json)
+5. Convention-based symlink creation
 6. Shell configuration
 7. Performance optimization (compile configs)
 
@@ -400,7 +416,6 @@ pre-commit run --all-files
 # - No emojis (MINDSET Rule 2)
 # - Lowercase directories (MINDSET Rule 1)
 # - Conventional commit messages
-# - LinkingManifest.json validation
 # - OpenSpec proposal validation
 ```
 
@@ -431,6 +446,7 @@ link-dotfiles --dry-run
 **Cause:** jq not installed
 
 **Fix:**
+
 ```bash
 # macOS
 brew install jq
@@ -447,6 +463,7 @@ sudo yum install jq
 **Cause:** Install script not executable
 
 **Fix:**
+
 ```bash
 chmod +x install
 ./install
@@ -457,6 +474,7 @@ chmod +x install
 **Cause:** Configs not compiled or lazy loading not enabled
 
 **Fix:**
+
 ```bash
 # Compile all zsh configs to bytecode
 zsh-compile
@@ -470,18 +488,16 @@ zsh-benchmark --detailed
 
 #### Issue 4: Symlinks not created
 
-**Cause:** LinkingManifest.json not parsed or permission issues
+**Cause:** A link collision, missing source, or permission issue
 
 **Fix:**
+
 ```bash
-# Test dry-run
-bin/core/link-dotfiles --dry-run
+# Preview the complete convention-based link plan
+python3 bin/core/link-dotfiles.py --dry-run
 
-# Check for errors
-bin/core/link-dotfiles --apply --verbose
-
-# Verify manifest syntax
-jq empty LinkingManifest.json
+# Inspect collisions or sources with detailed output
+python3 bin/core/link-dotfiles.py --apply --yes --verbose
 ```
 
 #### Issue 5: "openspec: command not found"
@@ -491,6 +507,7 @@ jq empty LinkingManifest.json
 **Note:** OpenSpec is optional for normal usage, only needed for creating proposals
 
 **Fix (if needed):**
+
 ```bash
 # Install via pipx (recommended)
 pipx install openspec
@@ -516,6 +533,7 @@ openspec --version
 **Lines:** 469
 
 **Key Functions:**
+
 - `check_prerequisites()` - Validates required software
 - `install_homebrew()` - Sets up Homebrew (macOS)
 - `install_dependencies()` - Installs jq, git, zsh
@@ -525,6 +543,7 @@ openspec --version
 - `optimize_performance()` - Compiles configs
 
 **Usage:**
+
 ```bash
 ./install               # Interactive
 ./install --dry-run     # Preview
@@ -533,36 +552,30 @@ openspec --version
 ```
 
 **Exit Codes:**
+
 - 0: Success
 - 1: General error
 - 2: Prerequisites not met
 - 3: User cancelled
 
-#### 2. bin/core/link-dotfiles - Symlink Manager
+#### 2. bin/core/link-dotfiles.py - Symlink Manager
 
-**Path:** `bin/core/link-dotfiles`
-**Purpose:** Parse LinkingManifest.json and create symlinks
-**Language:** Bash
-**Lines:** 400+
+**Path:** `bin/core/link-dotfiles.py`
+**Purpose:** Discover convention-based sources and create safe symlinks
+**Language:** Python
 
-**Key Functions:**
-- `parse_manifest()` - Reads JSON with jq
-- `create_link()` - Creates individual symlink
-- `backup_existing()` - Backs up before overwriting
-- `validate_source()` - Checks source files exist
-- `filter_platform()` - Applies platform-specific links
+**Source layout:**
 
-**Symlink Types:**
-- `file` - Single file symlink
-- `directory` - Directory symlink
-- `directory-contents` - Symlink each file in directory
+- `home/` - Files mirrored below `$HOME`
+- `home-darwin/`, `home-linux/`, `home-host-<hostname>/` - Override trees
+- Executable files directly in `bin/<domain>/` - Public commands in `~/.local/bin`
 
 **Usage:**
+
 ```bash
-link-dotfiles --dry-run      # Preview
-link-dotfiles --apply        # Create symlinks
-link-dotfiles --backup       # Backup existing files first
-link-dotfiles --force        # Overwrite without confirmation
+python3 bin/core/link-dotfiles.py --dry-run
+python3 bin/core/link-dotfiles.py --apply --yes
+python3 bin/core/link-dotfiles.py --prune --dry-run
 ```
 
 #### 3. ~/.zshrc - Shell Entry Point
@@ -573,6 +586,7 @@ link-dotfiles --force        # Overwrite without confirmation
 **Lines:** ~200 (optimized)
 
 **Loading Order:**
+
 1. PATH initialization
 2. Prezto framework
 3. Environment-specific config (work or personal)
@@ -582,6 +596,7 @@ link-dotfiles --force        # Overwrite without confirmation
 7. Starship prompt
 
 **Performance Optimizations:**
+
 - Single compinit call (was 3x)
 - 24-hour completion cache
 - Lazy loading for mise, nvm, rbenv, SDKMAN
@@ -595,6 +610,7 @@ link-dotfiles --force        # Overwrite without confirmation
 **Purpose:** Toggle between work and personal configurations
 
 **State Management:**
+
 - State file: `~/.work_mode` (contains "work" or "personal")
 - Config files:
   - `zsh/work-config.zsh` - Work-specific settings
@@ -602,6 +618,7 @@ link-dotfiles --force        # Overwrite without confirmation
 - Loaded conditionally in .zshrc
 
 **Workflow:**
+
 ```bash
 # User runs
 work-mode work
@@ -619,6 +636,7 @@ work-mode personal
 ```
 
 **Use Cases:**
+
 - Work machine: `work-mode work` loads work credentials, paths, aliases
 - Personal machine: `work-mode personal` loads personal settings
 - Shared machine: Switch contexts as needed
@@ -626,6 +644,7 @@ work-mode personal
 #### 2. Credential Management (bin/credentials/)
 
 **Architecture:**
+
 - **Storage**: macOS Keychain (encrypted by OS)
 - **CLI Tools**: `security` command (macOS) or `secret-tool` (Linux)
 - **Scripts**: Wrappers for secure input/output
@@ -633,6 +652,7 @@ work-mode personal
 **Key Scripts:**
 
 **store-api-key (v2.0 - Security Hardened):**
+
 ```bash
 # SECURE: Interactive mode (no history)
 store-api-key OPENAI_API_KEY
@@ -649,6 +669,7 @@ store-api-key KEY "value"  # Shows in history!
 ```
 
 **get-api-key:**
+
 ```bash
 # Retrieve from Keychain
 get-api-key OPENAI_API_KEY
@@ -659,6 +680,7 @@ export OPENAI_API_KEY="$(get-api-key OPENAI_API_KEY)"
 ```
 
 **credmatch:**
+
 ```bash
 # List all credentials
 credmatch list
@@ -674,6 +696,7 @@ credmatch fetch "PASSWORD" "KEY"
 ```
 
 **Security Model:**
+
 - Master password stored in Keychain
 - Credentials encrypted with AES-256-CBC
 - No plaintext storage
@@ -687,6 +710,7 @@ credmatch fetch "PASSWORD" "KEY"
 **Strategy:** Git-based with smart conflict resolution
 
 **Workflow:**
+
 ```bash
 # Push local changes
 syncenv
@@ -701,6 +725,7 @@ syncenv
 ```
 
 **Conflict Resolution:**
+
 - Favors local changes
 - Backs up conflicting remote versions
 - Never loses data
@@ -710,53 +735,18 @@ syncenv
 
 ### Configuration Management
 
-#### LinkingManifest.json
+#### Convention-Based Linking
 
-**Purpose:** Declarative symlink definitions
+The repository layout is the source of truth for links. Files under `home/` mirror to `$HOME`; platform and host trees override common files; executable files immediately under `bin/<domain>/` become public commands in `~/.local/bin`.
 
-**Schema:**
-```json
-{
-  "version": "1.0.0",
-  "links": {
-    "shell": {
-      "zsh": [
-        {
-          "source": "zsh/.zshrc",
-          "target": "~/.zshrc",
-          "description": "Zsh main configuration",
-          "type": "file",
-          "platform": ["darwin", "linux"],
-          "optional": false
-        }
-      ]
-    },
-    "git": [...],
-    "packages": [...]
-  }
-}
-```
-
-**Fields:**
-- `source` (required): Path relative to repo root
-- `target` (required): Destination path (~ expands to $HOME)
-- `description` (optional): Human-readable description
-- `type` (optional): "file", "directory", "directory-contents" (default: "file")
-- `platform` (optional): ["darwin", "linux"] filter
-- `optional` (optional): Skip if source missing (default: false)
-
-**Benefits:**
-- Single source of truth for symlinks
-- Self-documenting (descriptions)
-- Platform-aware
-- Version controlled
-- Validated by pre-commit hooks
+The linker validates its full plan before mutation, records only proven ownership, and requires explicit confirmation before replacing collisions. See [specs/linking-architecture.md](specs/linking-architecture.md) for the complete contract.
 
 ### Authentication and Authorization
 
 **Not Applicable** - This is a local development environment tool.
 
 **Security Considerations:**
+
 - Credentials stored in OS-level Keychain (encrypted)
 - Master passwords never in plaintext
 - Shell history protection for secrets
@@ -766,16 +756,19 @@ syncenv
 ### External Services Integration
 
 **GitHub:**
+
 - Repository hosting
 - CI/CD via GitHub Actions
 - Issue tracking
 - Pull requests
 
 **Homebrew:**
+
 - Package installation (macOS)
 - Brewfile for declarative packages
 
 **OpenSpec:**
+
 - Optional CLI for spec-driven development
 - Validates proposals before implementation
 
@@ -790,6 +783,7 @@ syncenv
 **Format:** `<type>/<short-description>`
 
 **Types:**
+
 - `feat/` - New features
 - `fix/` - Bug fixes
 - `chore/` - Maintenance
@@ -799,6 +793,7 @@ syncenv
 - `test/` - Test additions/fixes
 
 **Examples:**
+
 ```bash
 git checkout -b feat/add-fish-shell-support
 git checkout -b fix/symlink-creation-permissions
@@ -811,6 +806,7 @@ git checkout -b docs/improve-onboarding-guide
 **Required:** Conventional Commits specification
 
 **Format:**
+
 ```
 <type>(<scope>): <description>
 
@@ -822,6 +818,7 @@ Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.g
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation only
@@ -837,6 +834,7 @@ Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.g
 **Scope (optional):** Component affected (install, symlinks, credentials, docs)
 
 **Examples:**
+
 ```bash
 feat: add fish shell configuration support
 
@@ -850,6 +848,7 @@ Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.g
 ```
 
 **Enforcement:**
+
 - Pre-commit hook validates format
 - CI blocks PRs with invalid messages
 - Use `bin/git/conventional-commit` for guided commits
@@ -901,9 +900,9 @@ git branch --show-current
 mkdir -p fish/conf.d
 touch fish/conf.d/config.fish
 
-# Update LinkingManifest.json
-jq '.links.shell.fish = [...]' LinkingManifest.json > tmp.json
-mv tmp.json LinkingManifest.json
+# Add a Fish configuration source under home/ when it should be linked
+mkdir -p home/.config/fish/conf.d
+cp fish/conf.d/config.fish home/.config/fish/conf.d/config.fish
 
 # Create installation logic in install script
 # Add fish to package dependencies
@@ -932,14 +931,14 @@ shellcheck fish/conf.d/config.fish
 
 ```bash
 # Stage changes
-git add fish/ LinkingManifest.json install
+git add fish/ home/ install
 
 # Commit with conventional format
 git commit -m "feat: add fish shell configuration support
 
 Adds basic fish shell support with:
 - Configuration directory structure
-- Symlink definitions in manifest
+- Convention-based Fish configuration source
 - Installation integration
 
 Co-authored-by: factory-droid[bot] <138933559+factory-droid[bot]@users.noreply.github.com>"
@@ -953,9 +952,10 @@ bin/git/conventional-commit
 #### Unit Tests
 
 **Shell Scripts:**
+
 ```bash
 # Use shellcheck for static analysis
-shellcheck bin/core/link-dotfiles
+python3 -m py_compile bin/core/link-dotfiles.py
 
 # Test individual functions in isolation
 # (Add BATS framework for formal unit tests if needed)
@@ -978,6 +978,7 @@ get-api-key TEST_KEY
 #### Manual Testing Checklist
 
 **For New Scripts:**
+
 - [ ] --help flag works
 - [ ] Passes shellcheck with no errors
 - [ ] Handles missing dependencies gracefully
@@ -986,6 +987,7 @@ get-api-key TEST_KEY
 - [ ] Exit codes are correct
 
 **For Configuration Changes:**
+
 - [ ] Shell starts without errors
 - [ ] Prompt displays correctly
 - [ ] Aliases work
@@ -993,6 +995,7 @@ get-api-key TEST_KEY
 - [ ] Performance < 500ms
 
 **For Installation Changes:**
+
 - [ ] Works on clean machine
 - [ ] Handles existing dotfiles
 - [ ] Can resume after interruption
@@ -1003,6 +1006,7 @@ get-api-key TEST_KEY
 #### Shell Scripts (REQUIRED)
 
 **Shellcheck Compliance:**
+
 ```bash
 # All shell scripts MUST pass shellcheck
 shellcheck --severity=error script.sh
@@ -1019,6 +1023,7 @@ find bin/ -type f -name "*.sh" -o -name "*.bash" | \
 ```
 
 **Style Guidelines:**
+
 - Use `set -euo pipefail` for safety
 - Quote all variables: `"$var"`
 - Use `[[  ]]` for conditionals (not `[ ]`)
@@ -1028,6 +1033,7 @@ find bin/ -type f -name "*.sh" -o -name "*.bash" | \
 - Include usage() function with --help
 
 **Example:**
+
 ```bash
 #!/usr/bin/env bash
 #
@@ -1069,6 +1075,7 @@ main "$@"
 #### Python Scripts (REQUIRED)
 
 **PEP 8 Compliance:**
+
 ```bash
 # Check with flake8 or ruff
 flake8 script.py
@@ -1079,6 +1086,7 @@ black script.py
 ```
 
 **UV Script Headers (REQUIRED):**
+
 ```python
 #!/usr/bin/env -S uv run
 # /// script
@@ -1100,6 +1108,7 @@ if __name__ == "__main__":
 ```
 
 **Guidelines:**
+
 - Scripts < 500 lines: Single file with UV header
 - Scripts > 500 lines: Convert to pip package
 - Use type hints
@@ -1109,6 +1118,7 @@ if __name__ == "__main__":
 #### Markdown/Documentation
 
 **Style:**
+
 - No emojis (MINDSET Rule 2)
 - Clear headings structure
 - Code blocks with language identifiers
@@ -1116,6 +1126,7 @@ if __name__ == "__main__":
 - Examples for all commands
 
 **Linting:**
+
 ```bash
 # Check markdown links
 markdown-link-check README.md
@@ -1144,6 +1155,7 @@ git push -u origin feat/add-fish-shell-support
 #### 2. Create PR
 
 **Via GitHub CLI:**
+
 ```bash
 gh pr create \
   --title "feat: add fish shell configuration support" \
@@ -1153,7 +1165,7 @@ Adds basic fish shell support to the dotfiles system.
 
 ## Changes
 - Added fish configuration directory structure
-- Updated LinkingManifest.json with fish symlinks
+- Added convention-based Fish configuration sources
 - Integrated fish installation in install script
 
 ## Testing
@@ -1177,6 +1189,7 @@ EOF
 ```
 
 **Via GitHub Web:**
+
 - Navigate to repository
 - Click "Pull requests" → "New pull request"
 - Select base: `main`, compare: `feat/add-fish-shell-support`
@@ -1186,6 +1199,7 @@ EOF
 #### 3. PR Checks (Automated)
 
 **CI Runs:**
+
 - Shellcheck on all scripts
 - Pre-commit hooks (emojis, lowercase, commits)
 - Installation test (dry-run)
@@ -1193,6 +1207,7 @@ EOF
 - OpenSpec validation
 
 **Required Reviews:**
+
 - 1 approval minimum
 - All checks must pass
 
@@ -1213,11 +1228,13 @@ git push
 #### 5. Merge
 
 **Options:**
+
 - **Squash and merge** (preferred for feature branches)
 - **Rebase and merge** (for clean linear history)
 - **Merge commit** (for releases)
 
 **After Merge:**
+
 ```bash
 # Delete feature branch
 git branch -d feat/add-fish-shell-support
@@ -1235,47 +1252,54 @@ git pull origin main
 **Stages:**
 
 **1. Validate (runs on all PRs and pushes):**
+
 - Shellcheck all scripts (errors only)
 - Check for emojis (MINDSET Rule 2)
 - Check for uppercase directories (MINDSET Rule 1)
-- Validate LinkingManifest.json syntax
 - Validate OpenSpec proposals
 - Check markdown links
 
 **2. Test macOS:**
+
 - Run installation (dry-run)
 - Test link-dotfiles
 - Test script help messages
 - Verify shell startup
 
 **3. Test Linux:**
+
 - Run installation (dry-run)
 - Test link-dotfiles
 - Verify dependencies
 
 **4. Documentation:**
+
 - Check for broken markdown links
 - Validate required docs present
 - Scan for TODO/FIXME comments
 
 **Triggers:**
+
 - Push to main, develop
 - Pull requests to main, develop
 - Manual workflow dispatch
 
 **Status Checks:**
+
 - All checks must pass before merge
 - PR cannot be merged if CI fails
 
 ### Release Strategy
 
 **Versioning:** Semantic Versioning (SemVer)
+
 - `MAJOR.MINOR.PATCH`
 - `1.0.0`, `1.1.0`, `1.1.1`, `2.0.0`
 
 **Release Process:**
 
 1. **Update Version**
+
 ```bash
 # Update install script version
 vim install
@@ -1285,7 +1309,8 @@ vim install
 git commit -am "chore: bump version to 1.1.0"
 ```
 
-2. **Create Tag**
+1. **Create Tag**
+
 ```bash
 # Annotated tag with changelog
 git tag -a v1.1.0 -m "Release v1.1.0
@@ -1300,7 +1325,8 @@ Changes:
 git push origin v1.1.0
 ```
 
-3. **Create GitHub Release**
+1. **Create GitHub Release**
+
 ```bash
 # Via GitHub CLI
 gh release create v1.1.0 \
@@ -1310,7 +1336,8 @@ gh release create v1.1.0 \
 # Or via GitHub web UI
 ```
 
-4. **Update CHANGELOG.md**
+1. **Update CHANGELOG.md**
+
 ```markdown
 ## [1.1.0] - 2024-01-15
 
@@ -1327,6 +1354,7 @@ gh release create v1.1.0 \
 ```
 
 **Release Cadence:**
+
 - **Major**: Breaking changes (rare, coordinated)
 - **Minor**: New features (monthly)
 - **Patch**: Bug fixes (as needed)
@@ -1342,55 +1370,64 @@ gh release create v1.1.0 \
 **Decision:** Store all configurations in versioned Git repository
 
 **Rationale:**
+
 - Version control for dotfiles
 - Sync across machines via Git
 - History and rollback capability
 - Collaboration via pull requests
 
 **Implementation:**
+
 - All configs in `~/.dotfiles` (or similar)
 - Symlinks from home directory to repo
-- LinkingManifest.json declares mappings
+- `home/` and its platform or host overlays declare mappings by path
 
 **Trade-offs:**
+
 - Pro: Full history, easy sync
 - Con: Large binary files (if any) bloat repo
 - Mitigation: Use .gitignore for generated files
 
-#### 2. Declarative Symlink Management
+#### 2. Convention-Based Symlink Management
 
-**Decision:** JSON manifest defines all symlinks, script applies them
+**Decision:** Repository source trees define links by filesystem layout and the linker applies them.
 
 **Rationale:**
-- Single source of truth
-- Self-documenting
-- Platform-aware
-- Testable (dry-run mode)
+
+- The source tree is the single source of truth
+- Destinations are apparent from paths
+- Platform and host overlays are explicit
+- Dry runs and ownership tracking remain testable
 
 **Implementation:**
-- `LinkingManifest.json` with schema
-- `bin/core/link-dotfiles` parses and creates
-- Validation via jq and pre-commit hooks
 
-**Alternative Considered:** Imperative scripts (install.sh creates symlinks)
-- Rejected: Hard to maintain, no documentation, error-prone
+- `home/` mirrors paths below `$HOME`
+- `home-<platform>/` and `home-host-<hostname>/` override common files
+- `bin/core/link-dotfiles.py` discovers, validates, and creates links
+
+**Alternative Considered:** Imperative per-link installation code
+
+- Rejected: Repeated mappings are harder to maintain and audit
 
 #### 3. Lazy Loading Framework
 
 **Decision:** Defer loading of heavy tools until first use
 
 **Rationale:**
+
 - Shell startup < 500ms target
 - Most tools not needed immediately
 - Transparent to user
 
 **Implementation:**
+
 - `zsh/lib/lazy-load.zsh` provides framework
 - Stub functions check if tool needed
 - Load on first invocation
 - Applied to: mise, nvm, rbenv, SDKMAN
 
 **Example:**
+
 ```zsh
 # Traditional (slow):
 eval "$(mise activate zsh)"  # 200-300ms
@@ -1411,32 +1448,38 @@ mise() {
 **Decision:** Single config repo supports multiple environments via flag
 
 **Rationale:**
+
 - Work and personal use same base config
 - Context-specific settings loaded conditionally
 - Avoid maintaining separate repos
 
 **Implementation:**
+
 - `~/.work_mode` file stores state ("work" or "personal")
 - `zsh/.zshrc` checks state and loads appropriate config
 - `work-config.zsh` vs `personal-config.zsh`
 
 **Alternative Considered:** Separate repos for work/personal
+
 - Rejected: Duplicate configs, harder to keep in sync
 
 ### State Management
 
 **Shell State:**
+
 - Managed by zsh framework (Prezto)
 - Environment variables in .zprofile
 - Aliases/functions in .zshrc
 - No persistent state (except ~/.work_mode)
 
 **Script State:**
+
 - Generally stateless (idempotent)
 - Temp files in /tmp (cleaned on exit)
 - Logs in `logs/` (optional)
 
 **Configuration State:**
+
 - Files: Plain text (zsh, bash, gitconfig)
 - Compiled: .zwc bytecode for performance
 - Symlinks: Declared in manifest, actual links in filesystem
@@ -1446,6 +1489,7 @@ mise() {
 **Shell Scripts:**
 
 **Fail-Fast Approach:**
+
 ```bash
 set -euo pipefail
 # -e: Exit on error
@@ -1454,6 +1498,7 @@ set -euo pipefail
 ```
 
 **Explicit Error Checking:**
+
 ```bash
 if ! command -v jq &>/dev/null; then
     log_error "jq is required but not installed"
