@@ -36,7 +36,7 @@ cat docs/scripts/quick-reference.md
 | `get-api-key` | Retrieve credentials | Credentials |
 | `zsh-benchmark` | Measure shell startup performance | Core |
 | `conventional-commit` | Guided conventional commits | Git |
-| `link-dotfiles` | Apply symlinks from manifest | Core |
+| `link-dotfiles` | Apply convention-based links | Core |
 
 ## By Task
 
@@ -73,23 +73,23 @@ script-name --help
 
 # Output format:
 # script-name - One-line description
-# 
+#
 # USAGE:
 #     script-name [OPTIONS] [ARGUMENTS]
-# 
+#
 # OPTIONS:
 #     --flag          Description
 #     --help, -h      Show this help
-# 
+#
 # EXAMPLES:
 #     script-name --flag value
-# 
+#
 # REQUIREMENTS:
 #     - dependency1
 #     - dependency2
-# 
+#
 # PLATFORM: darwin | linux | all
-# 
+#
 # SEE ALSO:
 #     related-script1, related-script2
 ```

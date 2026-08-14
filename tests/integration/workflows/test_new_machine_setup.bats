@@ -60,11 +60,13 @@ teardown() {
     assert_dir_exists "$dotfiles_root/packages"
 }
 
-@test "new machine: LinkingManifest.json exists" {
+@test "new machine: convention linker has no manifest source of truth" {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_exists "$dotfiles_root/LinkingManifest.json"
+    assert_dir_exists "$dotfiles_root/home"
+    assert_file_exists "$dotfiles_root/bin/core/link-dotfiles.py"
+    refute test -e "$dotfiles_root/LinkingManifest.json"
 }
 
 @test "new machine: install dry-run works" {
@@ -81,9 +83,22 @@ teardown() {
 
     assert_file_exists "$dotfiles_root/README.md"
     assert_file_contains "$dotfiles_root/README.md" "install"
+    assert_file_contains "$dotfiles_root/README.md" "repository layout is the source of truth"
+    run grep -F "LinkingManifest.json is the source of truth" "$dotfiles_root/README.md"
+    assert_failure
 }
 
 # Setup Verification Tests
+
+@test "new machine: agent guidance describes convention linking" {
+    local dotfiles_root
+    dotfiles_root="$(get_dotfiles_root)"
+
+    assert_file_contains "$dotfiles_root/AGENTS.md" "convention-based links"
+    assert_file_contains "$dotfiles_root/CLAUDE.md" "Convention-Based Symlink Management"
+    run grep -F "LinkingManifest.json" "$dotfiles_root/AGENTS.md" "$dotfiles_root/CLAUDE.md"
+    assert_failure
+}
 
 @test "setup verification: can check git version" {
     skip_if_no_command "git" "git not available"

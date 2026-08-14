@@ -1,29 +1,49 @@
 #!/usr/bin/env bash
+# shellcheck shell=bash
 
-source ~/local/bin/prints
+set -euo pipefail
 
-last_changes=$(git pull)
+# shellcheck source=/dev/null
+source "$HOME/.local/bin/prints"
 
-if [ "$last_changes" == "Already up-to-date." ]; then
-  pgreen "There are no new changes in the remote repository."
-  exit 1
-fi
+sequence_editor="$(mktemp)"
+trap 'rm -f "$sequence_editor"' EXIT
+cat >"$sequence_editor" <<'EDITOR'
+#!/usr/bin/env awk -f
+BEGIN { previous_subject = "" }
+/^(pick|reword|edit|squash|fixup|drop) / {
+    subject = $0
+    sub(/^[^ ]+ [^ ]+ /, "", subject)
+    if (subject == previous_subject) {
+        sub(/^[^ ]+/, "squash")
+    }
+    previous_subject = subject
+}
+{ print }
+EDITOR
+chmod +x "$sequence_editor"
 
-for i in {1..30}; do
-  commit_name=$(git log --pretty=format:%s -n $i)
+for ((i = 0; i < 30; i++)); do
+	commit_name="$(git log --format=%s -n 1 --skip="$i")"
+	next_commit_name="$(git log --format=%s -n 1 --skip="$((i + 1))")"
 
-  next_commit_name=$(git log --pretty=format:%s -n $((i+1)))
+	[[ -z "$next_commit_name" ]] && break
 
-  if [ "$commit_name" == "$next_commit_name" ]; then
-    git rebase -i --autosquash HEAD~$i
-  fi
+	if [[ "$commit_name" == "$next_commit_name" ]]; then
+		GIT_SEQUENCE_EDITOR="$sequence_editor" git rebase -i "HEAD~$((i + 2))"
+		break
+	fi
 done
 
-# Get the name of the branch
-branch_name=$(git rev-parse --abbrev-ref HEAD)
-remote_name=$(git remote)
+branch_name="$(git branch --show-current)"
+upstream_remote="$(git config "branch.$branch_name.remote" || true)"
+upstream_ref="$(git config "branch.$branch_name.merge" || true)"
 
-git push $remote_name $branch_name --force
+if [[ -z "$upstream_remote" || -z "$upstream_ref" ]]; then
+	echo "Current branch has no configured upstream" >&2
+	exit 1
+fi
 
-pgreen "All commits with the same name have been squashed into one commit and pushed to the remote repository."
-exit 0
+upstream_branch="${upstream_ref#refs/heads/}"
+git push "$upstream_remote" "$branch_name:$upstream_branch" --force-with-lease
+pgreen "All adjacent commits with the same name were squashed and pushed."

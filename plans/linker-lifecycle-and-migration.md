@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [convention-linker-apply]
 specs:
   - specs/linking-architecture.md
@@ -25,12 +25,12 @@ Add explicit stale-link pruning and one-time `~/local/bin` migration on top of t
 
 ## Validation
 
-- [ ] `prune` refuses untracked symlinks, regular files, and directories.
-- [ ] `prune` handles a repository relocation using recorded ownership identity.
-- [ ] Normal `apply` makes no change beneath `~/local/bin`.
-- [ ] Legacy managed links migrate to `~/.local/bin` without affecting unmanaged entries.
-- [ ] Unmanaged legacy entries require confirmation and are preserved in a timestamped backup when accepted.
-- [ ] All migration and prune paths are safe in dry-run mode.
+- [x] `prune` refuses untracked symlinks, regular files, and directories.
+- [x] `prune` handles a repository relocation using recorded ownership identity.
+- [x] Normal `apply` makes no change beneath `~/local/bin`.
+- [x] Legacy managed links migrate to `~/.local/bin` without affecting unmanaged entries.
+- [x] Unmanaged legacy entries require confirmation and are preserved in a timestamped backup when accepted.
+- [x] All migration and prune paths are safe in dry-run mode.
 
 ## Risks / unknowns
 
