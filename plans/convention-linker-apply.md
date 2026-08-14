@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [linking-platform-source-tree]
 specs:
   - specs/linking-architecture.md
@@ -26,13 +26,13 @@ Replace manifest parsing in `bin/core/link-dotfiles.py` with deterministic disco
 
 ## Validation
 
-- [ ] Fixture trees express common, platform, hostname, command, collision, and legacy-bin scenarios without JSON manifests.
-- [ ] Common, platform, and hostname overlays produce the documented target precedence and verbose provenance.
-- [ ] Equal-precedence target conflicts and duplicate command names fail before mutation.
-- [ ] `apply` never overwrites an unexpected link, file, or directory without explicit confirmed backup or replacement.
-- [ ] Correct existing links are idempotent no-ops.
-- [ ] Public executable commands resolve through `~/.local/bin`.
-- [ ] The ownership ledger includes repository identity and remains valid after partial-apply failure handling.
+- [x] Fixture trees express common, platform, hostname, command, collision, and legacy-bin scenarios without JSON manifests.
+- [x] Common, platform, and hostname overlays produce the documented target precedence and verbose provenance.
+- [x] Equal-precedence target conflicts and duplicate command names fail before mutation.
+- [x] `apply` never overwrites an unexpected link, file, or directory without explicit confirmed backup or replacement.
+- [x] Correct existing links are idempotent no-ops.
+- [x] Public executable commands resolve through `~/.local/bin`.
+- [x] The ownership ledger includes repository identity and remains valid after partial-apply failure handling.
 
 ## Risks / unknowns
 
