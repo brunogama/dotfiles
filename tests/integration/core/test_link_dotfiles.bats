@@ -192,7 +192,8 @@ assert_link_points_to() {
     assert_output --partial "Skipped (Nix-managed): $HOME/.gitconfig"
     assert_link_points_to "$nix_source" "$HOME/.gitconfig"
     assert_link_points_to "$TEST_DOTFILES/home/.linker-test/unmanaged" "$HOME/.linker-test/unmanaged"
-    refute grep -Fq '"target": "'"$HOME/.gitconfig"'"' "$HOME/.local/state/dotfiles/links.json"
+    local state_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/links.json"
+    refute grep -Fq '"target": "'"$HOME/.gitconfig"'"' "$state_file"
 }
 
 @test "link-dotfiles: correct existing links are idempotent" {

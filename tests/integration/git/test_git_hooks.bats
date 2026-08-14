@@ -134,7 +134,8 @@ teardown() {
     hook_name="validate-""manifest"
     refute test -e "$HOOKS_DIR/$hook_name"
     run grep -R "$hook_name" "$dotfiles_root/.pre-commit-config.yaml" "$dotfiles_root/.github/workflows/ci.yml"
-    assert_failure
+    # grep returns 1 when pattern not found, 2 on errors
+    [ "$status" -eq 1 ]
 }
 
 # Validate-openspec Hook Tests

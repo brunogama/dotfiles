@@ -6,9 +6,22 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$HOME/.local/bin/prints"
 
-repo_path="${1:-$(pwd)}"
+# Parse options
+repo_path="$(pwd)"
+while getopts "r:" opt; do
+	case "$opt" in
+	r)
+		repo_path="$OPTARG"
+		;;
+	*)
+		echo "Usage: $0 [-r repository_path]" >&2
+		exit 1
+		;;
+	esac
+done
+
 repo_root="$(git -C "$repo_path" rev-parse --show-toplevel)"
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
+DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 hook="$DOTFILES_ROOT/bin/git/git-hooks/pre-commit-conventional-commit-msg"
 
 install_hook() {
@@ -18,21 +31,31 @@ install_hook() {
 	if [[ "$hooks_dir" != /* ]]; then
 		hooks_dir="$target_repo/$hooks_dir"
 	fi
-	local hook_file="$hooks_dir/pre-commit"
+	local hook_file="$hooks_dir/commit-msg"
 
 	mkdir -p "$hooks_dir"
 
 	if [[ -f "$hook_file" ]]; then
-		pwarning "A pre-commit hook already exists in $target_repo"
+		pwarning "A commit-msg hook already exists in $target_repo"
 		read -r -n 1 -p "Overwrite or merge? [o/m] " response
 		printf '\n'
 
 		case "$response" in
 		[Oo])
-			printf '#!/usr/bin/env bash\n\n# %s\n%s\n' "$0" "$hook" >"$hook_file"
+			printf '#!/usr/bin/env bash\n\nexec "%s" "$@"\n' "$hook" >"$hook_file"
 			;;
 		[Mm])
-			printf '\n# %s\n%s\n' "$0" "$hook" >>"$hook_file"
+			# Move existing hook to preserved name and create wrapper
+			local preserved_hook="$hooks_dir/commit-msg.preserved"
+			mv "$hook_file" "$preserved_hook"
+			chmod +x "$preserved_hook"
+			{
+				printf '#!/usr/bin/env bash\n\n'
+				printf '# Invoke preserved hook first\n'
+				printf '"%s" "$@"\n\n' "$preserved_hook"
+				printf '# Then invoke validator\n'
+				printf 'exec "%s" "$@"\n' "$hook"
+			} >"$hook_file"
 			;;
 		*)
 			pwarning "Cancelled without changing $hook_file"
@@ -40,11 +63,11 @@ install_hook() {
 			;;
 		esac
 	else
-		printf '#!/usr/bin/env bash\n\n# %s\n%s\n' "$0" "$hook" >"$hook_file"
+		printf '#!/usr/bin/env bash\n\nexec "%s" "$@"\n' "$hook" >"$hook_file"
 	fi
 
 	chmod +x "$hook_file"
-	psuccess "Installed $0 hook in $target_repo"
+	psuccess "Installed commit-msg hook in $target_repo"
 }
 
 if [[ ! -x "$hook" ]]; then

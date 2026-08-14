@@ -7,7 +7,7 @@ tone_instructions: >-
   repeat CI or formatter findings.
 
 chat:
-  # External pull requests are automatically closed. Limit review chat to owner.
+  # Restrict review chat access to organization members only.
   allow_non_org_members: false
 
 reviews:
@@ -43,9 +43,9 @@ reviews:
       mode: warning
 
   path_filters:
-    # Vendored Bats helpers and repository fixtures are not maintained here.
+    # Vendored Bats helpers and immutable git metadata are not maintained here.
     - "!tests/helpers/**"
-    - "!tests/fixtures/repos/**"
+    - "!tests/fixtures/repos/**/.git/**"
 
   path_instructions:
     - path: "bin/**"

@@ -109,6 +109,8 @@ class LinkManager:
         self.count_errors = 0
         self.count_platform_skip = 0
         self.count_optional_skip = 0
+        self.count_pruned = 0
+        self.count_backed_up = 0
         self.applied_links: List[Tuple[Path, Path]] = []
 
         # Detect platform
@@ -277,7 +279,7 @@ class LinkManager:
 
     def write_state(self, preserve_existing: bool = False) -> None:
         """Atomically persist confirmed links, preserving prior ownership when requested."""
-        state_file = Path.home() / ".local/state/dotfiles/links.json"
+        state_file = self.xdg_state_home() / "dotfiles/links.json"
         links = {
             str(target): {"source": str(source), "target": str(target)}
             for source, target in self.applied_links
@@ -305,7 +307,7 @@ class LinkManager:
     def record_applied_link(self, source: Path, target: Path) -> None:
         """Persist a created or adopted link before processing the next target."""
         self.applied_links.append((source, target))
-        self.write_state(preserve_existing=self.commands_only)
+        self.write_state(preserve_existing=True)
 
     def is_nix_managed_target(self, target: Path) -> bool:
         """Return whether Home Manager owns target according to nix/home.nix."""
@@ -350,7 +352,7 @@ class LinkManager:
 
     def prune(self) -> None:
         """Remove only stale symlinks whose ownership the ledger proves."""
-        state_file = Path.home() / ".local/state/dotfiles/links.json"
+        state_file = self.xdg_state_home() / "dotfiles/links.json"
         try:
             state = json.loads(state_file.read_text())
             if (
@@ -404,7 +406,7 @@ class LinkManager:
                 target.unlink()
                 self.log_success(f"Pruned: {target}")
                 state_changed = True
-            self.count_created += 1
+            self.count_pruned += 1
         if state_changed:
             state["links"] = retained_links
             temporary = state_file.with_suffix(".tmp")
@@ -469,13 +471,14 @@ class LinkManager:
         backup = backup_root / legacy.name
         if self.dry_run:
             self.log_info(f"Would back up unproven legacy entry: {legacy} -> {backup}")
+            self.count_backed_up += 1
             return
         try:
             backup.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(legacy), str(backup))
             self.write_legacy_backup_state(backup, legacy)
             self.log_success(f"Backed up unproven legacy entry: {legacy} -> {backup}")
-            self.count_created += 1
+            self.count_backed_up += 1
         except OSError as error:
             self.log_error(f"Could not back up unproven legacy entry {legacy}: {error}")
             self.count_errors += 1
@@ -660,7 +663,7 @@ class LinkManager:
                 return
 
         if not self.dry_run and not self.applied_links:
-            self.write_state(preserve_existing=self.commands_only)
+            self.write_state(preserve_existing=True)
 
     def show_summary(self):
         """Show summary of operations."""
@@ -688,6 +691,18 @@ class LinkManager:
             self.log_info(
                 f"Skipped: {self.count_optional_skip} (optional, source missing)"
             )
+
+        if self.count_pruned > 0:
+            if self.dry_run:
+                self.log_info(f"Would prune: {self.count_pruned} stale links")
+            else:
+                self.log_success(f"Pruned: {self.count_pruned} stale links")
+
+        if self.count_backed_up > 0:
+            if self.dry_run:
+                self.log_info(f"Would back up: {self.count_backed_up} unproven entries")
+            else:
+                self.log_success(f"Backed up: {self.count_backed_up} unproven entries")
 
         if self.count_errors > 0:
             self.log_error(f"Errors: {self.count_errors}")
