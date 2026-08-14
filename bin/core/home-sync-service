@@ -66,6 +66,16 @@ log() {
     esac
 }
 
+# Render the copied LaunchAgent template with the current user's home directory.
+render_launch_agent_plist() {
+    local escaped_home="$HOME"
+    escaped_home="${escaped_home//\\/\\\\}"
+    escaped_home="${escaped_home//&/\\&}"
+    escaped_home="${escaped_home//|/\\|}"
+
+    sed -i '' "s|__HOME__|$escaped_home|g" "$PLIST_TARGET"
+}
+
 # Function to check prerequisites
 check_prerequisites() {
     local errors=0
@@ -235,6 +245,12 @@ install_service() {
         log "SUCCESS" "Service plist installed: $PLIST_TARGET"
     else
         log "ERROR" "Failed to copy plist file"
+        return 1
+    fi
+
+    # Render user-specific paths after copying the reusable template.
+    if ! render_launch_agent_plist; then
+        log "ERROR" "Failed to render user-specific paths in service plist"
         return 1
     fi
 

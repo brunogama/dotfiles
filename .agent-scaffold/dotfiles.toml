@@ -1,0 +1,25 @@
+[project]
+name = "Modern Dotfiles"
+slug = "modern-dotfiles"
+description = "A Nix-first, macOS-oriented home-environment configuration with safe linking, credential tooling, and validation."
+author = "Bruno da Gama Porciuncula"
+license = "UNLICENSED"
+harnesses = ["claude", "pi", "codex"]
+tags = ["dotfiles", "macos", "nix", "agents", "skills", "qa"]
+
+[repository]
+default_branch = "main"
+require_candidate_staging = true
+include_github_workflows = true
+
+[skills]
+include_base_skills = [
+  "architect",
+  "recover",
+  "remember",
+  "review",
+  "skill-forge",
+]
+
+[external_skills]
+manifest = "skill-sources.json"

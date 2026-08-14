@@ -4,23 +4,23 @@ Modern Unix dotfiles with environment management, automated sync, and secure cre
 
 ## Core Functionality
 
-**Environment Management**
+### Environment Management
 
 - `work-mode [work|personal|status]` - Switch between work/home environments
 - Prompt shows: **WORK** (orange) or **HOME:PERSONAL** (blue)
-- Config: `~/.config-fixing-dot-files-bugs/zsh/{work,personal}-config.zsh`
+- Config: `~/.config/zsh/{work,personal}-config.zsh`
 
-**Sync & Backup**
+### Sync and Backup
 
 - `home-sync [sync|push|pull|status]` - Sync dotfiles across machines
 - `home-sync-service [start|stop|status]` - Background sync daemon
 
-**Credentials**
+### Credentials
 
 - `credfile <file>` - Manage secure credential files (keychain + encrypted)
 - `credmatch <pattern>` - Search/decrypt credentials by pattern
 
-**Dotfiles Management**
+### Dotfiles Management
 
 - `./install` - One-command installation (idempotent)
 - `./install --dry-run` - Preview installation without changes
@@ -31,7 +31,7 @@ Modern Unix dotfiles with environment management, automated sync, and secure cre
 
 ## Project Structure
 
-```
+```text
 .gitignore           # Symlink → git/.gitignore
 .gitmodules          # Symlink → git/.gitmodules
 home/                # Common files mapped below $HOME
@@ -58,8 +58,6 @@ packages/            # Package manager configs
 └── syncservice/
 zsh/                 # Shell configuration
 fish/                # Fish shell config (optional)
-ai_docs/            # AI assistant documentation
-openspec/            # Change proposals and specs
 ```
 
 ## Code Quality Rules
@@ -92,23 +90,23 @@ openspec/            # Change proposals and specs
 - Use conventional commits: `feat:`, `fix:`, `chore:`, etc.
 - Include co-author: `factory-droid[bot]`
 
-## OpenSpec Integration
+## Agent infrastructure
 
-<!-- OPENSPEC:START -->
-# OpenSpec Instructions
+### Required startup
 
-These instructions are for AI assistants working in this project.
+For agent-infrastructure changes, read `CLAUDE.md`, `docs/domain.md`,
+`docs/sop-conventions.md`, and `learnings/CORRECTIONS.md` before editing.
 
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
+### Skill lifecycle
 
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
+No skill becomes permanent without collection, induction, deduction,
+de-duplication, and explicit human approval. Stage drafts only under the
+harness-specific `_candidates/<skill-name>/` directory. Do not promote a
+candidate or record it as active without approval.
 
-Keep this managed block so 'openspec update' can refresh the instructions.
+### Quality
 
-<!-- OPENSPEC:END -->
+- Run `uv run scripts/qa_repository.py .` before completing agent-infrastructure changes.
+- Request a fresh agent review using `qa/QA_AGENT.md` after deterministic QA passes.
+- Never enable or execute an external skill source before review.
+- Do not place credentials, tokens, or private URLs in generated prompts or workflows.
