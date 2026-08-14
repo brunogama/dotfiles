@@ -1,84 +1,101 @@
 #!/usr/bin/env bash
+# shellcheck shell=bash
 
-source "${HOME}/local/bin/prints"
-GIT_DIR="$1"
-HOOKS_DIR="$GIT_DIR/.git/hooks"
-    
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "$HOME/.local/bin/prints"
+
+# Parse options
+repo_path="$(pwd)"
+while getopts "r:" opt; do
+	case "$opt" in
+	r)
+		repo_path="$OPTARG"
+		;;
+	*)
+		echo "Usage: $0 [-r repository_path]" >&2
+		exit 1
+		;;
+	esac
+done
+
+repo_root="$(git -C "$repo_path" rev-parse --show-toplevel)"
+DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+hook="$DOTFILES_ROOT/bin/git/git-hooks/pre-commit-conventional-commit-msg"
+
 install_hook() {
-    local repo_path="$1"
-    DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
-    local hook="$DOTFILES_ROOT/bin/git/git-hooks/pre-commit-conventional-commit-msg"
-    local hooks_dir="$HOOKS_DIR"
-    
-    mkdir -p "$hooks_dir"
+	local target_repo="$1"
+	local hooks_dir
+	hooks_dir="$(git -C "$target_repo" rev-parse --git-path hooks)"
+	if [[ "$hooks_dir" != /* ]]; then
+		hooks_dir="$target_repo/$hooks_dir"
+	fi
+	local hook_file="$hooks_dir/commit-msg"
 
-    if [ -f "$hooks_dir/pre-commit" ]; then
-        pwarning "A pre-commit hook already exists in ${repo_path}"
+	mkdir -p "$hooks_dir"
 
-        read -p "Do you want to overwrite the existing pre-commit hook or merge with it? Overwrite/Merge (o/m) Any other key will exit" -n 1 -r
+	if [[ -f "$hook_file" ]]; then
+		pwarning "A commit-msg hook already exists in $target_repo"
+		read -r -n 1 -p "Overwrite or merge? [o/m] " response
+		printf '\n'
 
-        if [[ $REPLY =~ ^[Oo]$ ]]; then
-            echo -e "${YELLOW}Overwriting the pre-commit hook...${NC}"
-            rm "$hooks_dir/pre-commit"
-            touch "$hooks_dir/pre-commit"
-            echo "#!/usr/bin/env bash" > "$hooks_dir/pre-commit"
-            echo "" >> "$hooks_dir/pre-commit"
-            echo "# $0" >> "$hooks_dir/pre-commit"
-            echo "$hook" >> "$hooks_dir/pre-commit"
+		case "$response" in
+		[Oo])
+			printf '#!/usr/bin/env bash\n\nexec "%s" "$@"\n' "$hook" >"$hook_file"
+			;;
+		[Mm])
+			# Move existing hook to preserved name and create wrapper
+			local preserved_hook="$hooks_dir/commit-msg.preserved"
+			mv "$hook_file" "$preserved_hook"
+			chmod +x "$preserved_hook"
+			{
+				printf '#!/usr/bin/env bash\n\n'
+				printf '# Invoke preserved hook first\n'
+				printf '"%s" "$@"\n\n' "$preserved_hook"
+				printf '# Then invoke validator\n'
+				printf 'exec "%s" "$@"\n' "$hook"
+			} >"$hook_file"
+			;;
+		*)
+			pwarning "Cancelled without changing $hook_file"
+			return 0
+			;;
+		esac
+	else
+		printf '#!/usr/bin/env bash\n\nexec "%s" "$@"\n' "$hook" >"$hook_file"
+	fi
 
-        else
-            pwarning "Adding ${BLUE}\"$0\"${YELLOW} the pre-commit hook...${NC}"
-            echo "" >> "$hooks_dir/pre-commit"
-            echo "# $0" >> "$hooks_dir/pre-commit"
-            echo "$hook" >> "$hooks_dir/pre-commit"
-        fi        
-    else
-        rm -rf "$hooks_dir/pre-commit"
-        touch "$hooks_dir/pre-commit"
-        echo "#!/usr/bin/env bash" > "$hooks_dir/pre-commit"
-        echo "" >> "$hooks_dir/pre-commit"
-        echo "# $0" >> "$hooks_dir/pre-commit"
-        echo "$hook" >> "$hooks_dir/pre-commit"
-    fi
-
-    chmod +x "$hooks_dir/pre-commit"
-    
-    psuccess "Installed ${BLUE}$0${GREEN} hook in ${repo_path}${NC}"
+	chmod +x "$hook_file"
+	psuccess "Installed commit-msg hook in $target_repo"
 }
 
-cd $GIT_DIR
-
-# Check if current directory is a git repository
-if [ ! -d ".git" ]; then
-    echo -e "${RED}Current directory is not a git repository${NC}"
-    exit 1
+if [[ ! -x "$hook" ]]; then
+	echo "Missing conventional commit hook: $hook" >&2
+	exit 1
 fi
 
-# Install hook in main repository
-install_hook "$GIT_DIR"
+install_hook "$repo_root"
 
-# Check if repository has submodules
-if [ -f ".gitmodules" ]; then
-    pwarning "Installing hooks in submodules..."
-    
-    # Get all submodule paths
-    submodules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-    
-    # Install hook in each submodule
-    for submodule in $submodules; do
-        if [ -d "$submodule/.git" ]; then
-            install_hook "${submodule}"
-        else
-            echo -e "${YELLOW}Skipping $submodule - not initialized${NC}"
-        fi
-    done
+if [[ -f "$repo_root/.gitmodules" ]]; then
+	pwarning "Installing hooks in submodules..."
+	while IFS= read -r -d '' entry; do
+		submodule="${entry#*$'\n'}"
+		submodule_path="$repo_root/$submodule"
+
+		if git -C "$submodule_path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+			install_hook "$(git -C "$submodule_path" rev-parse --show-toplevel)"
+		else
+			pwarning "Skipping $submodule - not initialized"
+		fi
+	done < <(git -C "$repo_root" config --null --file .gitmodules --get-regexp path || true)
 fi
 
-function install_gitmessage() {
-    local GIT_DIR="$1"
-    cd $GIT_DIR
-    rm -rf "${GIT_DIR}/.gitmessage"
-cat > "${GIT_DIR}/.gitmessage" << 'EOL'
+install_gitmessage() {
+	local target_repo="$1"
+	local template_path="$target_repo/.gitmessage"
+
+	cat >"$template_path" <<'EOL'
 # <type>[(scope)][!]: <description>
 # |<----   Using a Maximum Of 50 Characters   ---->|
 
@@ -89,30 +106,26 @@ cat > "${GIT_DIR}/.gitmessage" << 'EOL'
 # BREAKING CHANGE: <description>
 # Fixes: #<issue number>
 
-# feat:     A new feature
-# fix:      A bug fix
-# docs:     Documentation only changes
-# style:    Changes that do not affect the meaning of the code
+# feat: A new feature
+# fix: A bug fix
+# docs: Documentation only changes
+# style: Changes that do not affect the meaning of the code
 # refactor: A code change that neither fixes a bug nor adds a feature
-# perf:     A code change that improves performance
-# test:     Adding missing tests or correcting existing tests
-# build:    Changes that affect the build system or external dependencies
-# ci:       Changes to CI configuration files and scripts
-# chore:    Changes to the build process or auxiliary tools
+# perf: A code change that improves performance
+# test: Adding missing tests or correcting existing tests
+# build: Changes that affect the build system or external dependencies
+# ci: Changes to CI configuration files and scripts
+# chore: Changes to the build process or auxiliary tools
 EOL
-    if [ -f "${GIT_DIR}/.gitmessage" ]; then
-        git config commit.template ${GIT_DIR}/.gitmessage
-    fi
 
-    psuccess -e "Hook installation completed!"
-    psuccess -e "Created .gitmessage template"
+	git -C "$target_repo" config --local commit.template "$template_path"
+	psuccess "Created .gitmessage template"
 }
 
-pwarning "Do your want to install conventional commits template? [y/n]?"
-read -n 1 -r
-
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    install_gitmessage "${GIT_DIR}"
+read -r -n 1 -p "Install conventional commit template? [y/n] " response
+printf '\n'
+if [[ "$response" =~ ^[Yy]$ ]]; then
+	install_gitmessage "$repo_root"
 fi
 
-exit 0
+psuccess "Hook installation completed!"

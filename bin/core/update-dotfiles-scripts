@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # update-dotfiles-scripts - Update scripts from dotfiles repository
-# Version: 1.0
+# Version: 2.0
 #
 # Run manually to update scripts or schedule via cron/launchd.
 # Replaces inline auto-update logic that slowed shell startup.
@@ -17,7 +17,6 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 DOTFILES_REPO="${DOTFILES_REPO:-$HOME/.config-fixing-dot-files-bugs}"
-LOCAL_BIN="${LOCAL_BIN:-$HOME/local/bin}"
 
 if [[ ! -d "$DOTFILES_REPO" ]]; then
     echo -e "${RED}Error: Dotfiles repository not found: $DOTFILES_REPO${NC}" >&2
@@ -34,37 +33,21 @@ if [[ ! -d "$DOTFILES_REPO/bin" ]]; then
     exit 0
 fi
 
-# Ensure target directory exists
-mkdir -p "$LOCAL_BIN"
-
-# Count scripts
-SCRIPT_COUNT=$(find "$DOTFILES_REPO/bin" -type f -executable | wc -l | tr -d ' ')
-
-if [[ $SCRIPT_COUNT -eq 0 ]]; then
-    echo -e "${YELLOW}No executable scripts found in $DOTFILES_REPO/bin${NC}"
-    exit 0
+# Use link-dotfiles.py to manage public commands
+LINKER="$DOTFILES_REPO/bin/core/link-dotfiles.py"
+if [[ ! -x "$LINKER" ]]; then
+    echo -e "${RED}Error: link-dotfiles.py not found or not executable: $LINKER${NC}" >&2
+    exit 1
 fi
 
-echo "Found $SCRIPT_COUNT script(s) to sync..."
+echo "Linking public commands to ~/.local/bin..."
 echo ""
 
-# Sync scripts (preserving directory structure under bin/)
-rsync -av --delete \
-    "$DOTFILES_REPO/bin/" \
-    "$LOCAL_BIN/" \
-    --exclude=".DS_Store" \
-    --exclude="*.md" \
-    | grep -v "/$" || true
+# Apply command links using the convention linker
+DOTFILES_ROOT="$DOTFILES_REPO" python3 "$LINKER" --commands-only --apply --yes
 
 echo ""
-echo -e "${GREEN}✅ Scripts updated successfully!${NC}"
+echo -e "${GREEN}Scripts updated successfully!${NC}"
 echo ""
-echo -e "${BLUE}Updated location:${NC} $LOCAL_BIN"
-echo -e "${BLUE}Total scripts:${NC} $SCRIPT_COUNT"
-echo ""
-
-# Update timestamp marker
-touch "$LOCAL_BIN/.scripts-updated"
-
 echo -e "${BLUE}Tip:${NC} Scripts are now available in your PATH"
 echo -e "${BLUE}Tip:${NC} Run 'update-dotfiles-scripts' again to sync future changes"

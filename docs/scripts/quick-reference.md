@@ -42,7 +42,7 @@ credfile get ssh_key /tmp/key
 | `work-mode` | Switch environment (work/personal) | `work-mode work` |
 | `syncenv` | Sync dotfiles with smart git strategy | `syncenv` |
 | `home-sync` | Full environment synchronization | `home-sync` |
-| `link-dotfiles` | Apply symlinks from manifest | `link-dotfiles --apply` |
+| `link-dotfiles` | Apply convention-based links | `link-dotfiles --apply --yes` |
 | `zsh-benchmark` | Measure shell startup time | `zsh-benchmark` |
 | `zsh-compile` | Compile configs to bytecode | `zsh-compile` |
 | `zsh-trim-history` | Reduce history size | `zsh-trim-history` |

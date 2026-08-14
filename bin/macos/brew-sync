@@ -87,10 +87,10 @@ create_backup() {
 # Function to install packages from Brewfile
 install_packages() {
     check_brewfile
-    
+
     log "INFO" "Installing packages from Brewfile..."
     log "INFO" "Brewfile: $BREWFILE_PATH"
-    
+
     if brew bundle install --file="$BREWFILE_PATH"; then
         log "SUCCESS" "All packages installed successfully"
     else
@@ -102,14 +102,14 @@ install_packages() {
 # Function to update Brewfile from installed packages
 update_brewfile() {
     log "INFO" "Updating Brewfile from currently installed packages..."
-    
+
     # Create backup first
     create_backup
-    
+
     # Generate new Brewfile
     if brew bundle dump --file="$BREWFILE_PATH" --force; then
         log "SUCCESS" "Brewfile updated: $BREWFILE_PATH"
-        
+
         # Show what changed
         if [[ -f "$BACKUP_DIR/$(ls -t "$BACKUP_DIR" | head -1)" ]]; then
             local latest_backup="$BACKUP_DIR/$(ls -t "$BACKUP_DIR" | head -1)"
@@ -125,47 +125,47 @@ update_brewfile() {
 # Function to sync (update + install)
 sync_packages() {
     log "INFO" "Starting full sync..."
-    
+
     # Update Brewfile first
     update_brewfile
-    
+
     # Then install any new packages
     log "INFO" "Installing any new packages..."
     install_packages
-    
+
     log "SUCCESS" "Sync completed successfully"
 }
 
 # Function to show differences
 show_diff() {
     check_brewfile
-    
+
     log "INFO" "Checking differences between Brewfile and installed packages..."
-    
+
     # Generate current state
     local temp_brewfile=$(mktemp)
     brew bundle dump --file="$temp_brewfile" --force
-    
+
     log "INFO" "Differences (- = in Brewfile but not installed, + = installed but not in Brewfile):"
     if diff -u "$BREWFILE_PATH" "$temp_brewfile"; then
         log "SUCCESS" "No differences found - system is in sync"
     else
         log "INFO" "Differences found above"
     fi
-    
+
     rm "$temp_brewfile"
 }
 
 # Function to clean unused packages
 clean_packages() {
     check_brewfile
-    
+
     log "WARN" "This will remove packages not listed in your Brewfile"
     read -p "Are you sure you want to continue? (y/N): " confirm
-    
+
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
         log "INFO" "Cleaning unused packages..."
-        
+
         if brew bundle cleanup --file="$BREWFILE_PATH" --force; then
             log "SUCCESS" "Cleanup completed"
         else
@@ -180,20 +180,20 @@ clean_packages() {
 # Function to run system health check
 run_doctor() {
     log "INFO" "Running Homebrew health check..."
-    
+
     echo "=== Brew Doctor ==="
     brew doctor
-    
+
     echo -e "\n=== Brew Config ==="
     brew config
-    
+
     echo -e "\n=== Outdated Packages ==="
     if brew outdated; then
         log "INFO" "Run 'brew upgrade' to update outdated packages"
     else
         log "SUCCESS" "All packages are up to date"
     fi
-    
+
     echo -e "\n=== Brewfile Status ==="
     if [[ -f "$BREWFILE_PATH" ]]; then
         log "SUCCESS" "Brewfile found: $BREWFILE_PATH"
@@ -207,10 +207,10 @@ run_doctor() {
 # Main function
 main() {
     local command="${1:-help}"
-    
+
     # Check prerequisites
     check_homebrew
-    
+
     case "$command" in
         "install"|"i")
             install_packages
