@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import re
+import tomllib
 import sys
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,7 @@ def validate_repository(repository_root: Path) -> list[str]:
     failures.extend(_validate_manifest_hashes(repository_root, manifest))
     failures.extend(_validate_required_paths(repository_root, manifest))
     failures.extend(_validate_skill_frontmatter(repository_root))
+    failures.extend(_validate_skill_lifecycle(repository_root))
     failures.extend(_validate_text_files(repository_root))
     failures.extend(_validate_external_sources(repository_root))
     failures.extend(_validate_workflow(repository_root))
@@ -93,11 +95,16 @@ def _validate_required_paths(
             [
                 ".pi/settings.json",
                 ".pi/prompts/qa.md",
-                ".pi/skills/skill-forge/SKILL.md",
+                ".pi/skills/_candidates/skill-forge/SKILL.md",
             ]
         )
     if "codex" in harnesses:
-        required.extend([".agents/agents/qa.md", ".agents/skills/skill-forge/SKILL.md"])
+        required.extend(
+            [
+                ".agents/agents/qa.md",
+                ".agents/skills/_candidates/skill-forge/SKILL.md",
+            ]
+        )
     return [
         f"required: missing {name}"
         for name in required
@@ -116,7 +123,7 @@ def _validate_skill_frontmatter(repository_root: Path) -> list[str]:
         path
         for root in skill_roots
         if root.is_dir()
-        for path in root.glob("*/SKILL.md")
+        for path in root.rglob("SKILL.md")
     ):
         text = skill_path.read_text(encoding="utf-8")
         if not text.startswith("---\n"):
@@ -138,6 +145,34 @@ def _validate_skill_frontmatter(repository_root: Path) -> list[str]:
                 f"skill: missing description {skill_path.relative_to(repository_root)}"
             )
     return failures
+
+
+def _validate_skill_lifecycle(repository_root: Path) -> list[str]:
+    """Reject active skills when repository policy requires candidate staging."""
+    configuration_path = repository_root / ".agent-scaffold/dotfiles.toml"
+    if not configuration_path.is_file():
+        return []
+    try:
+        configuration = tomllib.loads(configuration_path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        return [f"lifecycle: invalid scaffold configuration: {error}"]
+    repository = configuration.get("repository", {})
+    if not isinstance(repository, dict) or not repository.get(
+        "require_candidate_staging", False
+    ):
+        return []
+
+    skill_roots = [
+        repository_root / ".claude/skills",
+        repository_root / ".pi/skills",
+        repository_root / ".agents/skills",
+    ]
+    return [
+        f"lifecycle: active skill {skill_path.relative_to(repository_root)}"
+        for root in skill_roots
+        if root.is_dir()
+        for skill_path in sorted(root.glob("*/SKILL.md"))
+    ]
 
 
 def _validate_text_files(repository_root: Path) -> list[str]:
