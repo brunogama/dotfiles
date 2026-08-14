@@ -39,7 +39,9 @@ Wire the completed linker into installation and user-facing workflows, add excep
 
 ## Notes
 
-(Populated at closeout.)
+- First integration slice routes `install --scripts-only` through the convention linker with a commands-only plan, making `~/.local/bin` the sole command target.
+- Commands-only state updates preserve prior ownership records so a later prune can still clean stale home-tree links.
+- The obsolete `~/.local` to `~/local` migration is no longer invoked during full installation; its implementation and broader documentation remain a follow-up slice.
 
 ## Follow-ups
 

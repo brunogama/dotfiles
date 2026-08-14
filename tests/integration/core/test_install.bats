@@ -24,7 +24,7 @@ setup() {
     cat > bin/core/link-dotfiles.py << 'EOF'
 #!/usr/bin/env python3
 import sys
-print("Mock link-dotfiles")
+print("Mock link-dotfiles", *sys.argv[1:])
 exit(0)
 EOF
     chmod +x bin/core/link-dotfiles.py
@@ -536,6 +536,14 @@ teardown() {
 
     # Mock script should be called
     assert_output --partial "Mock link-dotfiles"
+}
+
+@test "install: scripts-only delegates public commands to the linker" {
+    run "$DOTFILES_ROOT/install" --scripts-only --dry-run --yes
+    assert_success
+    assert_output --partial "Public Command Linking (~/.local/bin only)"
+    assert_output --partial "Mock link-dotfiles --commands-only --dry-run --yes"
+    refute_output --partial "~/local/bin"
 }
 
 @test "install: fails if link-dotfiles missing" {
