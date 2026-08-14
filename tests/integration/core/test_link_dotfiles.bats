@@ -254,6 +254,34 @@ assert_link_points_to() {
     assert_link_points_to "$TEST_DOTFILES/bin/core/retained-command" "$HOME/.local/bin/retained-command"
 }
 
+@test "link-dotfiles: prune rejects home and command target collisions" {
+    create_home_file ".local/bin/colliding-command"
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    create_command core colliding-command
+
+    run python3 "$LINK_SCRIPT" --prune --apply
+
+    assert_failure
+    assert_output --partial "Target collision: $HOME/.local/bin/colliding-command"
+    assert_link_points_to "$TEST_DOTFILES/home/.local/bin/colliding-command" "$HOME/.local/bin/colliding-command"
+}
+
+@test "link-dotfiles: preserves additional Nix-managed targets even with force" {
+    create_home_file ".config/zsh/work-config.zsh"
+    local nix_source="$TEST_TEMP_DIR/nix-managed-work-config"
+    printf 'nix-managed\n' > "$nix_source"
+    nix_source="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$nix_source")"
+    mkdir -p "$HOME/.config/zsh"
+    ln -s "$nix_source" "$HOME/.config/zsh/work-config.zsh"
+
+    run python3 "$LINK_SCRIPT" --apply --force --yes
+
+    assert_success
+    assert_output --partial "Skipped (Nix-managed): $HOME/.config/zsh/work-config.zsh"
+    assert_link_points_to "$nix_source" "$HOME/.config/zsh/work-config.zsh"
+}
+
 @test "link-dotfiles: prune rejects a foreign ownership ledger" {
     mkdir -p "$XDG_STATE_HOME/dotfiles"
     printf '{"version": 1, "repository_id": "foreign", "links": []}\n' > "$XDG_STATE_HOME/dotfiles/links.json"
@@ -442,4 +470,9 @@ assert_link_points_to() {
     assert_success
     assert_symlink_exists "$HOME/.real"
     refute test -e "$HOME/.source-link"
+}
+
+@test "link-dotfiles: CI installs uv in every job that runs the uv script" {
+    run grep -Fc 'python -m pip install --upgrade pip uv' "$(get_dotfiles_root)/.github/workflows/ci.yml"
+    assert_output "3"
 }
