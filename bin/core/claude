@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Launches Claude Code with its optional Anthropic API key.
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+find_latest_claude_bin() {
+    local versions_dir="$HOME/.local/share/claude/versions"
+    local candidate
+
+    [[ -d "$versions_dir" ]] || return 1
+    while IFS= read -r candidate; do
+        candidate="$versions_dir/$candidate"
+        [[ -f "$candidate" && -x "$candidate" ]] || continue
+        printf '%s\n' "$candidate"
+        return 0
+    done < <(LC_ALL=C /bin/ls -1t "$versions_dir" 2>/dev/null)
+
+    return 1
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/agent-credential-loader.sh"
+
+load_agent_api_key ANTHROPIC_API_KEY
+
+CLAUDE_BIN="${DOTFILES_CLAUDE_BIN:-}"
+if [[ -z "$CLAUDE_BIN" ]]; then
+    CLAUDE_BIN="$(find_latest_claude_bin || true)"
+fi
+[[ -n "$CLAUDE_BIN" && -x "$CLAUDE_BIN" ]] || {
+    echo "claude: executable not found; install Claude Code or set DOTFILES_CLAUDE_BIN" >&2
+    exit 127
+}
+readonly CLAUDE_BIN
+
+exec "$CLAUDE_BIN" "$@"
