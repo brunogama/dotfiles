@@ -18,13 +18,13 @@ setup() {
 
     # Create necessary directories
     mkdir -p bin/core
-    mkdir -p packages/homebrew
+    mkdir -p home-darwin
 
     # Create mock scripts
     cat > bin/core/link-dotfiles.py << 'EOF'
 #!/usr/bin/env python3
 import sys
-print("Mock link-dotfiles")
+print("Mock link-dotfiles", *sys.argv[1:])
 exit(0)
 EOF
     chmod +x bin/core/link-dotfiles.py
@@ -45,7 +45,7 @@ EOF
     chmod +x bin/core/nix-bootstrap
 
     # Create mock Brewfile
-    cat > packages/homebrew/Brewfile << 'EOF'
+    cat > home-darwin/Brewfile << 'EOF'
 # Test Brewfile
 brew "jq"
 EOF
@@ -538,6 +538,14 @@ teardown() {
     assert_output --partial "Mock link-dotfiles"
 }
 
+@test "install: scripts-only delegates public commands to the linker" {
+    run "$DOTFILES_ROOT/install" --scripts-only --dry-run --yes
+    assert_success
+    assert_output --partial "Public Command Linking (~/.local/bin only)"
+    assert_output --partial "Mock link-dotfiles --commands-only --dry-run --yes"
+    refute_output --partial "~/local/bin"
+}
+
 @test "install: fails if link-dotfiles missing" {
     rm -f "$DOTFILES_ROOT/bin/core/link-dotfiles.py"
 
@@ -642,7 +650,7 @@ teardown() {
 @test "install: handles missing Brewfile gracefully" {
     skip_on_linux "Homebrew is only configured on macOS"
 
-    rm -f "$DOTFILES_ROOT/packages/homebrew/Brewfile"
+    rm -f "$DOTFILES_ROOT/home-darwin/Brewfile"
 
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success

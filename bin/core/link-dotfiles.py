@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-link-dotfiles - Automated symlink creation from LinkingManifest.json
+link-dotfiles - Convention-based symlink creation
 
 Usage: link-dotfiles.py [OPTIONS]
 
@@ -10,18 +10,23 @@ Options:
   --force         Overwrite existing files/symlinks
   --yes           Skip confirmation prompts
   --verbose       Show detailed output
+  --commands-only Link only public commands to ~/.local/bin
   --help          Show this help message
 """
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
+import socket
+import stat
+import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.0.0"
+VERSION = "3.0.0"
 
 # ANSI colors
 RED = "\033[0;31m"
@@ -34,13 +39,9 @@ NC = "\033[0m"
 
 def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
     """
-    Find the project root by looking for LinkingManifest.json or .git directory.
-    
-    Search strategy:
-    1. Check if LinkingManifest.json exists in current directory (relative path)
-    2. Walk up directory tree looking for:
-       - LinkingManifest.json (definitive indicator)
-       - .git directory (then verify LinkingManifest.json exists in same directory)
+    Find the project root from the convention-linker layout.
+
+    A checkout contains the linker and either a managed home tree or repository marker.
     
     Args:
         start_path: Path to start searching from (default: current working directory)
@@ -53,34 +54,10 @@ def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
     else:
         start_path = Path(start_path).resolve()
     
-    # First, check if manifest exists in current directory (relative path)
-    current_manifest = start_path / "LinkingManifest.json"
-    if current_manifest.exists():
-        return start_path
-    
-    # Walk up the directory tree
-    current = start_path
-    while current != current.parent:  # Stop at filesystem root
-        manifest_file = current / "LinkingManifest.json"
-        git_dir = current / ".git"
-        
-        # If manifest exists, this is the project root
-        if manifest_file.exists():
+    for current in (start_path, *start_path.parents):
+        linker = current / "bin/core/link-dotfiles.py"
+        if linker.is_file() and ((current / "home").is_dir() or (current / ".git").exists()):
             return current
-        
-        # If .git exists, check for manifest in same directory
-        # This helps identify project root when starting from subdirectories
-        if git_dir.exists():
-            if manifest_file.exists():
-                return current
-        
-        current = current.parent
-    
-    # Final check at filesystem root
-    root_manifest = current / "LinkingManifest.json"
-    if root_manifest.exists():
-        return current
-    
     return None
 
 
@@ -91,11 +68,17 @@ class LinkManager:
         force: bool = False,
         yes: bool = False,
         verbose: bool = False,
+        prune: bool = False,
+        migrate_legacy_bin: bool = False,
+        commands_only: bool = False,
     ):
         self.dry_run = dry_run
         self.force = force
         self.yes = yes
         self.verbose = verbose
+        self.prune_mode = prune
+        self.migrate_legacy_bin = migrate_legacy_bin
+        self.commands_only = commands_only
 
         # Counters
         self.count_created = 0
@@ -103,6 +86,7 @@ class LinkManager:
         self.count_errors = 0
         self.count_platform_skip = 0
         self.count_optional_skip = 0
+        self.applied_links: List[Tuple[Path, Path]] = []
 
         # Detect platform
         self.platform = sys.platform
@@ -125,7 +109,7 @@ class LinkManager:
                 # Fallback to old behavior (3 levels up from script)
                 self.dotfiles_root = Path(__file__).parent.parent.parent.resolve()
         
-        self.manifest_file = self.dotfiles_root / "LinkingManifest.json"
+        self.hostname = os.environ.get("DOTFILES_HOSTNAME", socket.gethostname())
 
     def log_info(self, msg: str):
         print(f"{BLUE}[INFO]{NC}  {msg}")
@@ -146,19 +130,6 @@ class LinkManager:
     def check_prerequisites(self) -> bool:
         """Check if prerequisites are met."""
         self.log_verbose("Checking prerequisites...")
-
-        if not self.manifest_file.exists():
-            self.log_error(f"LinkingManifest.json not found at: {self.manifest_file}")
-            self.log_info("Make sure you're running from the dotfiles repository")
-            return False
-
-        try:
-            with open(self.manifest_file) as f:
-                json.load(f)
-            self.log_verbose("Manifest JSON is valid")
-        except json.JSONDecodeError:
-            self.log_error("LinkingManifest.json contains invalid JSON")
-            return False
 
         return True
 
@@ -181,7 +152,9 @@ class LinkManager:
             1 = error
             2 = already exists (skipped)
         """
-        source_path = self.dotfiles_root / source
+        source_path = Path(source)
+        if not source_path.is_absolute():
+            source_path = self.dotfiles_root / source_path
         target_path = self.expand_tilde(target)
 
         self.log_verbose(f"Processing: {target_path} -> {source_path}")
@@ -191,9 +164,6 @@ class LinkManager:
             self.log_verbose(f"Source not found: {source_path}")
             return 1
 
-        # Create parent directory
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-
         # Check if target exists
         if target_path.is_symlink():
             current_source = target_path.resolve()
@@ -201,24 +171,22 @@ class LinkManager:
                 self.log_verbose(f"Already linked correctly: {target_path}")
                 return 2
 
-            if not self.force and not self.yes and not self.dry_run:
-                self.log_warning(f"Symlink exists but points to different source: {target_path}")
-                response = input("Replace? (y/n): ")
-                if response.lower() not in ("y", "yes"):
-                    self.log_info(f"Skipped: {target_path}")
-                    return 2
-
+            if not self.force:
+                self.log_error(f"Collision at {target_path}; rerun with --force --yes to replace it")
+                return 1
+            if not self.yes:
+                self.log_error("--force requires --yes for non-interactive replacement")
+                return 1
             if not self.dry_run:
                 target_path.unlink()
 
         elif target_path.exists():
-            if not self.force and not self.yes and not self.dry_run:
-                self.log_warning(f"File exists: {target_path}")
-                response = input("Overwrite? (y/n): ")
-                if response.lower() not in ("y", "yes"):
-                    self.log_info(f"Skipped: {target_path}")
-                    return 2
-
+            if not self.force:
+                self.log_error(f"Collision at {target_path}; rerun with --force --yes to replace it")
+                return 1
+            if not self.yes:
+                self.log_error("--force requires --yes for non-interactive replacement")
+                return 1
             if not self.dry_run:
                 if target_path.is_dir():
                     shutil.rmtree(target_path)
@@ -227,6 +195,7 @@ class LinkManager:
 
         # Create the symlink
         if not self.dry_run:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
             target_path.symlink_to(source_path)
             self.log_success(f"Created: {target_path} -> {source_path}")
         else:
@@ -256,68 +225,221 @@ class LinkManager:
                     if executable and not self.dry_run:
                         target_file.chmod(target_file.stat().st_mode | 0o111)
 
-    def process_links(self):
-        """Process all links from the manifest."""
-        self.log_verbose("Reading manifest...")
+    def repository_id(self) -> str:
+        """Use the Git origin as a relocation-stable repository identity."""
+        try:
+            origin = subprocess.check_output(
+                ["git", "-C", str(self.dotfiles_root), "config", "--get", "remote.origin.url"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except (OSError, subprocess.CalledProcessError):
+            origin = ""
+        return hashlib.sha256((origin or str(self.dotfiles_root)).encode()).hexdigest()
 
-        with open(self.manifest_file) as f:
-            manifest = json.load(f)
+    def write_state(self, preserve_existing: bool = False) -> None:
+        """Atomically persist confirmed links, preserving prior ownership when requested."""
+        state_file = Path.home() / ".local/state/dotfiles/links.json"
+        links = {
+            str(target): {"source": str(source), "target": str(target)}
+            for source, target in self.applied_links
+        }
+        if preserve_existing:
+            try:
+                previous = json.loads(state_file.read_text())
+                if previous.get("repository_id") == self.repository_id():
+                    for link in previous.get("links", []):
+                        target = link.get("target")
+                        if isinstance(target, str) and target not in links:
+                            links[target] = link
+            except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+                pass
+        payload = {
+            "version": 1,
+            "repository_id": self.repository_id(),
+            "links": list(links.values()),
+        }
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = state_file.with_suffix(".tmp")
+        temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        temporary.replace(state_file)
 
-        # Extract all links recursively
-        links = []
+    def desired_targets(self) -> Dict[Path, Path]:
+        """Return the current home-tree targets without consulting legacy metadata."""
+        targets: Dict[Path, Path] = {}
+        home = Path.home()
+        for tree_name in ("home", f"home-{self.platform}", f"home-host-{self.hostname}"):
+            tree = self.dotfiles_root / tree_name
+            if tree.is_dir():
+                for source in tree.rglob("*"):
+                    if stat.S_ISREG(source.lstat().st_mode):
+                        targets[home / source.relative_to(tree)] = source
+        return targets
 
-        def extract_links(obj):
-            if isinstance(obj, dict):
-                if "source" in obj:
-                    links.append(obj)
-                else:
-                    for value in obj.values():
-                        extract_links(value)
-            elif isinstance(obj, list):
-                for item in obj:
-                    extract_links(item)
+    def prune(self) -> None:
+        """Remove only stale symlinks whose ownership the ledger proves."""
+        state_file = Path.home() / ".local/state/dotfiles/links.json"
+        try:
+            state = json.loads(state_file.read_text())
+            if state.get("version") != 1 or not isinstance(state.get("repository_id"), str):
+                raise ValueError("unsupported ownership state")
+            links = state["links"]
+        except (FileNotFoundError, ValueError, json.JSONDecodeError, KeyError, TypeError):
+            self.log_error(f"Invalid or missing ownership ledger: {state_file}")
+            self.count_errors += 1
+            return
 
-        extract_links(manifest.get("links", {}))
-
-        self.log_verbose(f"Found {len(links)} links to process")
-
-        # Process each link
-        for link in links:
-            source = link["source"]
-            target = link["target"]
-            link_type = link.get("type", "file")
-            platforms = link.get("platforms")
-            optional = link.get("optional", False)
-            executable = link.get("executable", False)
-            description = link.get("description", "")
-
-            # Check platform
-            if not self.matches_platform(platforms):
-                self.log_verbose(f"Skipped (platform mismatch): {target}")
-                self.count_platform_skip += 1
-                continue
-
-            # Handle different link types
-            if link_type in ("file", "directory"):
-                ret = self.create_link(source, target, description)
-                if ret == 0:
-                    self.count_created += 1
-                elif ret == 2:
-                    self.count_skipped += 1
-                else:
-                    if optional:
-                        self.log_verbose(f"Skipped (optional, source missing): {target}")
-                        self.count_optional_skip += 1
-                    else:
-                        self.log_error(f"Failed to link: {target}")
-                        self.count_errors += 1
-
-            elif link_type == "directory-contents":
-                self.process_directory_contents(source, target, executable)
-
-            else:
-                self.log_warning(f"Unknown link type: {link_type} for {target}")
+        desired = self.desired_targets()
+        for recorded in links:
+            try:
+                target = Path(recorded["target"])
+                source = Path(recorded["source"])
+            except (KeyError, TypeError):
+                self.log_error("Invalid ownership ledger entry")
                 self.count_errors += 1
+                return
+            current_source = target.resolve() if target.is_symlink() else None
+            desired_source = desired.get(target)
+            stale = desired_source is None or current_source != desired_source.resolve()
+            if not stale:
+                continue
+            if not target.is_symlink() or current_source != source.resolve():
+                self.log_warning(f"Refusing unproven stale target: {target}")
+                self.count_skipped += 1
+                continue
+            if self.dry_run:
+                self.log_info(f"Would prune: {target}")
+            else:
+                target.unlink()
+                self.log_success(f"Pruned: {target}")
+            self.count_created += 1
+
+    def public_commands(self) -> Dict[str, Path]:
+        """Discover unique executable commands exposed from immediate domain entries."""
+        commands: Dict[str, Path] = {}
+        bin_root = self.dotfiles_root / "bin"
+        if not bin_root.is_dir():
+            return commands
+        for domain in sorted(bin_root.iterdir()):
+            if not domain.is_dir():
+                continue
+            for source in sorted(domain.iterdir()):
+                if not stat.S_ISREG(source.lstat().st_mode) or not os.access(source, os.X_OK):
+                    continue
+                if source.name in commands:
+                    raise ValueError(f"Duplicate command name: {source.name}")
+                commands[source.name] = source
+        return commands
+
+    def migrate_legacy_commands(self) -> None:
+        """Move only legacy symlinks proven to point at current public commands."""
+        legacy_bin = Path.home() / "local/bin"
+        try:
+            commands = self.public_commands()
+        except ValueError as error:
+            self.log_error(str(error))
+            self.count_errors += 1
+            return
+        if not legacy_bin.is_dir():
+            self.log_info(f"No legacy command directory: {legacy_bin}")
+            return
+
+        migrations: List[Tuple[Path, Path, Path]] = []
+        for legacy in sorted(legacy_bin.iterdir()):
+            source = commands.get(legacy.name)
+            if source is None:
+                self.log_info(f"Preserving unmanaged legacy entry: {legacy}")
+                self.count_skipped += 1
+                continue
+            if not legacy.is_symlink() or legacy.resolve() != source.resolve():
+                self.log_info(f"Preserving unproven legacy entry: {legacy}")
+                self.count_skipped += 1
+                continue
+            migrations.append((legacy, Path.home() / ".local/bin" / legacy.name, source))
+
+        for legacy, target, source in migrations:
+            if target.exists() or target.is_symlink():
+                correct = target.is_symlink() and target.resolve() == source.resolve()
+                if not correct:
+                    self.log_error(f"Collision at {target}; migration left {legacy} unchanged")
+                    self.count_errors += 1
+                    return
+
+        for legacy, target, source in migrations:
+            if self.dry_run:
+                self.log_info(f"Would migrate: {legacy} -> {target}")
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists() and not target.is_symlink():
+                target.symlink_to(source)
+            legacy.unlink()
+            self.log_success(f"Migrated: {legacy} -> {target}")
+            self.count_created += 1
+
+    def process_links(self):
+        """Discover and apply the convention-based link plan."""
+        plan: Dict[Path, Tuple[Path, str]] = {}
+        home = Path.home()
+        if not self.commands_only:
+            tree_names = ("home", f"home-{self.platform}", f"home-host-{self.hostname}")
+            for tree_name in tree_names:
+                tree = self.dotfiles_root / tree_name
+                if not tree.is_dir():
+                    continue
+                for source in sorted(tree.rglob("*")):
+                    if stat.S_ISREG(source.lstat().st_mode):
+                        plan[home / source.relative_to(tree)] = (source, tree_name)
+
+        try:
+            commands = self.public_commands()
+        except ValueError as error:
+            self.log_error(str(error))
+            self.count_errors += 1
+            return
+        for name, source in commands.items():
+            target = home / ".local/bin" / name
+            if target in plan:
+                self.log_error(f"Target collision: {target}")
+                self.count_errors += 1
+                return
+            plan[target] = (source, f"bin/{source.parent.name}")
+
+        # Validate the entire plan before creating directories or links.
+        for target, (source, _) in plan.items():
+            correct = target.is_symlink() and target.resolve() == source.resolve()
+            if (target.exists() or target.is_symlink()) and not correct and not self.force:
+                self.log_error(f"Collision at {target}; rerun with --force --yes to replace it")
+                self.count_errors += 1
+                return
+            if (target.exists() or target.is_symlink()) and not correct and not self.yes:
+                self.log_error("--force requires --yes for non-interactive replacement")
+                self.count_errors += 1
+                return
+            parent = target.parent
+            while parent != home.parent:
+                if parent.exists() and not parent.is_dir():
+                    self.log_error(f"Parent path is not a directory: {parent}")
+                    self.count_errors += 1
+                    return
+                parent = parent.parent
+
+        for target, (source, provenance) in sorted(plan.items()):
+            self.log_verbose(f"Processing: {target} -> {source} ({provenance})")
+            ret = self.create_link(str(source), str(target))
+            if ret == 0:
+                self.count_created += 1
+                self.applied_links.append((source, target))
+            elif ret == 2:
+                self.count_skipped += 1
+                self.applied_links.append((source, target))
+            else:
+                self.count_errors += 1
+                if not self.dry_run:
+                    self.write_state()
+                return
+
+        if not self.dry_run:
+            self.write_state(preserve_existing=self.commands_only)
 
     def show_summary(self):
         """Show summary of operations."""
@@ -373,7 +495,12 @@ class LinkManager:
         print("Processing links...")
         print()
 
-        self.process_links()
+        if self.prune_mode:
+            self.prune()
+        elif self.migrate_legacy_bin:
+            self.migrate_legacy_commands()
+        else:
+            self.process_links()
         self.show_summary()
 
         return 1 if self.count_errors > 0 else 0
@@ -381,7 +508,7 @@ class LinkManager:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Automated symlink creation from LinkingManifest.json",
+        description="Convention-based dotfile symlink creation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -400,6 +527,9 @@ def main():
         "--yes", action="store_true", help="Skip confirmation prompts"
     )
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
+    parser.add_argument("--prune", action="store_true", help="Remove stale links proven by ownership state")
+    parser.add_argument("--migrate-legacy-bin", action="store_true", help="Migrate proven legacy ~/local/bin command links")
+    parser.add_argument("--commands-only", action="store_true", help="Link only public commands to ~/.local/bin")
 
     args = parser.parse_args()
 
@@ -412,6 +542,9 @@ def main():
         force=args.force,
         yes=args.yes,
         verbose=args.verbose,
+        prune=args.prune,
+        migrate_legacy_bin=args.migrate_legacy_bin,
+        commands_only=args.commands_only,
     )
 
     sys.exit(manager.run())
