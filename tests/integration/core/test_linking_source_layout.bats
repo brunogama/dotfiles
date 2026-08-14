@@ -108,6 +108,17 @@
     [[ -f "$repository_root/home-darwin/Library/LaunchAgents/com.brunogama.home-sync.plist" ]]
 }
 
+@test "Darwin launch agent defers user paths until installation" {
+    local repository_root
+    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
+
+    local plist_path
+    plist_path="$repository_root/home-darwin/Library/LaunchAgents/com.brunogama.home-sync.plist"
+
+    ! grep -q '/Users/' "$plist_path"
+    grep -q '__HOME__' "$plist_path"
+}
+
 @test "legacy Darwin launch-agent source path is retired" {
     local repository_root
     repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
