@@ -6,11 +6,11 @@ These tests create temporary git repositories to test all scenarios.
 """
 
 import os
-import sys
-import subprocess
-import tempfile
-import shutil
 from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 
 
@@ -46,11 +46,15 @@ class GitSmartMergeTest(unittest.TestCase):
 
     def _create_branch(self, branch_name):
         """Create and checkout a new branch."""
-        subprocess.run(["git", "checkout", "-b", branch_name], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", branch_name], check=True, capture_output=True
+        )
 
     def _checkout_branch(self, branch_name):
         """Checkout an existing branch."""
-        subprocess.run(["git", "checkout", branch_name], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", branch_name], check=True, capture_output=True
+        )
 
     def _commit_file(self, filename, content, message):
         """Create a file and commit it."""
@@ -60,11 +64,11 @@ class GitSmartMergeTest(unittest.TestCase):
 
     def _run_smart_merge(self, *args):
         """Run git-smart-merge with given arguments."""
-        script_path = Path(self.original_dir) / "bin" / "git-smart-merge"
+        script_path = Path(self.original_dir) / "bin" / "git" / "git-smart-merge"
         result = subprocess.run(
             [sys.executable, str(script_path)] + list(args),
             capture_output=True,
-            text=True
+            text=True,
         )
         return result
 
@@ -201,11 +205,9 @@ class GitSmartMergeHelp(unittest.TestCase):
 
     def test_help_output(self):
         """Test that --help displays usage information."""
-        script_path = Path(__file__).parent.parent / "bin" / "git-smart-merge"
+        script_path = Path(__file__).parent.parent / "bin" / "git" / "git-smart-merge"
         result = subprocess.run(
-            [sys.executable, str(script_path), "--help"],
-            capture_output=True,
-            text=True
+            [sys.executable, str(script_path), "--help"], capture_output=True, text=True
         )
 
         self.assertEqual(result.returncode, 0)

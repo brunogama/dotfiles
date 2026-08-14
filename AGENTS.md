@@ -67,6 +67,7 @@ openspec/            # Change proposals and specs
 ### Shell Scripts
 
 - **MUST** pass `shellcheck` with no errors
+- **NO** COMMENT DISABLING SHELLCHECK ISSUE
 - Use `set -euo pipefail` for safety
 - Quote variables: `"$var"` not `$var`
 - Prefer `[[` over `[` for conditionals
