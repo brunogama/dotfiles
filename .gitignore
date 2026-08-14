@@ -266,6 +266,8 @@ zsh/.zcompdump
 !.claude/commands/**
 !.claude/skills/
 !.claude/skills/**
+!.claude/_candidates/
+!.claude/_candidates/**
 .claudeignore
 .claude/settings.local.json
 .claude/commands/personal/
