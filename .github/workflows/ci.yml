@@ -53,11 +53,6 @@ jobs:
             fi
           done
 
-      - name: Validate LinkingManifest.json
-        if: hashFiles('LinkingManifest.json') != ''
-        run: |
-          bin/git/hooks/validate-manifest
-
       - name: Shellcheck all scripts
         run: |
           find bin/ -type f \

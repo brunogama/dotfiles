@@ -31,7 +31,7 @@ The default Nix installer will:
 - Activate the pinned CLI packages through standalone Home Manager
 - Configure Git, zsh, Prezto, and Starship
 - Install pinned npm tools under your XDG data directory
-- Add repository utilities to `~/local/bin`
+- Add repository utilities to `~/.local/bin`
 
 Nix itself must already be installed. To apply macOS system defaults and the retained Homebrew exceptions, explicitly run `./install --nix --system`; that mode requires administrator access. Linux and legacy installations can continue to use `./install`.
 
@@ -95,7 +95,7 @@ sudo yum install jq  # CentOS/RHEL
 **Solution:** Add to your PATH:
 
 ```bash
-echo 'export PATH="$HOME/local/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 exec zsh
 ```
 
@@ -114,7 +114,7 @@ The default Nix installation:
 2. **Installed CLI packages** declared in `nix/packages.nix`
 3. **Configured Git and zsh** from the shared Home Manager module
 4. **Installed pinned npm tools** outside the immutable Nix store
-5. **Added repository utilities** to `~/local/bin`
+5. **Added repository utilities** to `~/.local/bin`
 
 It did not activate nix-darwin, modify system defaults, install Homebrew items, or invoke sudo.
 
@@ -150,7 +150,8 @@ Run `dotfiles-help` for complete list.
 ├── flake.nix            # Home Manager and nix-darwin outputs
 ├── flake.lock           # Pinned Nix inputs
 ├── install              # Nix dispatcher and legacy installer
-├── LinkingManifest.json # Legacy symlink definitions
+├── home/                # Common files linked below $HOME
+├── home-darwin/         # macOS overrides linked below $HOME
 ├── bin/                 # Executable scripts
 │   ├── core/           # Core utilities
 │   ├── credentials/    # Credential management

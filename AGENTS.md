@@ -25,15 +25,16 @@ Modern Unix dotfiles with environment management, automated sync, and secure cre
 - `./install` - One-command installation (idempotent)
 - `./install --dry-run` - Preview installation without changes
 - `./install --yes` - Non-interactive installation for CI
-- `link-dotfiles` - Create symlinks from LinkingManifest.json
-- `link-dotfiles --apply` - Actually create the symlinks
+- `link-dotfiles` - Preview convention-based links
+- `link-dotfiles --apply --yes` - Create managed links after collision confirmation
 
 ## Project Structure
 
 ```
 .gitignore           # Symlink → git/.gitignore
 .gitmodules          # Symlink → git/.gitmodules
-LinkingManifest.json # Declarative symlink mappings
+home/                # Common files mapped below $HOME
+home-darwin/         # macOS overrides mapped below $HOME
 bin/                 # Executable scripts
 ├── core/            # Core utilities
 ├── credentials/     # Credential management

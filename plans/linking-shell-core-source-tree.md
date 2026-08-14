@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [linking-conventions-foundation]
 specs:
   - specs/linking-architecture.md
@@ -23,10 +23,10 @@ Create the common `home/` layout and migrate the shell files required to bootstr
 
 ## Validation
 
-- [ ] Every migrated file maps one-for-one from `home/` to its intended `$HOME` destination.
-- [ ] Shell bootstrap references resolve to the migrated paths.
-- [ ] No secret, generated, or mutable state is added to `home/`.
-- [ ] The focused source-layout checks pass.
+- [x] Every migrated file maps one-for-one from `home/` to its intended `$HOME` destination.
+- [x] Shell bootstrap references resolve to the migrated paths.
+- [x] No secret, generated, or mutable state is added to `home/`.
+- [x] The focused source-layout checks pass.
 
 ## Risks / unknowns
 

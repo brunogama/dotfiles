@@ -23,10 +23,10 @@ Migrate Darwin-only managed files into `home-darwin/` and classify the Folder Ac
 
 ## Validation
 
-- [ ] Each Darwin-only managed file maps one-for-one from `home-darwin/` to its intended `$HOME` destination.
-- [ ] The Folder Action remains outside home mirroring and command exposure.
-- [ ] No target owned by existing Nix or Home Manager declarations is duplicated.
-- [ ] The focused source-layout checks pass.
+- [x] Each Darwin-only managed file maps one-for-one from `home-darwin/` to its intended `$HOME` destination.
+- [x] The Folder Action remains outside home mirroring and command exposure.
+- [x] No target owned by existing Nix or Home Manager declarations is duplicated.
+- [x] The focused source-layout checks pass.
 
 ## Risks / unknowns
 
