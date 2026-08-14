@@ -1,0 +1,17 @@
+{
+  "instructions": "Replace owner/repository and review the source before enabling installation.",
+  "schema_version": 1,
+  "sources": [
+    {
+      "enabled": false,
+      "install_argv": [
+        "npx",
+        "skills",
+        "add",
+        "owner/repository"
+      ],
+      "name": "example-skill-repository",
+      "repository": "owner/repository"
+    }
+  ]
+}
