@@ -30,11 +30,11 @@ Migrate Darwin-only managed files into `home-darwin/` and classify the Folder Ac
 
 ## Risks / unknowns
 
-- **Folder Action target** - the legacy target extension appears inconsistent with the source extension and needs validation when the installer is implemented.
+- **Folder Action target** - resolved by the explicit Darwin installer, which links the source using the canonical `.scpt` extension and is covered by Darwin-only integration tests.
 
 ## Notes
 
-- The Folder Action remains documented as an exceptional installer input. Its legacy destination extension mismatch is intentionally deferred to the installer implementation.
+- The Folder Action remains an exceptional installer input. The completed Darwin installer delegates to the main linker and uses the source's canonical `.scpt` destination extension.
 - The Darwin Git attributes, Brewfile, and home-sync launch agent now map from `home-darwin/` to their destination-equivalent paths.
 
 ## Follow-ups

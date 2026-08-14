@@ -1,5 +1,5 @@
 ---
-status: done
+status: in-progress
 depends: [linker-lifecycle-and-migration]
 specs:
   - specs/linking-architecture.md
@@ -30,7 +30,7 @@ Wire the completed linker into installation and user-facing workflows, add excep
 - [x] Integration tests cover clean install, collision handling, overlay resolution, migration, pruning, and partial-failure recovery.
 - [x] ShellCheck passes for every changed shell script and Python compilation passes for the linker.
 - [x] Repository search finds no active manifest workflow or `~/local/bin` guidance outside intentional migration history.
-- [x] A clean temporary HOME and an isolated XDG state directory complete an end-to-end apply successfully.
+- [ ] A clean temporary HOME and an isolated XDG state directory complete an end-to-end apply successfully.
 
 ## Risks / unknowns
 
@@ -48,7 +48,8 @@ Wire the completed linker into installation and user-facing workflows, add excep
 - Fifth integration slice updates the README, quick start guide, and interactive help to describe convention-based linking and `~/.local/bin` command exposure.
 - Sixth integration slice updates IDE repository discovery and script-reference documentation to use convention-linker markers instead of the manifest.
 - Seventh integration slice updates agent-facing project guidance with the convention source trees, safe apply command, and lifecycle operations.
+- Focused linker, IDE, hook, and workflow Bats suites passed after the final integration changes. The clean temporary HOME end-to-end apply remains required before this plan can close.
 
 ## Follow-ups
 
-None.
+- Run and record the clean temporary HOME and isolated XDG state end-to-end apply validation.

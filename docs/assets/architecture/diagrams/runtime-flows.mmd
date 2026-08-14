@@ -1,0 +1,15 @@
+%% title: Installation, linking, and sync flows
+%% description: The repository follows explicit activation, dry-run, safe linking, and Git synchronization flows.
+%% evidence: CTX-001, COMP-003, COMP-004, SYNC-001, SEC-001
+flowchart LR
+  command[Developer command] --> installation[install]
+  installation -->|Nix path| activation[Home Manager or nix-darwin activation]
+  installation -->|legacy path| legacy[Imperative setup]
+  command --> linker[link-dotfiles]
+  linker -->|validate then apply| links[Owned symlinks and ledger]
+  command --> profile[work-mode]
+  profile -->|atomic local update| environment[environment.zsh]
+  command --> sync[home-sync sync or daemon]
+  sync -->|validate, optional commit, pull, push| git[Git repository and remote]
+  command --> credential[credential tools]
+  credential -->|explicit retrieval| secret[Local credential store]

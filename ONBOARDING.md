@@ -493,10 +493,10 @@ zsh-benchmark --detailed
 
 ```bash
 # Preview the complete convention-based link plan
-python3 bin/core/link-dotfiles.py --dry-run
+uv run bin/core/link-dotfiles.py --dry-run
 
 # Inspect collisions or sources with detailed output
-python3 bin/core/link-dotfiles.py --dry-run --verbose
+uv run bin/core/link-dotfiles.py --dry-run --verbose
 ```
 
 #### Issue 5: "openspec: command not found"
@@ -572,9 +572,9 @@ openspec --version
 **Usage:**
 
 ```bash
-python3 bin/core/link-dotfiles.py --dry-run
-python3 bin/core/link-dotfiles.py --apply --yes
-python3 bin/core/link-dotfiles.py --prune --dry-run
+uv run bin/core/link-dotfiles.py --dry-run
+uv run bin/core/link-dotfiles.py --apply --yes
+uv run bin/core/link-dotfiles.py --prune --dry-run
 ```
 
 #### 3. ~/.zshrc - Shell Entry Point
@@ -736,7 +736,7 @@ syncenv
 
 #### Convention-Based Linking
 
-The repository layout is the source of truth for links. Files under `home/` mirror to `$HOME`; platform and host trees override common files; executable files immediately under `bin/<domain>/` become public commands in `~/.local/bin`.
+The repository layout is the source of truth for links the linker owns. Eligible files under `home/` mirror to `$HOME`; platform and host trees override common files; executable files immediately under `bin/<domain>/` become public commands in `~/.local/bin`. Targets declared in [`nix/home.nix`](nix/home.nix) are owned by Home Manager and intentionally skipped.
 
 The linker validates its full plan before mutation, records only proven ownership, and requires explicit confirmation before replacing collisions. See [specs/linking-architecture.md](specs/linking-architecture.md) for the complete contract.
 
@@ -967,7 +967,7 @@ python3 -m py_compile bin/core/link-dotfiles.py
 ./install --dry-run
 
 # Test symlink creation
-bin/core/link-dotfiles --dry-run
+uv run bin/core/link-dotfiles.py --dry-run
 
 # Test credential storage
 store-api-key TEST_KEY
@@ -1335,22 +1335,9 @@ gh release create v1.1.0 \
 # Or via GitHub web UI
 ```
 
-1. **Update CHANGELOG.md**
+1. **Use the repository release automation for release notes**
 
-```markdown
-## [1.1.0] - 2024-01-15
-
-### Added
-- Fish shell configuration support
-- Interactive dotfiles-help command
-
-### Fixed
-- Symlink creation permission handling
-- Shell history secret exposure
-
-### Changed
-- Improved error messages in install script
-```
+Do not edit `CHANGELOG.md` manually. It is a generated or managed release artifact; include release notes when creating the GitHub release instead.
 
 **Release Cadence:**
 
@@ -1967,7 +1954,7 @@ cp zsh/my-custom-config.zsh home/.config/zsh/my-custom-config.zsh
 
 ```bash
 # Preview the discovered link plan
-python3 bin/core/link-dotfiles.py --dry-run
+uv run bin/core/link-dotfiles.py --dry-run
 
 # Source and test
 source zsh/my-custom-config.zsh
@@ -2141,11 +2128,8 @@ cp ~/.zshrc ~/.zshrc.backup
 # Remove existing (if not important)
 rm ~/.zshrc
 
-# Retry symlink creation
-bin/core/link-dotfiles --apply
-
-# Or use --backup flag
-bin/core/link-dotfiles --apply --backup
+# Retry symlink creation. The preceding manual copy is the backup.
+uv run bin/core/link-dotfiles.py --apply --force --yes
 ```
 
 #### Error: Shell startup is slow (> 1s)
@@ -2313,7 +2297,7 @@ source ~/.zshrc
 uname -s
 
 # Preview the sources selected on this platform
-python3 bin/core/link-dotfiles.py --dry-run
+uv run bin/core/link-dotfiles.py --dry-run
 
 # Inspect platform-specific sources
 find home-darwin home-linux -type f 2>/dev/null
@@ -2485,7 +2469,7 @@ zsh
 ```bash
 # Re-run the linker from the new location
 cd /new/location/.dotfiles
-python3 bin/core/link-dotfiles.py --apply --yes
+uv run bin/core/link-dotfiles.py --apply --yes
 
 # The ownership ledger recognizes links from a prior checkout
 ```
@@ -2898,7 +2882,7 @@ cat docs/scripts/quick-reference.md
 **Phase 9: Test Workflow (1 hour)**
 
 - [ ] Test dry-run installation: `./install --dry-run`
-- [ ] Test symlink management: `bin/core/link-dotfiles --dry-run`
+- [ ] Test symlink management: `uv run bin/core/link-dotfiles.py --dry-run`
 - [ ] Test interactive help: `dotfiles-help`
 - [ ] Test credential storage: `store-api-key ANOTHER_TEST_KEY`
 - [ ] Test performance measurement: `zsh-benchmark --detailed`

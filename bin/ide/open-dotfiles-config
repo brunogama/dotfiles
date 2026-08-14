@@ -4,8 +4,28 @@
 
 set -euo pipefail
 
-# Default to empty if no argument provided
+usage() {
+    cat >&2 <<EOF
+Usage: $(basename "$0") {personal|zsh|git|work|repo}
+
+Options:
+  personal     - Open personal-config.zsh
+  zsh          - Open .zshrc
+  git          - Open git config directory
+  work         - Open work-config.zsh
+  repo         - Open entire dotfiles repository
+EOF
+}
+
 CONFIG_TYPE="${1:-}"
+case "$CONFIG_TYPE" in
+    personal|personal-config|zsh|zshrc|git|gitconfig|work|work-config|repo|dotfiles)
+        ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac
 
 # Find dotfiles directory by checking convention linker sources.
 DOTFILES_DIR=""
@@ -50,14 +70,7 @@ case "$CONFIG_TYPE" in
         code "$DOTFILES_DIR"
         ;;
     *)
-        echo "Usage: $(basename "$0") {personal|zsh|git|work|repo}"
-        echo ""
-        echo "Options:"
-        echo "  personal     - Open personal-config.zsh"
-        echo "  zsh          - Open .zshrc"
-        echo "  git          - Open git config directory"
-        echo "  work         - Open work-config.zsh"
-        echo "  repo         - Open entire dotfiles repository"
-        exit 1
+        usage
+        exit 2
         ;;
 esac

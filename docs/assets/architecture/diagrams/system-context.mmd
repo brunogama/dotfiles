@@ -1,0 +1,11 @@
+%% title: Dotfiles system context
+%% description: A developer activates repository-managed home configuration and optionally uses Git synchronization and operating-system credential facilities.
+%% evidence: SYS-001, SYS-002, COMP-001, SYNC-001, SEC-001
+flowchart LR
+  developer[Developer] -->|runs install and CLI tools| repository[Dotfiles repository]
+  repository -->|evaluates and activates| nix[Nix and Home Manager]
+  nix -->|manages declared files and packages| home[Developer home environment]
+  repository -->|optional sync commands| sync[home-sync]
+  sync -->|Git pull and push| remote[Git remote]
+  repository -->|credential commands| credentials[Keychain and encrypted stores]
+  credentials -->|local secret retrieval| home

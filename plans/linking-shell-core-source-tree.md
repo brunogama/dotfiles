@@ -34,7 +34,8 @@ Create the common `home/` layout and migrate the shell files required to bootstr
 
 ## Notes
 
-(Populated at closeout.)
+- Shell bootstrap sources remain individual files, so the linker never creates a directory-wide link.
+- `.zshenv` stays destination-equivalent under `home/` and is validated as Zsh syntax before commit.
 
 ## Follow-ups
 

@@ -1,0 +1,69 @@
+{
+  "schema": "repository-architecture-browser-qa",
+  "version": 1,
+  "html_sha256": "a57e8ab4dd1798a5d00984c0d58990df5a5f149d14a945dafb81e38fb867de7b",
+  "reviewed": true,
+  "reviewed_at": "2026-08-14T10:56:06Z",
+  "tool": "ego-browser",
+  "checks": [
+    {
+      "name": "desktop-layout",
+      "passed": true,
+      "evidence": "1440px-class desktop rendering reviewed; hierarchy, tables, tree, and diagrams were readable."
+    },
+    {
+      "name": "mobile-layout",
+      "passed": true,
+      "evidence": "390x844 emulation reviewed; document width matched viewport and navigation remained reachable."
+    },
+    {
+      "name": "print-layout",
+      "passed": true,
+      "evidence": "Print emulation hid sidebar and dialog and rendered a white document background."
+    },
+    {
+      "name": "keyboard-navigation",
+      "passed": true,
+      "evidence": "Visible focus was verified on the report search field; diagram and tree controls expose keyboard event handlers."
+    },
+    {
+      "name": "search",
+      "passed": true,
+      "evidence": "Searching Security Boundaries produced two matching sections and clearing restored the report."
+    },
+    {
+      "name": "diagram-zoom",
+      "passed": true,
+      "evidence": "The system-context diagram opened in the native dialog and the close control returned to the report."
+    },
+    {
+      "name": "repository-tree",
+      "passed": true,
+      "evidence": "The root tree control collapsed 16 descendant rows and exposes expanded state."
+    },
+    {
+      "name": "no-horizontal-overflow",
+      "passed": true,
+      "evidence": "Desktop width was 1496/1496 and mobile width was 390/390 for scroll/client measurements."
+    }
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "passed": true
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "passed": true
+    },
+    {
+      "name": "print",
+      "media": "print",
+      "passed": true
+    }
+  ]
+}

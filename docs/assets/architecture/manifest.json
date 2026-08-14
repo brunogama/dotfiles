@@ -1,0 +1,124 @@
+{
+  "browser_qa": {
+    "checks": [
+      {
+        "evidence": "1440px-class desktop rendering reviewed; hierarchy, tables, tree, and diagrams were readable.",
+        "name": "desktop-layout",
+        "passed": true
+      },
+      {
+        "evidence": "390x844 emulation reviewed; document width matched viewport and navigation remained reachable.",
+        "name": "mobile-layout",
+        "passed": true
+      },
+      {
+        "evidence": "Print emulation hid sidebar and dialog and rendered a white document background.",
+        "name": "print-layout",
+        "passed": true
+      },
+      {
+        "evidence": "Visible focus was verified on the report search field; diagram and tree controls expose keyboard event handlers.",
+        "name": "keyboard-navigation",
+        "passed": true
+      },
+      {
+        "evidence": "Searching Security Boundaries produced two matching sections and clearing restored the report.",
+        "name": "search",
+        "passed": true
+      },
+      {
+        "evidence": "The system-context diagram opened in the native dialog and the close control returned to the report.",
+        "name": "diagram-zoom",
+        "passed": true
+      },
+      {
+        "evidence": "The root tree control collapsed 16 descendant rows and exposes expanded state.",
+        "name": "repository-tree",
+        "passed": true
+      },
+      {
+        "evidence": "Desktop width was 1496/1496 and mobile width was 390/390 for scroll/client measurements.",
+        "name": "no-horizontal-overflow",
+        "passed": true
+      }
+    ],
+    "html_sha256": "a57e8ab4dd1798a5d00984c0d58990df5a5f149d14a945dafb81e38fb867de7b",
+    "reviewed": true
+  },
+  "files": [
+    {
+      "kind": "json",
+      "path": "browser-qa.json",
+      "sha256": "b107177457d195f241f86dd71893a464f4afd094d2c7bb694d2b284dd9bfb262",
+      "size": 2005
+    },
+    {
+      "kind": "mmd",
+      "path": "diagrams/activation-and-ownership.mmd",
+      "sha256": "160cf2f33979a486ddfe42c42c0bdcf49d13506ba15c6ecdcc58493708859027",
+      "size": 900
+    },
+    {
+      "kind": "svg",
+      "path": "diagrams/activation-and-ownership.svg",
+      "sha256": "51606caea02d51c2358657da572e16cdd01b3ca12484b00c35618478717411c7",
+      "size": 28402
+    },
+    {
+      "kind": "mmd",
+      "path": "diagrams/runtime-flows.mmd",
+      "sha256": "4eb5d44f9e4e517b0611035980877245e872497264b2ac69c5c83641860a1367",
+      "size": 863
+    },
+    {
+      "kind": "svg",
+      "path": "diagrams/runtime-flows.svg",
+      "sha256": "163bd121a478fa5b36d2e6d02e5c902a5407916912b81023f2d97e6ae78d13bd",
+      "size": 29425
+    },
+    {
+      "kind": "mmd",
+      "path": "diagrams/system-context.mmd",
+      "sha256": "442fddf6e1d42417fe3d776acfff774b73bbf8a26dc5a2d14542f0415c96362c",
+      "size": 735
+    },
+    {
+      "kind": "svg",
+      "path": "diagrams/system-context.svg",
+      "sha256": "6c29afffa773bc610be72aa074e1bfe64bbe8d0b9467434bd8581814c678a577",
+      "size": 22962
+    },
+    {
+      "kind": "jsonl",
+      "path": "evidence.jsonl",
+      "sha256": "6d49e2ec1ba7f3d407fc80b7af25219eed9cc81bbaf43317ddfd85bb901d0bb8",
+      "size": 114689
+    },
+    {
+      "kind": "jsonl",
+      "path": "inventory.jsonl",
+      "sha256": "85338b317999d19b523bf18e732bea000b869e34864a332519a5f86080a4ec16",
+      "size": 87891
+    }
+  ],
+  "generated_at": "2026-08-14T10:28:10Z",
+  "generated_files": [
+    "browser-qa.json",
+    "diagrams/activation-and-ownership.mmd",
+    "diagrams/activation-and-ownership.svg",
+    "diagrams/runtime-flows.mmd",
+    "diagrams/runtime-flows.svg",
+    "diagrams/system-context.mmd",
+    "diagrams/system-context.svg",
+    "evidence.jsonl",
+    "inventory.jsonl"
+  ],
+  "generator": {
+    "name": "repository-architecture",
+    "version": "0.1.0"
+  },
+  "repository": "dotfiles",
+  "revision": "3b7a07f6243ca229b69f0782079ec908b660cddc",
+  "schema": "repository-architecture-assets",
+  "version": 1
+}

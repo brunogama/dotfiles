@@ -1,0 +1,13 @@
+%% title: Activation and configuration ownership
+%% description: Nix configuration activates Home Manager or nix-darwin, while the convention linker handles only targets outside Home Manager ownership.
+%% evidence: COMP-001, COMP-002, COMP-003, COMP-004, CTX-001
+flowchart TB
+  install[install] -->|Nix default path| bootstrap[nix-bootstrap]
+  bootstrap -->|user activation| home_manager[Home Manager]
+  bootstrap -->|system flag| darwin[nix-darwin]
+  home_manager -->|owns declared shell and Git files| managed[Managed home files]
+  darwin -->|reuses Home Manager module| home_manager
+  linker[link-dotfiles] -->|maps convention sources| unmanaged[Unmanaged home files and public commands]
+  exclusion[Home Manager target exclusion] -->|prevents duplicate ownership| linker
+  work_mode[work-mode] -->|atomically writes| state[Mutable environment state]
+  state -->|is sourced by| shell[Zsh startup]

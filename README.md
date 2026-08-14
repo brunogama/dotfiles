@@ -103,7 +103,7 @@ Restart the shell with `exec zsh` after switching. The active profile is stored 
 
 ### Link repository files and commands
 
-The convention linker maps files from `home/` and platform overlays below `$HOME`, then exposes immediate executable files from `bin/<domain>/` in `~/.local/bin`.
+The repository layout is the source of truth for links the linker owns: files beneath `home/`, platform overlays such as `home-darwin/`, and immediate executable files in `bin/<domain>/`. Targets declared in [`nix/home.nix`](nix/home.nix) are owned by Home Manager and are intentionally skipped.
 
 ```bash
 uv run bin/core/link-dotfiles.py --dry-run
@@ -186,6 +186,7 @@ Run the narrowest useful check for the files you changed:
 ```bash
 # Installation and Nix evaluation
 ./install --nix --dry-run
+./install --dry-run
 nix-validate --static
 nix-validate --target user
 nix-validate --target system
@@ -194,6 +195,7 @@ nix-validate --target system
 bash -n install
 zsh -n home/.config/zsh/.zshrc
 uv run bin/core/link-dotfiles.py --dry-run
+uv run bin/core/link-dotfiles.py --prune --dry-run
 
 # Repository test suites
 ./bin/test/run-tests
