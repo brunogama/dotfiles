@@ -218,7 +218,7 @@ assert_link_points_to() {
     create_home_file ".first"
     create_home_file ".second"
 
-    run env LINK_DOTFILES_TEST_FAIL_AFTER=1 python3 "$LINK_SCRIPT" --apply --yes
+    run python3 "$LINK_SCRIPT" --apply --yes --self-test-fail-after 1
     assert_failure
     assert_output --partial "injected filesystem failure"
 
