@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@curl.md/pi": "0.1.2",
-    "@earendil-works/pi-coding-agent": "0.82.0",
+    "@earendil-works/pi-coding-agent": "0.84.1",
     "@juicesharp/rpiv-ask-user-question": "1.18.2",
     "@juicesharp/rpiv-btw": "1.18.2",
     "@playwright/cli": "0.1.13",
