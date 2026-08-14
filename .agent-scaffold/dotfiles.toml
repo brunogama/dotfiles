@@ -10,6 +10,7 @@ tags = ["dotfiles", "macos", "nix", "agents", "skills", "qa"]
 [repository]
 default_branch = "main"
 require_candidate_staging = true
+approved_active_skills = ["repo-code-review"]
 include_github_workflows = true
 
 [skills]
@@ -18,6 +19,7 @@ include_base_skills = [
   "recover",
   "remember",
   "review",
+  "repo-code-review",
   "skill-forge",
 ]
 

@@ -165,6 +165,14 @@ def _validate_skill_lifecycle(repository_root: Path) -> list[str]:
     ):
         return []
 
+    approved_active_skills = repository.get("approved_active_skills", [])
+    if not isinstance(approved_active_skills, list) or not all(
+        isinstance(skill_name, str) and SKILL_NAME.fullmatch(skill_name)
+        for skill_name in approved_active_skills
+    ):
+        return ["lifecycle: approved_active_skills must contain valid skill names"]
+
+    approved_names = set(approved_active_skills)
     skill_roots = [
         repository_root / ".claude/skills",
         repository_root / ".pi/skills",
@@ -175,6 +183,7 @@ def _validate_skill_lifecycle(repository_root: Path) -> list[str]:
         for root in skill_roots
         if root.is_dir()
         for skill_path in sorted(root.glob("*/SKILL.md"))
+        if skill_path.parent.name not in approved_names
     ]
 
 

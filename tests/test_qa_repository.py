@@ -36,6 +36,34 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             failures,
         )
 
+    def test_accepts_explicitly_approved_active_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_required_files(repository_root)
+            (repository_root / ".agent-scaffold").mkdir()
+            (repository_root / ".agent-scaffold/dotfiles.toml").write_text(
+                "[repository]\n"
+                "require_candidate_staging = true\n"
+                'approved_active_skills = ["repo-code-review"]\n',
+                encoding="utf-8",
+            )
+            skill_path = repository_root / ".pi/skills/repo-code-review/SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(
+                "---\n"
+                "name: repo-code-review\n"
+                "description: Use when auditing this repository.\n"
+                "---\n",
+                encoding="utf-8",
+            )
+
+            failures = validate_repository(repository_root)
+
+        self.assertFalse(
+            any(failure.startswith("lifecycle:") for failure in failures),
+            failures,
+        )
+
     def test_accepts_candidates_outside_discovered_skill_roots(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             repository_root = Path(temporary_directory)
