@@ -4,23 +4,23 @@ Modern Unix dotfiles with environment management, automated sync, and secure cre
 
 ## Core Functionality
 
-**Environment Management**
+### Environment Management
 
 - `work-mode [work|personal|status]` - Switch between work/home environments
 - Prompt shows: **WORK** (orange) or **HOME:PERSONAL** (blue)
 - Config: `~/.config-fixing-dot-files-bugs/zsh/{work,personal}-config.zsh`
 
-**Sync & Backup**
+### Sync and Backup
 
 - `home-sync [sync|push|pull|status]` - Sync dotfiles across machines
 - `home-sync-service [start|stop|status]` - Background sync daemon
 
-**Credentials**
+### Credentials
 
 - `credfile <file>` - Manage secure credential files (keychain + encrypted)
 - `credmatch <pattern>` - Search/decrypt credentials by pattern
 
-**Dotfiles Management**
+### Dotfiles Management
 
 - `./install` - One-command installation (idempotent)
 - `./install --dry-run` - Preview installation without changes
@@ -31,7 +31,7 @@ Modern Unix dotfiles with environment management, automated sync, and secure cre
 
 ## Project Structure
 
-```
+```text
 .gitignore           # Symlink → git/.gitignore
 .gitmodules          # Symlink → git/.gitmodules
 home/                # Common files mapped below $HOME
@@ -95,7 +95,7 @@ openspec/            # Change proposals and specs
 ## OpenSpec Integration
 
 <!-- OPENSPEC:START -->
-# OpenSpec Instructions
+### OpenSpec Instructions
 
 These instructions are for AI assistants working in this project.
 
