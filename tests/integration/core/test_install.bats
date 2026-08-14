@@ -50,8 +50,15 @@ EOF
 brew "jq"
 EOF
 
-    # Copy install script to test directory
+    # Keep legacy phase tests deterministic; router behavior has dedicated tests below.
     cp "$(get_dotfiles_root)/install" "$DOTFILES_ROOT/install"
+    sed 's/^BACKEND="auto"$/BACKEND="legacy"/' "$DOTFILES_ROOT/install" > "$DOTFILES_ROOT/install.fixture"
+    mv "$DOTFILES_ROOT/install.fixture" "$DOTFILES_ROOT/install"
+    grep -q '^BACKEND="legacy"$' "$DOTFILES_ROOT/install" || {
+        echo "test setup did not force the legacy backend" >&2
+        return 1
+    }
+    chmod +x "$DOTFILES_ROOT/install"
 }
 
 teardown() {
@@ -66,7 +73,9 @@ teardown() {
     assert_output --partial "install v"
     assert_output --partial "USAGE:"
     assert_output --partial "OPTIONS:"
-    assert_output --partial "--nix"
+    assert_output --partial "--backend MODE"
+    assert_output --partial "--nix              Compatibility alias for --backend nix"
+    assert_output --partial "--legacy           Alias for --backend legacy"
     assert_output --partial "--system"
     assert_output --partial "--username"
     assert_output --partial "--machine-name"
@@ -93,25 +102,75 @@ teardown() {
 }
 
 @test "install: --nix delegates without running legacy phases" {
+    skip_on_linux "macOS-specific Nix backend"
+
     run "$DOTFILES_ROOT/install" --nix --dry-run --yes
     assert_success
     assert_output --partial "Mock nix-bootstrap: --dry-run --yes"
     refute_output --partial "Phase 1: Pre-flight Checks"
 }
 
+@test "install: automatic macOS routing delegates to Nix" {
+    skip_on_linux "macOS-specific router selection"
+
+    sed 's/^BACKEND="legacy"$/BACKEND="auto"/' "$DOTFILES_ROOT/install" > "$DOTFILES_ROOT/install.router"
+    mv "$DOTFILES_ROOT/install.router" "$DOTFILES_ROOT/install"
+    grep -q '^BACKEND="auto"$' "$DOTFILES_ROOT/install" || {
+        echo "test setup did not restore automatic backend selection" >&2
+        return 1
+    }
+    chmod +x "$DOTFILES_ROOT/install"
+
+    run "$DOTFILES_ROOT/install" --dry-run --yes
+    assert_success
+    assert_output --partial "Selected backend: nix (darwin default)"
+    assert_output --partial "Mock nix-bootstrap: --dry-run --yes"
+}
+
+@test "install: automatic Linux routing delegates to legacy" {
+    skip_on_macos "Linux-specific router selection"
+
+    sed 's/^BACKEND="legacy"$/BACKEND="auto"/' "$DOTFILES_ROOT/install" > "$DOTFILES_ROOT/install.router"
+    mv "$DOTFILES_ROOT/install.router" "$DOTFILES_ROOT/install"
+    grep -q '^BACKEND="auto"$' "$DOTFILES_ROOT/install" || {
+        echo "test setup did not restore automatic backend selection" >&2
+        return 1
+    }
+    chmod +x "$DOTFILES_ROOT/install"
+
+    run "$DOTFILES_ROOT/install" --dry-run --yes
+    assert_success
+    assert_output --partial "Selected backend: legacy (linux default)"
+    assert_output --partial "Phase 1: Pre-flight Checks"
+}
+
+@test "install: rejects legacy flags with the Nix backend" {
+    skip_on_linux "macOS-specific Nix option validation"
+
+    run "$DOTFILES_ROOT/install" --backend nix --skip-links --dry-run
+    assert_failure 2
+    assert_output --partial "Legacy options cannot be used with the Nix backend"
+}
+
 @test "install: --nix delegates with no forwarded arguments" {
+    skip_on_linux "macOS-specific Nix backend"
+
     run /bin/bash "$DOTFILES_ROOT/install" --nix
     assert_success
     assert_output --partial "Mock nix-bootstrap:"
 }
 
 @test "install: --nix forwards explicit system activation" {
+    skip_on_linux "macOS-specific Nix backend"
+
     run /bin/bash "$DOTFILES_ROOT/install" --nix --system --dry-run
     assert_success
     assert_output --partial "Mock nix-bootstrap: --system --dry-run"
 }
 
 @test "install: --nix forwards host identity" {
+    skip_on_linux "macOS-specific Nix backend"
+
     run /bin/bash "$DOTFILES_ROOT/install" --nix \
         --username ci-user --machine-name "CI Runner Mac" --dry-run
 
@@ -152,6 +211,89 @@ teardown() {
 
     assert_success
     assert_output --partial "Would configure Nix username: ci-user"
+    checksum_after="$(cksum < "$host_file")"
+    assert_equal "$checksum_after" "$checksum_before"
+}
+
+@test "nix-configure-host: preserves multi-word identity while changing Nix ownership" {
+    local real_dotfiles_root host_file original_username
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    cp "$real_dotfiles_root/nix/host.nix" "$host_file"
+    sed 's/^  computerName = .*/  computerName = "CI Runner Mac";/' "$host_file" > "$host_file.updated"
+    mv "$host_file.updated" "$host_file"
+    original_username="$(awk '$1 == "username" { gsub(/[";]/, "", $3); print $3 }' "$host_file")"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash \
+        "$real_dotfiles_root/bin/core/nix-configure-host" \
+        --nix-distribution determinate --preserve-identity
+
+    assert_success
+    assert_file_contains "$host_file" "username = \"$original_username\";"
+    assert_file_contains "$host_file" 'computerName = "CI Runner Mac";'
+    assert_file_contains "$host_file" 'manageNix = false;'
+}
+
+@test "nix-configure-host: updates manageNix for upstream Nix ownership" {
+    local real_dotfiles_root host_file
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    sed 's/^  manageNix = .*/  manageNix = false;/' "$real_dotfiles_root/nix/host.nix" > "$host_file"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash \
+        "$real_dotfiles_root/bin/core/nix-configure-host" \
+        --nix-distribution upstream --preserve-identity
+
+    assert_success
+    assert_file_contains "$host_file" 'manageNix = true;'
+}
+
+@test "nix-configure-host: requires manageNix for declared Nix ownership" {
+    local real_dotfiles_root host_file
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    sed '/^  manageNix = /d' "$real_dotfiles_root/nix/host.nix" > "$host_file"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash \
+        "$real_dotfiles_root/bin/core/nix-configure-host" \
+        --nix-distribution determinate --preserve-identity
+
+    assert_failure 2
+    assert_output --partial "host.nix is missing manageNix"
+}
+
+@test "nix-configure-host: dry-run rejects missing manageNix" {
+    local real_dotfiles_root host_file
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    sed '/^  manageNix = /d' "$real_dotfiles_root/nix/host.nix" > "$host_file"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" /bin/bash \
+        "$real_dotfiles_root/bin/core/nix-configure-host" \
+        --dry-run --nix-distribution determinate --preserve-identity
+
+    assert_failure 2
+    assert_output --partial "host.nix is missing manageNix"
+}
+
+@test "nix-bootstrap: preserves host configuration when Determinate Nix is unavailable" {
+    skip_on_linux "macOS-specific Nix bootstrap"
+
+    local real_dotfiles_root host_file checksum_before checksum_after missing_profile
+    real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
+    host_file="$BATS_TEST_TMPDIR/host.nix"
+    missing_profile="$BATS_TEST_TMPDIR/missing-nix-profile"
+    cp "$real_dotfiles_root/nix/host.nix" "$host_file"
+    checksum_before="$(cksum < "$host_file")"
+
+    run env DOTFILES_NIX_HOST_FILE="$host_file" \
+        NIX_DAEMON_PROFILE="$missing_profile" \
+        PATH="/usr/bin:/bin" \
+        /bin/bash "$real_dotfiles_root/bin/core/nix-bootstrap" \
+        --nix-distribution determinate --yes
+
+    assert_failure 2
+    assert_output --partial "Determinate Nix must be installed"
     checksum_after="$(cksum < "$host_file")"
     assert_equal "$checksum_after" "$checksum_before"
 }
@@ -218,7 +360,9 @@ teardown() {
 
     assert_success
     assert_output --partial "bin/core/nix-activate"
+    assert_output --partial "bin/core/link-dotfiles.py"
     assert_output --partial "bin/core/zsh-compile --force"
+    refute_output --partial "install --scripts-only"
     refute_output --partial "bin/core/nix-rebuild"
     refute_output --partial "sudo"
 }
@@ -543,6 +687,7 @@ teardown() {
     assert_success
     assert_output --partial "Public Command Linking (~/.local/bin only)"
     assert_output --partial "Mock link-dotfiles --commands-only --dry-run --yes"
+    refute_output --partial "Mock nix-bootstrap"
     refute_output --partial "~/local/bin"
 }
 
@@ -604,9 +749,26 @@ teardown() {
     assert_equal "$status" 0
 }
 
-@test "install: exits 1 on unknown option" {
+@test "install: exits 2 on unknown option" {
     run "$DOTFILES_ROOT/install" --invalid-flag
-    assert_equal "$status" 1
+    assert_equal "$status" 2
+}
+
+@test "install: rejects an explicit legacy backend on unsupported platforms" {
+    local mock_bin
+    mock_bin="$BATS_TEST_TMPDIR/unknown-platform-bin"
+    mkdir -p "$mock_bin"
+    cat > "$mock_bin/uname" <<'EOF'
+#!/usr/bin/env bash
+printf 'Plan9\n'
+EOF
+    chmod +x "$mock_bin/uname"
+
+    run env PATH="$mock_bin:$PATH" "$DOTFILES_ROOT/install" \
+        --backend legacy --dry-run --yes
+
+    assert_failure 2
+    assert_output --partial "Legacy backend is supported only on macOS and Linux"
 }
 
 @test "install: exits 2 when not in git repo" {
