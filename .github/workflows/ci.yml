@@ -362,6 +362,7 @@ jobs:
         run: |
           bats --tap tests/integration/core/test_install.bats
           bats --tap tests/integration/core/test_work_mode.bats
+          bats --tap tests/integration/core/test_local_ci.bats
 
       - name: Upload test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -399,6 +400,7 @@ jobs:
         run: |
           bats --tap tests/integration/core/test_install.bats
           bats --tap tests/integration/core/test_work_mode.bats
+          bats --tap tests/integration/core/test_local_ci.bats
 
       - name: Upload test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
