@@ -32,7 +32,7 @@
     ".editorconfig": "fbb87bedc2547f38f12c655e34a4b44f568aa0e5e40d77b14d75bb5a1079a347",
     ".github/PULL_REQUEST_TEMPLATE.md": "75ccc9398d1e8ae8c81734eca706844d599ae411fe7a4441d1f8489d9501268c",
     ".github/workflows/qa.yml": "b2501b9d6debd2c32354d8e6b7859ea27e50e3ec29316d51f3a3e193602eff6a",
-    ".gitignore": "8907d82ca67f2f3895272968d550b3bf4e47683b75108f59835d07c30f68660a",
+    ".gitignore": "7268909ceb068aac8701ef576c42ae1abf113561645021df85f282060a185fa4",
     ".pi/prompts/forge-skill.md": "a74494212f7a37b0e6af360eae6209f14581e100dd02d431ffb5c9763f8e2b69",
     ".pi/prompts/peer-review.md": "24fefb68ddc339891727e08ddd373b93ac1687ef3d659e9a9de281404cdb7514",
     ".pi/prompts/qa.md": "6512164bfe3f395fbe48a6c96e6cc45744e5a498ad856a6e16876332c61e609b",
