@@ -196,7 +196,8 @@ jobs:
           for script in bin/core/* bin/credentials/* bin/git/*; do
             if [[ -x "$script" ]] && [[ -f "$script" ]]; then
               echo "Testing: $(basename "$script")"
-              "$script" --help &>/dev/null || echo "No help: $script"
+              perl -e 'alarm 5; exec @ARGV' "$script" --help &>/dev/null ||
+                echo "No help: $script"
             fi
           done
 
