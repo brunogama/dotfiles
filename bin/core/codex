@@ -2,6 +2,7 @@
 # Launches Codex with its optional OpenAI API key.
 
 set -euo pipefail
+IFS=$'\n\t'
 
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
@@ -21,12 +22,30 @@ readonly SCRIPT_DIR
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/agent-credential-loader.sh"
 
+find_codex_bin() {
+    local candidate
+
+    for candidate in \
+        "$HOME/.local/bin/codex" \
+        "$HOME/.codex/packages/standalone/current/bin/codex"; do
+        [[ -x "$candidate" && ! "$candidate" -ef "${BASH_SOURCE[0]}" ]] || continue
+        printf '%s\n' "$candidate"
+        return 0
+    done
+
+    return 1
+}
+
 load_agent_api_key OPENAI_API_KEY
 
-readonly CODEX_BIN="${DOTFILES_CODEX_BIN:-$HOME/.codex/packages/standalone/current/bin/codex}"
-[[ -x "$CODEX_BIN" ]] || {
+CODEX_BIN="${DOTFILES_CODEX_BIN:-}"
+if [[ -z "$CODEX_BIN" ]]; then
+    CODEX_BIN="$(find_codex_bin || true)"
+fi
+[[ -n "$CODEX_BIN" && -x "$CODEX_BIN" ]] || {
     echo "codex: executable not found; install Codex or set DOTFILES_CODEX_BIN" >&2
     exit 127
 }
+readonly CODEX_BIN
 
 exec "$CODEX_BIN" "$@"
