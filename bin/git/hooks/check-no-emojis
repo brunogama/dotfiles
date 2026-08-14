@@ -13,9 +13,15 @@ files=()
 if (($#)); then
 	files=("$@")
 else
+	staged_files="$(mktemp)"
+	trap 'rm -f "$staged_files"' EXIT
+	if ! git diff --cached --name-only -z --diff-filter=ACM >"$staged_files"; then
+		printf 'Failed to read staged files\n' >&2
+		exit 1
+	fi
 	while IFS= read -r -d '' file; do
 		files+=("$file")
-	done < <(git diff --cached --name-only -z --diff-filter=ACM)
+	done <"$staged_files"
 fi
 
 found=false
@@ -26,7 +32,7 @@ for file in "${files[@]}"; do
 	esac
 
 	if [[ -f "$file" ]] &&
-		! perl -CSD -ne 'exit 1 if /[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{231A}-\x{23F3}]/' "$file"; then
+		! perl -CSD -ne 'exit 1 if /[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{231A}-\x{23F3}]/' <"$file"; then
 		printf '%bERROR: Emojis found in %s%b\n' "$RED" "$file" "$NC"
 		echo 'MINDSET.MD Rule 2: No emojis allowed in documentation or code'
 		found=true
