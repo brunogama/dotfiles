@@ -61,7 +61,6 @@ credfile get ssh_key /tmp/key
 | `credfile` | Encrypt/decrypt files | `credfile put secret file.txt` |
 | `credmatch` | Search/store credentials | `credmatch list` |
 | `clear-secret-history` | Remove exposed secrets from history | `clear-secret-history` |
-| `dump-api-keys` | Export all credentials | `dump-api-keys` |
 
 ## Git Utilities
 

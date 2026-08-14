@@ -119,27 +119,6 @@ mkcd() {
     mkdir -p "$1" && cd "$1"
 }
 
-# Load API keys before launching agent CLIs.
-pi() {
-    eval "$(dump-api-keys)"
-    local pi_bin="${DOTFILES_NPM_BIN:-${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/npm/current/node_modules/.bin}/pi"
-    if [[ ! -x "$pi_bin" ]]; then
-        print -u2 "pi is not installed; run nix-npm-sync"
-        return 127
-    fi
-    "$pi_bin" "$@"
-}
-
-claude() {
-    eval "$(dump-api-keys)"
-    "$HOME/.local/bin/claude" "$@"
-}
-
-codex() {
-    eval "$(dump-api-keys)"
-    "$HOME/.local/bin/codex" "$@"
-}
-
 # ============================================================================
 # 7. LAZY LOADING (Defer expensive tools until first use)
 # ============================================================================
