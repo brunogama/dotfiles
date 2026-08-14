@@ -14,6 +14,7 @@ setup() {
     mkdir -p "$TEST_DOTFILES/home"
     export DOTFILES_ROOT="$TEST_DOTFILES"
     export DOTFILES_HOSTNAME="test-host"
+    export XDG_STATE_HOME="$TEST_TEMP_DIR/state"
 }
 
 create_home_file() {
@@ -282,6 +283,42 @@ assert_link_points_to() {
     assert_symlink_exists "$HOME/local/bin/managed-command"
     refute test -e "$HOME/.local/bin/managed-command"
     assert_output --partial "Preserving"
+}
+
+@test "link-dotfiles: migration leaves unproven files directories and symlinks untouched without force and yes" {
+    create_command core managed-command
+    mkdir -p "$HOME/local/bin/unproven-directory"
+    printf 'custom\n' > "$HOME/local/bin/unproven-file"
+    ln -s /tmp/unproven "$HOME/local/bin/managed-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force
+    assert_success
+    assert_file_exists "$HOME/local/bin/unproven-file"
+    assert_dir_exists "$HOME/local/bin/unproven-directory"
+    assert_symlink_exists "$HOME/local/bin/managed-command"
+    refute test -e "$XDG_STATE_HOME/dotfiles/legacy-bin-backups"
+    assert_output --partial "Preserving unproven"
+}
+
+@test "link-dotfiles: force and yes move unproven legacy entries into XDG state backups" {
+    create_command core managed-command
+    mkdir -p "$HOME/local/bin/unproven-directory"
+    printf 'custom\n' > "$HOME/local/bin/unproven-file"
+    printf 'nested\n' > "$HOME/local/bin/unproven-directory/file"
+    ln -s /tmp/unproven "$HOME/local/bin/managed-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
+    assert_success
+    refute test -e "$HOME/local/bin/unproven-file"
+    refute test -e "$HOME/local/bin/unproven-directory"
+    refute test -L "$HOME/local/bin/managed-command"
+    local backup_root
+    backup_root="$(find "$XDG_STATE_HOME/dotfiles/legacy-bin-backups" -mindepth 1 -maxdepth 1 -type d)"
+    assert_file_exists "$backup_root/unproven-file"
+    assert_file_exists "$backup_root/unproven-directory/file"
+    assert_symlink_exists "$backup_root/managed-command"
+    assert_output --partial "Backed up unproven legacy entry"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
+    assert_success
+    assert_equal "$(find "$XDG_STATE_HOME/dotfiles/legacy-bin-backups" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" "1"
 }
 
 @test "link-dotfiles: migration dry-run changes neither legacy nor command links" {

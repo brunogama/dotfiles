@@ -18,6 +18,7 @@ Options:
 import argparse
 import hashlib
 import json
+from datetime import datetime, timezone
 import os
 import shutil
 import socket
@@ -356,8 +357,49 @@ class LinkManager:
                 commands[source.name] = source
         return commands
 
+    def xdg_state_home(self) -> Path:
+        """Return the XDG state location used for linker ownership and backups."""
+        return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+
+    def write_legacy_backup_state(self, backup: Path, legacy: Path) -> None:
+        """Record a moved unmanaged legacy entry for safe migration auditability."""
+        state_file = self.xdg_state_home() / "dotfiles/legacy-bin-backups.json"
+        try:
+            state = json.loads(state_file.read_text())
+            backups = state["backups"]
+            if state.get("version") != 1 or state.get("repository_id") != self.repository_id():
+                raise ValueError("foreign backup state")
+        except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+            backups = []
+        backups.append({"backup": str(backup), "legacy": str(legacy)})
+        payload = {
+            "version": 1,
+            "repository_id": self.repository_id(),
+            "backups": backups,
+        }
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = state_file.with_suffix(".tmp")
+        temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        temporary.replace(state_file)
+
+    def back_up_unproven_legacy_entry(self, legacy: Path, backup_root: Path) -> None:
+        """Move an unproven legacy entry into a timestamped XDG-state backup."""
+        backup = backup_root / legacy.name
+        if self.dry_run:
+            self.log_info(f"Would back up unproven legacy entry: {legacy} -> {backup}")
+            return
+        try:
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(legacy), str(backup))
+            self.write_legacy_backup_state(backup, legacy)
+            self.log_success(f"Backed up unproven legacy entry: {legacy} -> {backup}")
+            self.count_created += 1
+        except OSError as error:
+            self.log_error(f"Could not back up unproven legacy entry {legacy}: {error}")
+            self.count_errors += 1
+
     def migrate_legacy_commands(self) -> None:
-        """Move only legacy symlinks proven to point at current public commands."""
+        """Migrate proven commands and back up unproven entries only with --force --yes."""
         legacy_bin = Path.home() / "local/bin"
         try:
             commands = self.public_commands()
@@ -370,17 +412,13 @@ class LinkManager:
             return
 
         migrations: List[Tuple[Path, Path, Path]] = []
+        unproven_entries: List[Path] = []
         for legacy in sorted(legacy_bin.iterdir()):
             source = commands.get(legacy.name)
-            if source is None:
-                self.log_info(f"Preserving unmanaged legacy entry: {legacy}")
-                self.count_skipped += 1
-                continue
-            if not legacy.is_symlink() or legacy.resolve() != source.resolve():
-                self.log_info(f"Preserving unproven legacy entry: {legacy}")
-                self.count_skipped += 1
-                continue
-            migrations.append((legacy, Path.home() / ".local/bin" / legacy.name, source))
+            if source is not None and legacy.is_symlink() and legacy.resolve() == source.resolve():
+                migrations.append((legacy, Path.home() / ".local/bin" / legacy.name, source))
+            else:
+                unproven_entries.append(legacy)
 
         for legacy, target, source in migrations:
             if target.exists() or target.is_symlink():
@@ -398,8 +436,22 @@ class LinkManager:
             if not target.exists() and not target.is_symlink():
                 target.symlink_to(source)
             legacy.unlink()
+            self.applied_links.append((source, target))
             self.log_success(f"Migrated: {legacy} -> {target}")
             self.count_created += 1
+
+        if self.applied_links and not self.dry_run:
+            self.write_state(preserve_existing=True)
+
+        if unproven_entries and not (self.force and self.yes):
+            for legacy in unproven_entries:
+                self.log_info(f"Preserving unproven legacy entry: {legacy}")
+                self.count_skipped += 1
+            return
+
+        backup_root = self.xdg_state_home() / "dotfiles/legacy-bin-backups" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        for legacy in unproven_entries:
+            self.back_up_unproven_legacy_entry(legacy, backup_root)
 
     def install_folder_actions(self) -> None:
         """Install the Darwin Folder Actions scripts under the user's Library."""
