@@ -11,29 +11,33 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Get all directories in repo. Library is an intentional macOS target path.
-DIRS=$(find . -type d \
-    -not -path "./.git/*" \
-    -not -path "./.git" \
-    -not -path "./.claude/*" \
-    -not -path "./home-darwin/Library" \
-    -not -path "./home-darwin/Library/*" \
-    -not -path "*/node_modules" \
-    -not -path "*/node_modules/*" \
-    -not -path "*/.cache" \
-    -not -path "*/.cache/*" \
-    | sed 's|^\./||' || true)
-
+# home-darwin mirrors macOS destination paths. Library and its descendants are
+# intentionally exempt because macOS requires the uppercase destination name.
 FOUND=false
 
-for dir in $DIRS; do
-    # Check if directory name contains uppercase letters
+while IFS= read -r -d '' dir; do
+    dir="${dir#./}"
+    if [[ "$dir" == "home-darwin/Library" || "$dir" == home-darwin/Library/* ]]; then
+        continue
+    fi
     if [[ "$dir" =~ [A-Z] ]]; then
         echo -e "${RED}ERROR: Uppercase directory found: $dir${NC}"
         echo "MINDSET.MD Rule 1: All directories MUST be lowercase"
         FOUND=true
     fi
-done
+done < <(
+    find . -type d \
+        -not -path "./.git/*" \
+        -not -path "./.git" \
+        -not -path "./.claude/*" \
+        -not -path "./home-darwin/Library" \
+        -not -path "./home-darwin/Library/*" \
+        -not -path "*/node_modules" \
+        -not -path "*/node_modules/*" \
+        -not -path "*/.cache" \
+        -not -path "*/.cache/*" \
+        -print0
+)
 
 if [[ "$FOUND" == "true" ]]; then
     echo ""
