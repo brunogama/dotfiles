@@ -1,236 +1,201 @@
-<!-- prettier-ignore -->
-<div align="center">
-
 # Modern Dotfiles
 
-A declarative, reproducible development environment for macOS and Linux.
-
-[![CI](https://img.shields.io/github/actions/workflow/status/brunogama/dotfiles/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/brunogama/dotfiles/actions)
-![Shell](https://img.shields.io/badge/shell-bash%20%2B%20zsh-4eaa25?style=flat-square)
-![Python](https://img.shields.io/badge/python-3.11%2B-3776ab?style=flat-square&logo=python&logoColor=white)
-![Platform](https://img.shields.io/badge/platform-macOS%20%2B%20Linux-555?style=flat-square)
-
-[Get started](#get-started) • [Everyday operations](#everyday-operations) • [Validation](#validation) • [Documentation](#documentation)
-
-<img src="./img/home.png" alt="Modern Dotfiles terminal home banner" width="720" />
-
-</div>
-
-## Overview
-
----
-
-Modern Dotfiles manages a fast, portable home environment: shell configuration, Git settings, package declarations, secure credentials, and automation commands. Nix and Home Manager are the primary installation path; nix-darwin is opt-in for macOS system settings. Legacy scripts remain available for machines that have not migrated.
+A Nix-first, macOS-oriented home-environment configuration for a reproducible developer setup. It combines Home Manager and optional nix-darwin activation with shell configuration, safe convention-based linking, credential utilities, Git helpers, and local synchronization tools.
 
 > [!IMPORTANT]
-> Start with `./install --nix --dry-run`. Home Manager manages declared shell and Git files and preserves conflicts as `*.pre-nix` backups rather than overwriting them blindly.
+> This repository is configured for macOS hosts. Before activating it on another machine, review and personalize [`nix/host.nix`](nix/host.nix), which defines the account, host, architecture, and Git identity used by the Nix configuration.
+
+---
 
 ## Highlights
 
----
+- **Declarative setup** - Nix flakes and Home Manager manage the primary user environment, with optional nix-darwin system settings.
+- **Explicit ownership** - Home Manager owns its declared paths; the convention linker manages eligible files and public commands outside that boundary.
+- **Safe activation** - Dry-run modes, collision protection, confirmations, and `pre-nix` backups avoid silently overwriting configuration.
+- **Productive shell** - Zsh, Starship, version-manager support, work and personal profiles, and shell-maintenance commands are included.
+- **Credential tooling** - Keychain-backed API-key helpers and encrypted credential-file workflows keep secrets out of the repository and shell history.
+- **Built-in quality checks** - Shell, Python, Nix, integration, and repository validation tooling support safe changes.
 
-| Area | What it provides |
-| --- | --- |
-| Shell | Zsh, Prezto, Starship, lazy loading, completion, and startup profiling. |
-| Environments | `work-mode` switches between personal and work profiles. |
-| Packages | Reproducible Nix packages, pinned npm tools, and a small Homebrew exception list. |
-| Credentials | Keychain-backed API keys plus encrypted searchable credentials and files. |
-| Automation | Core, Git, IDE, macOS, iOS, and media tools exposed from `bin/`. |
-| Quality | Shell checks, Bats integration tests, Python tests, Nix evaluation, and CI. |
+---
 
 ## Get started
 
----
+### Recommended: Nix activation
 
-### Prerequisites
-
-- macOS with Xcode Command Line Tools, or a supported Linux distribution
-- Git and a terminal
-- Nix for the recommended installation path
-- Administrator access only for multi-user Nix or `--system` nix-darwin activation
-
-Review `nix/host.nix` before activation. It defines the machine name, user identity, and Nix ownership settings.
-
-### Install the user environment
+Clone the repository, review [`nix/host.nix`](nix/host.nix), then preview the user-environment activation:
 
 ```bash
 git clone https://github.com/brunogama/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-
-$EDITOR nix/host.nix
 ./install --nix --dry-run
-./install --nix
-exec zsh
 ```
 
-The default Nix flow activates standalone Home Manager without `sudo`, configures the managed home files, installs pinned CLI packages, and links repository commands into `~/.local/bin`.
-
-Use these variants only when needed:
+Apply the user configuration after reviewing the plan:
 
 ```bash
-./install --nix --system    # Also activate nix-darwin system settings
-./install --nix --yes       # Non-interactive identity detection
-./install --nix --skip-npm  # Skip the pinned npm tool set
-./install --scripts-only    # Refresh public command links only
-./install                   # Legacy installer path
+./install --nix
+```
+
+The default Nix flow activates Home Manager for the current user and does not use `sudo`. If Nix is not installed, its installation can still require administrator access.
+
+For the optional privileged macOS configuration, preview first and then apply it:
+
+```bash
+./install --nix --system --dry-run
+./install --nix --system
 ```
 
 > [!TIP]
-> `--system` is the only mode that changes macOS system defaults or touches retained Homebrew exceptions.
+> Pass `--username NAME` or `--machine-name NAME` to set host values during Nix bootstrap. Use `--skip-npm` when you do not want pinned NPM tools synchronized.
 
-### First commands
+### Legacy installer
+
+The repository retains an imperative Homebrew-based installer. It installs dependencies, runs the Homebrew bundle, links files, configures the shell, and performs shell optimization.
 
 ```bash
-work-mode personal
-store-api-key GITHUB_TOKEN
-zsh-benchmark
-dotfiles-help
+./install --dry-run
+./install
 ```
 
-## Everyday operations
+Useful legacy options include `--yes`, `--skip-brew`, `--skip-packages`, `--skip-links`, and `--scripts-only`. Run `./install --help` for the complete interface.
 
 ---
 
-### Switch environment profiles
+## Configuration ownership and linking
+
+The repository uses two complementary activation mechanisms:
+
+| Mechanism | Owns | Use it for |
+| --- | --- | --- |
+| Home Manager and nix-darwin | Paths explicitly declared in [`nix/home.nix`](nix/home.nix) and [`nix/darwin.nix`](nix/darwin.nix) | Reproducible user and system configuration |
+| Convention linker | Eligible files under [`home/`](home/), [`home-darwin/`](home-darwin/), and public executables directly under `bin/<domain>/` | Home files and commands not declared in Nix |
+
+The linker maps home-tree files to their equivalent paths below `$HOME` and links public commands to `~/.local/bin`. It previews by default and refuses unmanaged collisions unless explicitly forced.
 
 ```bash
-work-mode work
-work-mode personal
-work-mode status
-```
-
-Restart the shell with `exec zsh` after switching. The active profile is stored outside the Nix store in `~/.config/zsh/environment.zsh`.
-
-### Link repository files and commands
-
-The repository layout is the source of truth for links the linker owns: files beneath `home/`, platform overlays such as `home-darwin/`, and immediate executable files in `bin/<domain>/`. Targets declared in [`nix/home.nix`](nix/home.nix) are owned by Home Manager and are intentionally skipped.
-
-```bash
+# Inspect planned links
 uv run bin/core/link-dotfiles.py --dry-run
+
+# Apply only after reviewing the plan
 uv run bin/core/link-dotfiles.py --apply --yes
-```
 
-Existing targets are protected. Use `--force --yes` only after reviewing a dry run.
-
-### Store credentials safely
-
-```bash
-# Keychain-backed API key
-store-api-key OPENAI_API_KEY
-get-api-key OPENAI_API_KEY
-
-# Encrypted searchable credentials
-credmatch list
-credmatch search github
-
-# Encrypted file
-credfile put github_ssh ~/.ssh/id_rsa
-credfile get github_ssh /tmp/id_rsa
+# Link only public commands
+uv run bin/core/link-dotfiles.py --commands-only --apply --yes
 ```
 
 > [!WARNING]
-> Never pass a secret as a command argument. Use the interactive prompt, standard input, or a file so secrets do not enter shell history or process listings.
+> Use `--force` only when you have confirmed that replacing an existing target is correct. Pruning removes only links recorded in the linker's ownership state.
 
-### Update packages and dotfiles
+---
+
+## Everyday operations
+
+### Environment and packages
 
 ```bash
-nix-activate                 # Activate the user environment
-nix-update                   # Update and validate flake.lock
-nix-update --switch          # Update and activate the user environment
-nix-validate                 # Run static checks and Nix evaluations
-nix-npm-sync                 # Refresh the pinned npm tool set
-update-dotfiles              # Update the repository checkout
+# Check or change the active shell profile
+work-mode status
+work-mode work
+work-mode personal
+
+# Start a new shell after switching profiles
+exec zsh
+
+# Preview Nix operations
+nix-activate --dry-run
+nix-rebuild --dry-run
+nix-update --dry-run
+
+# Validate the Nix configuration
+nix-validate
 ```
 
-Add general CLI packages to `nix/packages.nix`. Keep Homebrew exceptions aligned between `nix/darwin.nix` and `packages/homebrew/Brewfile.generated`.
-
-### Sync and maintain the shell
+### Credentials
 
 ```bash
-syncenv --status
-home-sync status
-home-sync-service start
+# Prompt for an API key and store it in the macOS Keychain
+store-api-key OPENAI_API_KEY
 
-zsh-benchmark --detailed
+# Retrieve a stored API key
+get-api-key OPENAI_API_KEY
+
+# Manage encrypted credential files
+credfile ~/.secrets/example
+credmatch example
+```
+
+> [!WARNING]
+> Never pass a secret as a command argument. Use the interactive prompt, standard input, or a file so it does not enter shell history or process listings.
+
+### Synchronization and shell maintenance
+
+```bash
+# Synchronize this dotfiles repository
+home-sync status
+home-sync sync
+
+# Maintain shell performance
+zsh-benchmark
 zsh-compile
 zsh-trim-history
 ```
 
-`syncenv` resolves inline Python dependencies with `uv`. The optional `home-sync` service is a package-backed Python application under `bin/core/home_sync`.
+---
 
 ## Project map
 
----
-
 ```text
 .
-├── flake.nix        # Nix, Home Manager, and nix-darwin entry point
 ├── install          # Nix dispatcher and legacy installer
-├── home/            # Common files mapped below $HOME
-├── home-darwin/     # macOS-specific home overrides
+├── flake.nix        # Nix flake entry point
+├── nix/             # Host, Home Manager, package, and nix-darwin modules
+├── home/            # Common home-directory source files
+├── home-darwin/     # macOS-specific home-directory source files
 ├── bin/             # Public tools grouped by domain
-├── nix/             # Host, package, Home Manager, and macOS modules
-├── packages/        # Npm, Homebrew, mise, macOS, and service configuration
-├── git/             # Git config, aliases, and hooks
-├── zsh/             # Shell framework, themes, and completion
-├── tests/           # Bats, Python, fixtures, and helpers
-└── docs/            # Guides, command reference, and technical reports
+│   ├── core/        # Nix, linker, shell, sync, and utility commands
+│   ├── credentials/ # Keychain and encrypted-credential tools
+│   ├── git/         # Git workflow helpers and hooks
+│   ├── ide/         # IDE integrations
+│   └── macos/       # macOS-specific utilities
+├── packages/        # Package-manager configuration
+├── git/             # Git configuration and shared helpers
+├── zsh/             # Zsh configuration and support files
+├── tests/           # Bats, Python, and integration coverage
+└── docs/            # Architecture, guides, and operational documentation
 ```
-
-## Validation
 
 ---
 
-Run the narrowest useful check for the files you changed:
+## Validate changes
+
+Run the checks appropriate to the surface you changed:
 
 ```bash
-# Installation and Nix evaluation
-./install --nix --dry-run
-./install --dry-run
-nix-validate --static
-nix-validate --target user
-nix-validate --target system
-
-# Shell and command linking
+# Shell syntax
 bash -n install
-zsh -n home/.config/zsh/.zshrc
+
+# Static and evaluated Nix checks
+nix-validate --static
+nix-validate
+
+# Confirm linking is safe before applying it
 uv run bin/core/link-dotfiles.py --dry-run
-uv run bin/core/link-dotfiles.py --prune --dry-run
 
-# Repository test suites
-./bin/test/run-tests
+# Integration tests
+bin/test/run-tests
 
-# home-sync Python package
-cd bin/core/home_sync
-uv pip install -e '.[dev]'
-uv run pytest tests/ -v
-uv run mypy home_sync --strict
+# Focused Python tests
+python3 tests/test_git_smart_merge.py
+python3 tests/test_uv_resolver.py
 ```
 
-GitHub Actions verifies a clean Home Manager installation on macOS as well as the static, integration, and documentation checks.
+See [`tests/README.md`](tests/README.md) for Bats test prerequisites, filtering, timing, TAP output, and parallel execution.
+
+---
 
 ## Documentation
 
----
-
-- [QUICKSTART.md](QUICKSTART.md) - Short setup path.
-- [ONBOARDING.md](ONBOARDING.md) - Architecture and development workflow.
-- [docs/scripts/quick-reference.md](docs/scripts/quick-reference.md) - Command reference.
-- [docs/guides/CREDENTIAL_MANAGEMENT.md](docs/guides/CREDENTIAL_MANAGEMENT.md) - Credential storage and recovery.
-- [docs/reports/ZSH_OPTIMIZATION_SUMMARY.md](docs/reports/ZSH_OPTIMIZATION_SUMMARY.md) - Shell performance notes.
-- `AGENTS.md` - Repository conventions for coding agents.
-
-## Troubleshooting
-
----
-
-| Symptom | Try this |
-| --- | --- |
-| A command is unavailable | Run `nix-activate`, then `exec zsh`. For repository commands, run `./install --scripts-only` and ensure `~/.local/bin` is on `PATH`. |
-| Activation reports a file conflict | Inspect the file and its `*.pre-nix` backup before retrying. Do not delete either blindly. |
-| `pi` is unavailable | Run `nix-npm-sync`, then check `~/.local/share/dotfiles/npm/current/node_modules/.bin/pi`. |
-| Nix conflicts with Determinate Nix | Set `manageNix = false` in `nix/host.nix`, then rebuild. |
-| Shell startup is slow | Run `zsh-benchmark --detailed`, then `zsh-compile`. |
-| Credentials are missing | Use `credmatch list`, `credfile list`, or re-store a simple key with `store-api-key`. |
-
-If you adapt this repository for another machine, review every host value, link target, and installation command before applying it.
+- [Architecture overview](docs/architecture.md)
+- [Convention linker source inventory](docs/linking-source-inventory.md)
+- [Credential management guide](docs/guides/CREDENTIAL_MANAGEMENT.md)
+- [Git virtual worktree guide](docs/git-virtual-worktree.md)
