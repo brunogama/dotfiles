@@ -430,7 +430,6 @@ jobs:
             "README.md"
             "MINDSET.MD"
             "AGENTS.md"
-            "ONBOARDING.md"
           )
 
           for doc in "${required_docs[@]}"; do

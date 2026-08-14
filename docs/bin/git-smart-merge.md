@@ -5,6 +5,7 @@ Intelligently merge a Git branch using rebase or merge based on automatic confli
 ## Overview
 
 `git-smart-merge` automatically determines the optimal Git merge strategy by:
+
 1. Checking for conflicts before attempting rebase
 2. Using `git rebase` for clean, linear history when safe
 3. Falling back to `git merge --no-ff` when conflicts are detected
@@ -12,15 +13,16 @@ Intelligently merge a Git branch using rebase or merge based on automatic confli
 
 ## Installation
 
-The script is located at `bin/git-smart-merge` and is already executable.
+The script is located at `bin/git/git-smart-merge` and is already executable.
 
 Optionally, add to your PATH:
+
 ```bash
 # Add to ~/.zshrc or ~/.bashrc
-export PATH="$HOME/.config-fixing-dot-files-bugs/bin:$PATH"
+export PATH="$HOME/.config-fixing-dot-files-bugs/bin/git:$PATH"
 
 # Or create an alias
-alias gsm='~/.config-fixing-dot-files-bugs/bin/git-smart-merge'
+alias gsm='~/.config-fixing-dot-files-bugs/bin/git/git-smart-merge'
 ```
 
 ## Usage
@@ -38,18 +40,21 @@ git-smart-merge <source-branch> [options]
 ### Examples
 
 **Basic usage:**
+
 ```bash
 # Smart merge feature branch into current branch
 git-smart-merge feature-branch
 ```
 
 **Preview mode:**
+
 ```bash
 # See what would happen without making changes
 git-smart-merge feature-branch --dry-run
 ```
 
 **Force specific strategy:**
+
 ```bash
 # Always use merge, never rebase
 git-smart-merge feature-branch --force-merge
@@ -63,6 +68,7 @@ git-smart-merge feature-branch --force-rebase
 ### 1. Pre-flight Checks
 
 The script validates:
+
 - Repository is a valid Git repository
 - Working directory has no uncommitted changes
 - Source branch exists (locally or remotely)
@@ -75,11 +81,13 @@ Uses `git merge-tree` to simulate the merge and detect conflicts without touchin
 ### 3. Strategy Selection
 
 **Rebase chosen when:**
+
 - No merge conflicts detected
 - Creates clean, linear history
 - Logs: "Rebase strategy chosen: no conflicts detected"
 
 **Merge chosen when:**
+
 - Conflicts detected in analysis
 - Safer approach that preserves both histories
 - Logs: "Merge strategy chosen: conflicts detected, rebase not safe"
@@ -92,7 +100,7 @@ Executes the chosen strategy with full error handling and logging.
 
 ### Successful Rebase
 
-```
+```text
 [git-smart-merge] Checking repository state...
 [git-smart-merge] Current branch: main
 [git-smart-merge] Source branch: feature-branch
@@ -108,7 +116,7 @@ Executes the chosen strategy with full error handling and logging.
 
 ### Conflicts Detected (Merge Used)
 
-```
+```text
 [git-smart-merge] Checking repository state...
 [git-smart-merge] Current branch: main
 [git-smart-merge] Source branch: feature-branch
@@ -125,7 +133,7 @@ Executes the chosen strategy with full error handling and logging.
 
 ### Error: Uncommitted Changes
 
-```
+```text
 [git-smart-merge] Checking repository state...
 [git-smart-merge] ERROR: Uncommitted changes detected. Commit or stash changes before merging.
 [git-smart-merge] Run 'git status' to see uncommitted changes.
@@ -134,7 +142,7 @@ Executes the chosen strategy with full error handling and logging.
 ## Exit Codes
 
 | Code | Meaning | Examples |
-|------|---------|----------|
+| --- | --- | --- |
 | 0 | Success | Rebase or merge completed successfully |
 | 1 | Error | Uncommitted changes, conflicts, git failure, branch not found |
 | 2 | Usage error | Missing branch argument, conflicting flags |
@@ -146,6 +154,7 @@ Executes the chosen strategy with full error handling and logging.
 **Cause:** Source branch doesn't exist locally or remotely.
 
 **Solution:**
+
 ```bash
 # List all branches
 git branch -a
@@ -162,6 +171,7 @@ git branch -a | grep feature
 **Cause:** Working directory has uncommitted changes.
 
 **Solution:**
+
 ```bash
 # See what's uncommitted
 git status
@@ -180,6 +190,7 @@ git stash push -m "temporary stash"
 **Cause:** Unexpected conflicts during rebase execution.
 
 **Solution:**
+
 ```bash
 # Option 1: Abort and retry with merge
 git rebase --abort
@@ -196,6 +207,7 @@ git rebase --continue
 **Cause:** Conflicts appeared during merge (even though detected).
 
 **Solution:**
+
 ```bash
 # Option 1: Resolve and continue
 # ... edit conflicted files ...
@@ -209,17 +221,20 @@ git merge --abort
 ## Best Practices
 
 1. **Always work with clean state:**
+
    ```bash
    git status  # Verify clean
    git-smart-merge feature-branch
    ```
 
 2. **Preview before executing:**
+
    ```bash
    git-smart-merge feature-branch --dry-run
    ```
 
 3. **Keep branches up to date:**
+
    ```bash
    git fetch
    git pull origin main
@@ -231,6 +246,7 @@ git merge --abort
    - `--force-rebase`: Only when you're confident there are no conflicts
 
 5. **Verify result:**
+
    ```bash
    git log --oneline --graph -10
    ```
@@ -279,12 +295,14 @@ fi
 ### Conflict Detection Method
 
 The script uses `git merge-tree` which performs a three-way merge simulation:
+
 ```bash
 merge_base=$(git merge-base current_branch source_branch)
 git merge-tree $merge_base current_branch source_branch
 ```
 
 This approach:
+
 - Doesn't modify working tree or index
 - Fast and reliable
 - Same algorithm used by `git merge`
@@ -307,11 +325,13 @@ This approach:
 ## Testing
 
 Run the test suite:
+
 ```bash
 python3 tests/test_git_smart_merge.py -v
 ```
 
 Test coverage includes:
+
 - Missing arguments
 - Non-existent branches
 - Uncommitted changes detection
@@ -331,6 +351,7 @@ Test coverage includes:
 ## Contributing
 
 When modifying this script:
+
 1. Update tests in `tests/test_git_smart_merge.py`
 2. Run test suite: `python3 tests/test_git_smart_merge.py -v`
 3. Update this documentation
