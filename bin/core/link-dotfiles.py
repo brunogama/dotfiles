@@ -268,7 +268,7 @@ class LinkManager:
         temporary.replace(state_file)
 
     def desired_targets(self) -> Dict[Path, Path]:
-        """Return the current home-tree targets without consulting legacy metadata."""
+        """Return every target managed by the current convention sources."""
         targets: Dict[Path, Path] = {}
         home = Path.home()
         for tree_name in ("home", f"home-{self.platform}", f"home-host-{self.hostname}"):
@@ -277,6 +277,12 @@ class LinkManager:
                 for source in tree.rglob("*"):
                     if stat.S_ISREG(source.lstat().st_mode):
                         targets[home / source.relative_to(tree)] = source
+        for name, source in self.public_commands().items():
+            targets[home / ".local/bin" / name] = source
+        if self.platform == "darwin":
+            source = self.dotfiles_root / "bin/folder-action-scripts/compress-video-automation.scpt"
+            if source.is_file():
+                targets[home / "Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"] = source
         return targets
 
     def prune(self) -> None:
@@ -284,15 +290,22 @@ class LinkManager:
         state_file = Path.home() / ".local/state/dotfiles/links.json"
         try:
             state = json.loads(state_file.read_text())
-            if state.get("version") != 1 or not isinstance(state.get("repository_id"), str):
-                raise ValueError("unsupported ownership state")
+            if state.get("version") != 1 or state.get("repository_id") != self.repository_id():
+                raise ValueError("ownership state belongs to a different repository")
             links = state["links"]
         except (FileNotFoundError, ValueError, json.JSONDecodeError, KeyError, TypeError):
             self.log_error(f"Invalid or missing ownership ledger: {state_file}")
             self.count_errors += 1
             return
 
-        desired = self.desired_targets()
+        try:
+            desired = self.desired_targets()
+        except ValueError as error:
+            self.log_error(str(error))
+            self.count_errors += 1
+            return
+        retained_links = []
+        state_changed = False
         for recorded in links:
             try:
                 target = Path(recorded["target"])
@@ -305,17 +318,26 @@ class LinkManager:
             desired_source = desired.get(target)
             stale = desired_source is None or current_source != desired_source.resolve()
             if not stale:
+                retained_links.append(recorded)
                 continue
             if not target.is_symlink() or current_source != source.resolve():
                 self.log_warning(f"Refusing unproven stale target: {target}")
                 self.count_skipped += 1
+                retained_links.append(recorded)
                 continue
             if self.dry_run:
                 self.log_info(f"Would prune: {target}")
+                retained_links.append(recorded)
             else:
                 target.unlink()
                 self.log_success(f"Pruned: {target}")
+                state_changed = True
             self.count_created += 1
+        if state_changed:
+            state["links"] = retained_links
+            temporary = state_file.with_suffix(".tmp")
+            temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+            temporary.replace(state_file)
 
     def public_commands(self) -> Dict[str, Path]:
         """Discover unique executable commands exposed from immediate domain entries."""
