@@ -2,6 +2,7 @@
 # Launches Claude Code with its optional Anthropic API key.
 
 set -euo pipefail
+IFS=$'\n\t'
 
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
@@ -31,6 +32,17 @@ find_latest_claude_bin() {
     return 1
 }
 
+find_claude_bin() {
+    local legacy_bin="$HOME/.local/bin/claude"
+
+    if [[ -x "$legacy_bin" && ! "$legacy_bin" -ef "${BASH_SOURCE[0]}" ]]; then
+        printf '%s\n' "$legacy_bin"
+        return 0
+    fi
+
+    find_latest_claude_bin
+}
+
 SCRIPT_DIR="$(resolve_script_dir)"
 readonly SCRIPT_DIR
 # shellcheck disable=SC1091
@@ -40,7 +52,7 @@ load_agent_api_key ANTHROPIC_API_KEY
 
 CLAUDE_BIN="${DOTFILES_CLAUDE_BIN:-}"
 if [[ -z "$CLAUDE_BIN" ]]; then
-    CLAUDE_BIN="$(find_latest_claude_bin || true)"
+    CLAUDE_BIN="$(find_claude_bin || true)"
 fi
 [[ -n "$CLAUDE_BIN" && -x "$CLAUDE_BIN" ]] || {
     echo "claude: executable not found; install Claude Code or set DOTFILES_CLAUDE_BIN" >&2

@@ -2,6 +2,7 @@
 # Launches Pi with only its supported provider API keys.
 
 set -euo pipefail
+IFS=$'\n\t'
 
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
