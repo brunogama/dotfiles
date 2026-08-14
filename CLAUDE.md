@@ -11,7 +11,7 @@ Follow `AGENTS.md` as the shared project and agent-infrastructure policy.
 ### Permissions
 
 - Read repository files freely.
-- Write candidate skills only under `.claude/skills/_candidates/`.
+- Write candidate skills only under `.claude/_candidates/`.
 - Promote candidates only after explicit human approval.
 - Do not edit `learnings/SKILLS-LOG.md` for an unapproved candidate.
 

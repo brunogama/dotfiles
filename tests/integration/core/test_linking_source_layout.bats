@@ -119,6 +119,14 @@
     grep -q '__HOME__' "$plist_path"
 }
 
+@test "Claude candidate paths are unignored" {
+    local repository_root
+    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
+
+    grep -Fxq '!.claude/_candidates/' "$repository_root/.gitignore"
+    grep -Fxq '!.claude/_candidates/**' "$repository_root/.gitignore"
+}
+
 @test "legacy Darwin launch-agent source path is retired" {
     local repository_root
     repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"

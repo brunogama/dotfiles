@@ -22,9 +22,9 @@ Choose the current harness root once:
 
 | Harness | Active skill root | Candidate root |
 | --- | --- | --- |
-| Claude | `.claude/skills/` | `.claude/skills/_candidates/` |
-| Pi | `.pi/skills/` | `.pi/skills/_candidates/` |
-| Codex/shared | `.agents/skills/` | `.agents/skills/_candidates/` |
+| Claude | `.claude/skills/` | `.claude/_candidates/` |
+| Pi | `.pi/skills/` | `.pi/_candidates/` |
+| Codex/shared | `.agents/skills/` | `.agents/_candidates/` |
 
 Call these `<active-skill-root>` and `<candidate-root>` below. Never substitute a different harness's root.
 

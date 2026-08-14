@@ -36,7 +36,39 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             failures,
         )
 
-    def _write_required_files(self, repository_root: Path) -> None:
+    def test_accepts_candidates_outside_discovered_skill_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_required_files(repository_root, harnesses=["pi", "codex"])
+            for relative_name in [
+                ".pi/settings.json",
+                ".pi/prompts/qa.md",
+                ".agents/agents/qa.md",
+            ]:
+                path = repository_root / relative_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("placeholder\n", encoding="utf-8")
+            for relative_name in [
+                ".pi/_candidates/skill-forge/SKILL.md",
+                ".agents/_candidates/skill-forge/SKILL.md",
+            ]:
+                path = repository_root / relative_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(
+                    "---\nname: skill-forge\ndescription: Stage a candidate skill.\n---\n",
+                    encoding="utf-8",
+                )
+
+            failures = validate_repository(repository_root)
+
+        self.assertFalse(
+            any(failure.startswith("required: missing") for failure in failures),
+            failures,
+        )
+
+    def _write_required_files(
+        self, repository_root: Path, harnesses: list[str] | None = None
+    ) -> None:
         for relative_name in [
             "AGENTS.md",
             "README.md",
@@ -48,7 +80,7 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("placeholder\n", encoding="utf-8")
         (repository_root / ".agent-scaffold.json").write_text(
-            json.dumps({"files": {}, "harnesses": []}),
+            json.dumps({"files": {}, "harnesses": harnesses or []}),
             encoding="utf-8",
         )
         (repository_root / "skill-sources.json").write_text(

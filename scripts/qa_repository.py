@@ -11,8 +11,8 @@ import argparse
 import hashlib
 import json
 import re
-import tomllib
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -95,14 +95,14 @@ def _validate_required_paths(
             [
                 ".pi/settings.json",
                 ".pi/prompts/qa.md",
-                ".pi/skills/_candidates/skill-forge/SKILL.md",
+                ".pi/_candidates/skill-forge/SKILL.md",
             ]
         )
     if "codex" in harnesses:
         required.extend(
             [
                 ".agents/agents/qa.md",
-                ".agents/skills/_candidates/skill-forge/SKILL.md",
+                ".agents/_candidates/skill-forge/SKILL.md",
             ]
         )
     return [
@@ -118,6 +118,9 @@ def _validate_skill_frontmatter(repository_root: Path) -> list[str]:
         repository_root / ".claude/skills",
         repository_root / ".pi/skills",
         repository_root / ".agents/skills",
+        repository_root / ".claude/_candidates",
+        repository_root / ".pi/_candidates",
+        repository_root / ".agents/_candidates",
     ]
     for skill_path in sorted(
         path

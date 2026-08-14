@@ -8,7 +8,7 @@ Modern Unix dotfiles with environment management, automated sync, and secure cre
 
 - `work-mode [work|personal|status]` - Switch between work/home environments
 - Prompt shows: **WORK** (orange) or **HOME:PERSONAL** (blue)
-- Config: `~/.config-fixing-dot-files-bugs/zsh/{work,personal}-config.zsh`
+- Config: `~/.config/zsh/{work,personal}-config.zsh`
 
 ### Sync and Backup
 
