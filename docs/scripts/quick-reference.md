@@ -17,19 +17,21 @@ One-page guide to all available scripts.
 ### Quick Workflows
 
 **Store and retrieve simple key:**
+
 ```bash
 store-api-key OPENAI_API_KEY
 export OPENAI_API_KEY="$(get-api-key OPENAI_API_KEY)"
 ```
 
-**Store and search multiple keys:**
+**List encrypted credentials:**
+
 ```bash
-MASTER="$(get-api-key CREDMATCH_MASTER_PASSWORD)"
-credmatch store "$MASTER" "github.token" "ghp_xxx"
-credmatch search "$MASTER" "github"
+# credmatch retrieves its master password from the Keychain.
+credmatch list
 ```
 
 **Store and retrieve file:**
+
 ```bash
 credfile put ssh_key ~/.ssh/id_rsa
 credfile get ssh_key /tmp/key
@@ -100,6 +102,7 @@ credfile get ssh_key /tmp/key
 ### "I want to..."
 
 **...sync dotfiles across machines**
+
 ```bash
 syncenv              # Smart git-based sync (recommended)
 # OR
@@ -107,6 +110,7 @@ home-sync            # Full sync with service
 ```
 
 **...store a secret securely**
+
 ```bash
 store-api-key KEY_NAME          # Interactive prompt (no history exposure)
 # OR
@@ -114,6 +118,7 @@ echo "secret" | store-api-key KEY_NAME --stdin
 ```
 
 **...retrieve a secret**
+
 ```bash
 get-api-key KEY_NAME            # Retrieve from keychain
 # OR
@@ -121,6 +126,7 @@ credmatch list                  # List all credentials
 ```
 
 **...speed up shell startup**
+
 ```bash
 zsh-benchmark                   # Identify bottlenecks
 zsh-compile                     # Compile to bytecode
@@ -128,12 +134,14 @@ zsh-trim-history                # Reduce history
 ```
 
 **...make a proper git commit**
+
 ```bash
 conventional-commit             # Interactive guided commit
 # Follows: type(scope): description
 ```
 
 **...switch between work and personal**
+
 ```bash
 work-mode work                  # Enable work configuration
 work-mode personal              # Enable personal configuration
@@ -141,18 +149,21 @@ reload-shell                    # Apply changes
 ```
 
 **...manage Homebrew packages**
+
 ```bash
 brew-sync update                # Update from Brewfile
 brew-sync generate              # Generate from installed
 ```
 
 **...find a credential**
+
 ```bash
 credmatch list                  # See all stored
 get-api-key NAME                # Retrieve specific
 ```
 
 **...set up new machine**
+
 ```bash
 ./install                       # One-command setup
 # OR step-by-step:
@@ -166,6 +177,7 @@ get-api-key NAME                # Retrieve specific
 ## By Frequency
 
 ### Daily Use
+
 - `work-mode` - Switch environments
 - `syncenv` - Sync dotfiles
 - `conventional-commit` - Git commits
@@ -173,12 +185,14 @@ get-api-key NAME                # Retrieve specific
 - `reload-shell` - Apply config changes
 
 ### Weekly Use
+
 - `brew-sync update` - Update packages
 - `zsh-benchmark` - Check performance
 - `update-dotfiles` - Pull latest changes
 - `clear-secret-history` - Security hygiene
 
 ### One-time Setup
+
 - `./install` - Initial installation
 - `link-dotfiles --apply` - Create symlinks
 - `store-api-key` - Store credentials
@@ -190,6 +204,7 @@ get-api-key NAME                # Retrieve specific
 ## Common Workflows
 
 ### New Machine Setup
+
 ```bash
 # 1. Clone and install
 git clone <repo> ~/.config
@@ -210,6 +225,7 @@ dotfiles-help               # Explore scripts
 ```
 
 ### Daily Development
+
 ```bash
 # Morning
 work-mode work
@@ -226,6 +242,7 @@ work-mode personal
 ```
 
 ### Performance Optimization
+
 ```bash
 # Measure
 zsh-benchmark --detailed    # Identify bottlenecks
@@ -239,6 +256,7 @@ zsh-benchmark               # Should be <500ms
 ```
 
 ### Credential Management
+
 ```bash
 # Store securely
 store-api-key OPENAI_API_KEY        # Interactive
@@ -260,22 +278,26 @@ clear-secret-history        # Clean exposed secrets
 ## Quick Tips
 
 **Performance:**
+
 - Target: <500ms cold start, <200ms warm
 - Run `zsh-benchmark` monthly
 - Compile configs after changes: `zsh-compile`
 
 **Security:**
+
 - Never use positional args with secrets: `store-api-key KEY value` (BAD)
 - Always use interactive: `store-api-key KEY` (GOOD)
 - Run `clear-secret-history` if you exposed secrets
 - Rotate credentials regularly
 
 **Git:**
+
 - Use `conventional-commit` for proper format
 - Use `git-wip` for quick saves
 - Use `git-save-all` before risky changes
 
 **Documentation:**
+
 - Full docs: `docs/scripts/`
 - Interactive help: `dotfiles-help`
 - Specific script: `script-name --help`
@@ -301,16 +323,19 @@ cat ONBOARDING.md
 ## Platform Notes
 
 **macOS (darwin):**
+
 - All scripts fully supported
 - Homebrew integration
 - Keychain for secrets
 
 **Linux:**
+
 - Core scripts supported
 - Homebrew optional (use native package manager)
 - gnome-keyring/kwallet for secrets
 
 **Script Categories:**
+
 - `bin/core/` - Cross-platform
 - `bin/macos/` - macOS only (marked in docs)
 - `bin/git/` - Cross-platform

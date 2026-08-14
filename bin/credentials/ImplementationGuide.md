@@ -1,6 +1,7 @@
 # Implementation Guide
 
 ## Table of Contents
+
 1. [Getting Started](#getting-started)
 2. [Library Integration Patterns](#library-integration-patterns)
 3. [Configuration Strategies](#configuration-strategies)
@@ -14,6 +15,7 @@
 ### Step 1: Project Setup
 
 1. **Add Framework Files**
+
    ```
    YourProject/
    ├── LivenessFramework/
@@ -23,6 +25,7 @@
    ```
 
 2. **Import Dependencies**
+
    ```swift
    import Foundation
    import UIKit
@@ -31,6 +34,7 @@
    ```
 
 3. **Configure Info.plist**
+
    ```xml
    <key>NSCameraUsageDescription</key>
    <string>Camera access required for biometric authentication</string>
@@ -93,8 +97,8 @@ class FaceTecAdapter: NSObject, LivenessDetectorAdapter {
 
         // Configure FaceTec with UI components
         FaceTecSDK.initialize(
-            productionKeyText: getAPIKey(from: config.parameters),
-            licenseKey: getLicenseKey(from: config.parameters)
+            productionKeyText: try getAPIKey(from: config.parameters),
+            licenseKey: try getLicenseKey(from: config.parameters)
         ) { success in
             if !success {
                 // Handle initialization failure
@@ -114,18 +118,18 @@ class FaceTecAdapter: NSObject, LivenessDetectorAdapter {
         }
     }
 
-    private func getAPIKey(from parameters: [String: SendableValue]) -> String {
-        if case .string(let key) = parameters["apiKey"] {
-            return key
+    private func getAPIKey(from parameters: [String: SendableValue]) throws -> String {
+        guard case .string(let key) = parameters["apiKey"], !key.isEmpty else {
+            throw LivenessConfigurationError.missingAPIKey
         }
-        return ""
+        return key
     }
 
-    private func getLicenseKey(from parameters: [String: SendableValue]) -> String {
-        if case .string(let key) = parameters["licenseKey"] {
-            return key
+    private func getLicenseKey(from parameters: [String: SendableValue]) throws -> String {
+        guard case .string(let key) = parameters["licenseKey"], !key.isEmpty else {
+            throw LivenessConfigurationError.missingLicenseKey
         }
-        return ""
+        return key
     }
 }
 
@@ -175,6 +179,10 @@ class iProovAdapter: LivenessDetectorAdapter {
     let requiresUIConfiguration = true
 
     private let analytics: LivenessAnalytics
+
+    init(analytics: LivenessAnalytics) {
+        self.analytics = analytics
+    }
 
     func configure(with config: LivenessConfiguration) async throws {
         // Configure iProov
@@ -670,16 +678,16 @@ class SecureConfigurationManager {
         try keychain.set(key, key: "api_key_\(library)")
     }
 
-    func getAPIKey(for library: String) -> String? {
-        return try? keychain.get("api_key_\(library)")
+    func getAPIKey(for library: String) throws -> String {
+        try keychain.get("api_key_\(library)")
     }
 
     func storeLicenseKey(_ key: String, for library: String) throws {
         try keychain.set(key, key: "license_key_\(library)")
     }
 
-    func getLicenseKey(for library: String) -> String? {
-        return try? keychain.get("license_key_\(library)")
+    func getLicenseKey(for library: String) throws -> String {
+        try keychain.get("license_key_\(library)")
     }
 
     func removeCredentials(for library: String) {
@@ -954,29 +962,32 @@ class PerformanceTests: XCTestCase {
         }
     }
 
-    func testMemoryUsage() {
+    func testMemoryUsage() async {
         let manager = LivenessDetectionManager()
 
         // Measure memory before
         let initialMemory = getMemoryUsage()
 
-        // Perform multiple operations
-        for i in 0..<100 {
-            let sessionId = "test-session-\(i)"
+        // Perform multiple operations and wait for their logging to complete.
+        let loggingTasks = (0..<100).map { index in
+            let sessionId = "test-session-\(index)"
             let error = LivenessError(
                 category: .processing,
                 severity: .warning,
                 libraryCode: nil,
-                message: "Test error \(i)",
+                message: "Test error \(index)",
                 timestamp: Date(),
                 metadata: [:],
                 sessionId: sessionId,
                 libraryName: "TestLibrary"
             )
 
-            Task {
+            return Task {
                 await manager.analytics.logError(error)
             }
+        }
+        for task in loggingTasks {
+            await task.value
         }
 
         // Measure memory after
