@@ -115,6 +115,28 @@ assert_link_points_to() {
     refute test -e "$HOME/local/bin/example-command"
 }
 
+@test "link-dotfiles: commands-only skips home-tree sources" {
+    create_home_file ".not-linked"
+    create_command core public-command
+    run python3 "$LINK_SCRIPT" --commands-only --apply --yes
+    assert_success
+    refute test -e "$HOME/.not-linked"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/public-command" "$HOME/.local/bin/public-command"
+}
+
+@test "link-dotfiles: commands-only preserves prior ownership state" {
+    create_home_file ".tracked"
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    create_command core public-command
+    run python3 "$LINK_SCRIPT" --commands-only --apply --yes
+    assert_success
+    rm "$TEST_DOTFILES/home/.tracked"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    refute test -e "$HOME/.tracked"
+}
+
 @test "link-dotfiles: ignores nested and non-executable command files" {
     create_command core public-command
     mkdir -p "$TEST_DOTFILES/bin/core/nested"

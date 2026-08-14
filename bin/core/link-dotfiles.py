@@ -10,6 +10,7 @@ Options:
   --force         Overwrite existing files/symlinks
   --yes           Skip confirmation prompts
   --verbose       Show detailed output
+  --commands-only Link only public commands to ~/.local/bin
   --help          Show this help message
 """
 
@@ -69,6 +70,7 @@ class LinkManager:
         verbose: bool = False,
         prune: bool = False,
         migrate_legacy_bin: bool = False,
+        commands_only: bool = False,
     ):
         self.dry_run = dry_run
         self.force = force
@@ -76,6 +78,7 @@ class LinkManager:
         self.verbose = verbose
         self.prune_mode = prune
         self.migrate_legacy_bin = migrate_legacy_bin
+        self.commands_only = commands_only
 
         # Counters
         self.count_created = 0
@@ -234,16 +237,27 @@ class LinkManager:
             origin = ""
         return hashlib.sha256((origin or str(self.dotfiles_root)).encode()).hexdigest()
 
-    def write_state(self) -> None:
-        """Atomically persist only links confirmed during this apply."""
+    def write_state(self, preserve_existing: bool = False) -> None:
+        """Atomically persist confirmed links, preserving prior ownership when requested."""
         state_file = Path.home() / ".local/state/dotfiles/links.json"
+        links = {
+            str(target): {"source": str(source), "target": str(target)}
+            for source, target in self.applied_links
+        }
+        if preserve_existing:
+            try:
+                previous = json.loads(state_file.read_text())
+                if previous.get("repository_id") == self.repository_id():
+                    for link in previous.get("links", []):
+                        target = link.get("target")
+                        if isinstance(target, str) and target not in links:
+                            links[target] = link
+            except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+                pass
         payload = {
             "version": 1,
             "repository_id": self.repository_id(),
-            "links": [
-                {"source": str(source), "target": str(target)}
-                for source, target in self.applied_links
-            ],
+            "links": list(links.values()),
         }
         state_file.parent.mkdir(parents=True, exist_ok=True)
         temporary = state_file.with_suffix(".tmp")
@@ -366,14 +380,15 @@ class LinkManager:
         """Discover and apply the convention-based link plan."""
         plan: Dict[Path, Tuple[Path, str]] = {}
         home = Path.home()
-        tree_names = ("home", f"home-{self.platform}", f"home-host-{self.hostname}")
-        for tree_name in tree_names:
-            tree = self.dotfiles_root / tree_name
-            if not tree.is_dir():
-                continue
-            for source in sorted(tree.rglob("*")):
-                if stat.S_ISREG(source.lstat().st_mode):
-                    plan[home / source.relative_to(tree)] = (source, tree_name)
+        if not self.commands_only:
+            tree_names = ("home", f"home-{self.platform}", f"home-host-{self.hostname}")
+            for tree_name in tree_names:
+                tree = self.dotfiles_root / tree_name
+                if not tree.is_dir():
+                    continue
+                for source in sorted(tree.rglob("*")):
+                    if stat.S_ISREG(source.lstat().st_mode):
+                        plan[home / source.relative_to(tree)] = (source, tree_name)
 
         try:
             commands = self.public_commands()
@@ -424,7 +439,7 @@ class LinkManager:
                 return
 
         if not self.dry_run:
-            self.write_state()
+            self.write_state(preserve_existing=self.commands_only)
 
     def show_summary(self):
         """Show summary of operations."""
@@ -514,6 +529,7 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
     parser.add_argument("--prune", action="store_true", help="Remove stale links proven by ownership state")
     parser.add_argument("--migrate-legacy-bin", action="store_true", help="Migrate proven legacy ~/local/bin command links")
+    parser.add_argument("--commands-only", action="store_true", help="Link only public commands to ~/.local/bin")
 
     args = parser.parse_args()
 
@@ -528,6 +544,7 @@ def main():
         verbose=args.verbose,
         prune=args.prune,
         migrate_legacy_bin=args.migrate_legacy_bin,
+        commands_only=args.commands_only,
     )
 
     sys.exit(manager.run())
