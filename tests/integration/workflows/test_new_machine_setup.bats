@@ -82,6 +82,9 @@ teardown() {
 
     assert_file_exists "$dotfiles_root/README.md"
     assert_file_contains "$dotfiles_root/README.md" "install"
+    assert_file_contains "$dotfiles_root/README.md" "repository layout is the source of truth"
+    run grep -F "LinkingManifest.json is the source of truth" "$dotfiles_root/README.md"
+    assert_failure
 }
 
 # Setup Verification Tests

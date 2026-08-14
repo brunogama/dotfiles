@@ -45,6 +45,7 @@ Wire the completed linker into installation and user-facing workflows, add excep
 - Second integration slice adds `bin/macos/install-folder-actions`, which delegates to the main linker and corrects the legacy `.scptn` destination mismatch to the source's `.scpt` extension.
 - Third integration slice retires the manifest validation hook, its pre-commit and CI registrations, and corresponding hook tests. Manifest content remains until the dedicated retirement slice.
 - Fourth integration slice retires the unused manifest fixture and replaces the new-machine manifest-presence assertion with convention-linker source-tree coverage.
+- Fifth integration slice updates the README, quick start guide, and interactive help to describe convention-based linking and `~/.local/bin` command exposure.
 
 ## Follow-ups
 
