@@ -24,3 +24,23 @@ EOF
     assert_success
     assert_file_contains "$CODE_CALL" "$HOME/.dotfiles"
 }
+
+@test "open-dotfiles-config: rejects a missing selector before discovery" {
+    run "$SCRIPT"
+
+    assert_failure
+    assert_equal "$status" 2
+    assert_output --partial "Usage:"
+    refute test -e "$CODE_CALL"
+}
+
+@test "open-dotfiles-config: reports when no convention-based checkout exists" {
+    rm -rf "$HOME/.dotfiles"
+
+    run "$SCRIPT" repo
+
+    assert_failure
+    assert_equal "$status" 1
+    assert_output --partial "Could not find dotfiles repository"
+    refute test -e "$CODE_CALL"
+}

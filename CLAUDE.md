@@ -8,11 +8,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 These instructions are for AI assistants working in this project.
 
 Always open `@/openspec/AGENTS.md` when the request:
+
 - Mentions planning or proposals (words like proposal, spec, change, plan)
 - Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
 - Sounds ambiguous and you need the authoritative spec before coding
 
 Use `@/openspec/AGENTS.md` to learn:
+
 - How to create and apply change proposals
 - Spec format and conventions
 - Project structure and guidelines
@@ -24,6 +26,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 ## Project Overview
 
 Modern dotfiles system with:
+
 - Convention-based symlink management via `home/` trees and `bin/<domain>/` commands
 - Environment switching (work/personal modes)
 - Secure credential storage using macOS Keychain
@@ -34,13 +37,17 @@ Modern dotfiles system with:
 ## Constitutional Rules
 
 ### Rule 1: All Directories MUST Be Lowercase
+
 All directories use lowercase names. No exceptions. See MINDSET.MD for rationale.
 
 ### Rule 2: No Emojis
+
 No emojis in documentation, code, scripts, commit messages, or help text. See MINDSET.MD for rationale.
 
 ### Rule 3: OpenSpec for Major Changes
+
 Use OpenSpec workflow for:
+
 - New features or capabilities
 - Breaking changes (API, schema, behavior)
 - Architecture changes
@@ -48,6 +55,7 @@ Use OpenSpec workflow for:
 - Security pattern updates
 
 Skip OpenSpec for:
+
 - Bug fixes restoring intended behavior
 - Typos, formatting, comments
 - Non-breaking dependency updates
@@ -58,17 +66,20 @@ See `openspec/AGENTS.md` for complete workflow.
 ## Core Commands
 
 ### Installation & Setup
+
 ```bash
 ./install                          # Interactive installation (10-20 minutes)
 ./install --dry-run                # Preview changes
 ./install --yes                    # Non-interactive mode
-link-dotfiles --dry-run            # Preview convention-based links
-link-dotfiles --apply --yes        # Apply collision-free links
-link-dotfiles --force --yes --apply # Replace non-matching existing targets
+uv run bin/core/link-dotfiles.py --dry-run            # Preview convention-based links
+uv run bin/core/link-dotfiles.py --apply --yes        # Apply collision-free links
+uv run bin/core/link-dotfiles.py --force --yes --apply # Replace non-matching existing targets
 ```
 
 ### Language Runtime Management
+
 The system uses official version managers for language runtimes:
+
 ```bash
 # Python (pyenv)
 pyenv install --list         # List available Python versions
@@ -90,6 +101,7 @@ nvm alias default 18.16.0    # Set default version (.nvmrc supported)
 ```
 
 ### Testing
+
 ```bash
 # Shell scripts
 shellcheck bin/core/*        # Lint shell scripts
@@ -105,6 +117,7 @@ bin/git/hooks/check-no-emojis       # Constitutional rule check
 ```
 
 ### Development Workflow
+
 ```bash
 # Credential management (SECURE - no history exposure)
 store-api-key OPENAI_API_KEY        # Interactive prompt
@@ -136,6 +149,7 @@ zsh-trim-history             # Reduce to 10k entries
 ## Architecture
 
 ### Directory Structure
+
 ```
 ~/.dotfiles/
 ├── install                  # Main installation script
@@ -172,24 +186,29 @@ zsh-trim-history             # Reduce to 10k entries
 ### Key Design Patterns
 
 **Convention-Based Symlink Management**
-- `home/`, platform overlays, and hostname overlays map directly below `$HOME`
+
+- Eligible files in `home/`, platform overlays, and hostname overlays map directly below `$HOME`
+- Targets declared in `nix/home.nix` are owned by Home Manager and intentionally skipped
 - Immediate executable files in `bin/<domain>/` map to `~/.local/bin`
-- `link-dotfiles` validates the complete plan before applying it
+- `bin/core/link-dotfiles.py` validates the complete plan before applying it
 - Pruning and legacy command migration are explicit operations
 
 **Environment Switching**
+
 - `work-mode` script switches contexts
 - Separate config files: `work-config.zsh`, `personal-config.zsh`
 - Visual prompt indicators (WORK vs HOME:PERSONAL)
 - Zero symlink changes required
 
 **Secure Credential Management**
+
 - Interactive input (no shell history exposure)
 - macOS Keychain integration
 - Scripts: `store-api-key`, `get-api-key`, `credmatch`, `credfile`
 - See `openspec/changes/fix-credential-shell-history-exposure/` for security design
 
 **Performance Optimization**
+
 - Lazy loading for mise, rbenv, nvm, SDKMAN
 - Compiled zsh configs (.zwc bytecode)
 - 24-hour completion cache
@@ -197,6 +216,7 @@ zsh-trim-history             # Reduce to 10k entries
 - < 500ms cold start (70-80% improvement)
 
 **Spec-Driven Development**
+
 - OpenSpec framework for major changes
 - Three-stage workflow: create -> implement -> archive
 - Strict validation before implementation
@@ -205,12 +225,14 @@ zsh-trim-history             # Reduce to 10k entries
 ## Shell Script Standards
 
 ### Required Header
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 ```
 
 ### Quality Requirements
+
 - Zero `shellcheck` errors
 - Functions ≤40 lines
 - Files ≤400 lines
@@ -220,12 +242,15 @@ set -euo pipefail
 - Never `eval` untrusted input
 
 ### Structure
+
 Large tasks should be broken into separate, composable scripts in dedicated directories.
 
 ## Git Workflow
 
 ### Commit Format
+
 Use Conventional Commits format:
+
 ```
 <type>(<scope>): <subject>
 
@@ -239,7 +264,9 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
 Use `conventional-commit` script for interactive guided commits.
 
 ### Pre-commit Hooks
+
 Located in `bin/git/hooks/`:
+
 - `check-lowercase-dirs` - Enforce constitutional rule
 - `check-no-emojis` - Enforce constitutional rule
 - `check-commit-msg` - Validate conventional commit format
@@ -248,7 +275,9 @@ Located in `bin/git/hooks/`:
 ## Security
 
 ### Credential Handling
+
 **NEVER** pass secrets as command-line arguments:
+
 ```bash
 # WRONG - Exposes in history/process list
 store-api-key OPENAI_API_KEY "sk-..."
@@ -264,7 +293,9 @@ store-api-key OPENAI_API_KEY --from-file ~/.secrets/key
 ```
 
 ### Secret Scanning
+
 All commits scanned for:
+
 - API keys, tokens, passwords
 - AWS credentials
 - Private keys
@@ -273,17 +304,20 @@ All commits scanned for:
 ## Testing Strategy
 
 ### Shell Scripts
+
 - Use `shellcheck` for static analysis
 - Test scripts in dry-run mode first
 - Create test cases for complex utilities
 - Example: `tests/test_git_smart_merge.py`
 
 ### Python Scripts
+
 - PEP8 compliant
 - UV header for external dependencies
 - Scripts >500 lines become pip package
 
 ### Coverage Requirements
+
 - Domain logic: ≥95% coverage
 - Regression tests for every bug (minimum 5 tests)
 - Tests must be deterministic and parallelizable
@@ -291,6 +325,7 @@ All commits scanned for:
 ## Common Patterns
 
 ### Adding New Utility Script
+
 1. Choose appropriate category under `bin/` (core, git, credentials, etc.)
 2. Use lowercase filename (constitutional rule)
 3. Add proper header with `set -euo pipefail`
@@ -299,13 +334,15 @@ All commits scanned for:
 6. Update `docs/scripts/` documentation if user-facing
 
 ### Adding a Managed Link
+
 1. Add a regular file beneath `home/`, the appropriate platform/host overlay, or an executable command beneath `bin/<domain>/`
-2. Validate: `link-dotfiles --dry-run`
-3. Apply collision-free links: `link-dotfiles --apply --yes`
-4. Replace non-matching targets (if needed): `link-dotfiles --force --yes --apply`
+2. Validate: `uv run bin/core/link-dotfiles.py --dry-run`
+3. Apply collision-free links: `uv run bin/core/link-dotfiles.py --apply --yes`
+4. Replace non-matching targets (if needed): `uv run bin/core/link-dotfiles.py --force --yes --apply`
 5. Commit the source file and its focused tests
 
 ### Adding New Feature (Major)
+
 1. Create OpenSpec proposal in `openspec/changes/<change-id>/`
 2. Write `proposal.md`, `tasks.md`, and spec deltas
 3. Validate: `openspec validate <change-id> --strict`

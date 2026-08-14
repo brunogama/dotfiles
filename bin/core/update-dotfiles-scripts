@@ -3,6 +3,9 @@
 # update-dotfiles-scripts - Update scripts from dotfiles repository
 # Version: 2.0
 #
+# Usage: update-dotfiles-scripts
+# DOTFILES_REPO selects the repository; it defaults to
+# ~/.config-fixing-dot-files-bugs.
 # Run manually to update scripts or schedule via cron/launchd.
 # Replaces inline auto-update logic that slowed shell startup.
 #

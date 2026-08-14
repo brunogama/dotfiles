@@ -82,9 +82,9 @@ teardown() {
     dotfiles_root="$(get_dotfiles_root)"
 
     assert_file_exists "$dotfiles_root/README.md"
-    assert_file_contains "$dotfiles_root/README.md" "install"
-    assert_file_contains "$dotfiles_root/README.md" "repository layout is the source of truth"
-    run grep -F "LinkingManifest.json is the source of truth" "$dotfiles_root/README.md"
+    assert_file_contains "$dotfiles_root/README.md" "./install --dry-run"
+    assert_file_contains "$dotfiles_root/README.md" "uv run bin/core/link-dotfiles.py --dry-run"
+    run grep -F "LinkingManifest.json" "$dotfiles_root/README.md"
     assert_failure
 }
 
@@ -94,8 +94,8 @@ teardown() {
     local dotfiles_root
     dotfiles_root="$(get_dotfiles_root)"
 
-    assert_file_contains "$dotfiles_root/AGENTS.md" "convention-based links"
-    assert_file_contains "$dotfiles_root/CLAUDE.md" "Convention-Based Symlink Management"
+    assert_file_contains "$dotfiles_root/AGENTS.md" "home/"
+    assert_file_contains "$dotfiles_root/CLAUDE.md" "nix/home.nix"
     run grep -F "LinkingManifest.json" "$dotfiles_root/AGENTS.md" "$dotfiles_root/CLAUDE.md"
     assert_failure
 }

@@ -32,7 +32,7 @@ Replace manifest parsing in `bin/core/link-dotfiles.py` with deterministic disco
 - [x] `apply` never overwrites an unexpected link, file, or directory without explicit confirmed backup or replacement.
 - [x] Correct existing links are idempotent no-ops.
 - [x] Public executable commands resolve through `~/.local/bin`.
-- [x] The ownership ledger includes repository identity and remains valid after partial-apply failure handling.
+- [x] The ownership ledger includes repository identity and records completed links after deterministic fault injection before a rerun converges.
 
 ## Risks / unknowns
 
@@ -42,7 +42,7 @@ Replace manifest parsing in `bin/core/link-dotfiles.py` with deterministic disco
 ## Notes
 
 - Initial slice replaces manifest parsing with deterministic `home/`, platform, hostname, and command discovery, collision preflight, and an atomic local ownership ledger.
-- Nix and Home Manager exclusion integration, partial-apply fault injection, backup mode, pruning, and manifest deletion remain follow-up slices.
+- Follow-up slices completed Nix and Home Manager exclusions, deterministic partial-apply fault injection, legacy-entry backups, pruning, and manifest deletion.
 
 ## Follow-ups
 

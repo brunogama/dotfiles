@@ -95,14 +95,14 @@ sudo yum install jq  # CentOS/RHEL
 **Solution:** Re-run the linker to ensure commands are linked:
 
 ```bash
-~/.dotfiles/bin/core/link-dotfiles.py --commands-only --apply --yes
+uv run ~/.dotfiles/bin/core/link-dotfiles.py --commands-only --apply --yes
 ```
 
 **Problem:** Symlinks not working
 **Solution:** Re-run the linker:
 
 ```bash
-~/.dotfiles/bin/core/link-dotfiles --apply
+uv run ~/.dotfiles/bin/core/link-dotfiles.py --apply
 ```
 
 ## What Just Happened?

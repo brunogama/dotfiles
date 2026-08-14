@@ -1,3 +1,4 @@
+---
 # Pre-commit hooks configuration
 # Enforces code quality and MINDSET constitutional rules
 #
@@ -34,6 +35,15 @@ repos:
             tests/fixtures/repos/|
             tests/.*\.bats$
           )
+
+      # ShellCheck does not support Zsh syntax. Validate all maintained Zsh
+      # sources with the interpreter instead of silently omitting them.
+      - id: zsh-syntax
+        name: Zsh syntax validation
+        entry: zsh -n --
+        language: system
+        files: >-
+          ^(home/\.zshenv|home/\.config/zsh/|zsh/|bin/core/zsh-)
 
   # Gitleaks - scan staged changes for hardcoded secrets.
   - repo: https://github.com/gitleaks/gitleaks
