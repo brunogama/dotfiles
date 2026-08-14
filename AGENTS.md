@@ -90,6 +90,13 @@ fish/                # Fish shell config (optional)
 - Use conventional commits: `feat:`, `fix:`, `chore:`, etc.
 - Include co-author: `factory-droid[bot]`
 
+### Local CI/CD quality gate
+
+- Before creating or updating a pull request, run `scripts/local-ci.sh --skip-remote-only` and require every locally executable stage to pass.
+- Treat a failed stage as a pull-request blocker. Remote-only stages may be skipped only when the results table identifies them as remote-only.
+- When changing `.github/workflows/`, update `scripts/local-ci.sh` in the same change so its job graph, declared matrix values, runtime pins, environment variables, and remote-only handling match the workflow.
+- Re-run the local CI executor after workflow changes and require the updated executable stages to pass before creating or updating the pull request.
+
 ## Agent infrastructure
 
 ### Required startup

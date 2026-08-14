@@ -20,44 +20,38 @@ A Nix-first, macOS-oriented home-environment configuration for a reproducible de
 
 ## Get started
 
-### Recommended: Nix activation
+### Recommended: smart installation
 
-Clone the repository, review [`nix/host.nix`](nix/host.nix), then preview the user-environment activation:
+Clone the repository, then preview the installation plan before applying it:
 
 ```bash
 git clone https://github.com/brunogama/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-./install --nix --dry-run
-```
-
-Apply the user configuration after reviewing the plan:
-
-```bash
-./install --nix
-```
-
-The default Nix flow activates Home Manager for the current user and does not use `sudo`. If Nix is not installed, its installation can still require administrator access.
-
-For the optional privileged macOS configuration, preview first and then apply it:
-
-```bash
-./install --nix --system --dry-run
-./install --nix --system
-```
-
-> [!TIP]
-> Pass `--username NAME` or `--machine-name NAME` to set host values during Nix bootstrap. Use `--skip-npm` when you do not want pinned NPM tools synchronized.
-
-### Legacy installer
-
-The repository retains an imperative Homebrew-based installer. It installs dependencies, runs the Homebrew bundle, links files, configures the shell, and performs shell optimization.
-
-```bash
 ./install --dry-run
 ./install
 ```
 
-Useful legacy options include `--yes`, `--skip-brew`, `--skip-packages`, `--skip-links`, and `--scripts-only`. Run `./install --help` for the complete interface.
+`./install` never fetches or synchronizes the checkout. It uses the current worktree contents, warns when they are dirty, and is safe to rerun.
+
+- On macOS, it selects the user-only Nix and Home Manager flow, bootstrapping upstream Nix with consent when required.
+- On Linux, it selects the retained legacy installer and provisions minimal prerequisites through `apt-get`, `dnf`, or `pacman`.
+- Unsupported platforms fail with an actionable error.
+
+For the optional privileged macOS configuration, preview first and then apply it:
+
+```bash
+./install --system --dry-run
+./install --system
+```
+
+> [!TIP]
+> Use `--backend auto|nix|legacy` to choose a backend explicitly. `--nix` remains a compatibility alias, and `--legacy` is a shorter legacy alias. Pass `--username NAME` or `--machine-name NAME` only when changing host identity. Use `--nix-distribution determinate` for an existing Determinate Nix installation.
+
+### Focused maintenance and recovery
+
+Use `./install --scripts-only` to update only public commands in `~/.local/bin`; it never selects or activates a backend. Legacy mode on a Home Manager-managed macOS user is blocked unless `--allow-mixed-backends` explicitly acknowledges the recovery risk.
+
+Legacy-only options are `--skip-brew`, `--skip-packages`, and `--skip-links`. Nix-only options are `--configuration`, `--skip-npm`, and `--nix-distribution`. Incompatible option combinations fail instead of being ignored. Run `./install --help` for the complete interface.
 
 ---
 
