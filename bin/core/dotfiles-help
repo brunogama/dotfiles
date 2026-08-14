@@ -202,7 +202,6 @@ ${CYAN}Documentation:${NC}
 
   Full docs: $REPO_ROOT/docs/scripts/
   README:    $REPO_ROOT/README.md
-  Onboarding: $REPO_ROOT/ONBOARDING.md
 
 EOF
         read -r -p "Press Enter to continue..."
