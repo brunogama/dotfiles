@@ -208,7 +208,7 @@ assert_link_points_to() {
     create_home_file ".example"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-    local ledger="$HOME/.local/state/dotfiles/links.json"
+    local ledger="$XDG_STATE_HOME/dotfiles/links.json"
     assert_file_exists "$ledger"
     run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["version"] == 1; assert state["repository_id"]; assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}]' "$ledger" "$TEST_DOTFILES/home/.example" "$HOME/.example"
     assert_success
@@ -222,7 +222,7 @@ assert_link_points_to() {
     assert_failure
     assert_output --partial "injected filesystem failure"
 
-    local ledger="$HOME/.local/state/dotfiles/links.json"
+    local ledger="$XDG_STATE_HOME/dotfiles/links.json"
     run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}]' "$ledger" "$TEST_DOTFILES/home/.first" "$HOME/.first"
     assert_success
     assert_link_points_to "$TEST_DOTFILES/home/.first" "$HOME/.first"
@@ -255,8 +255,8 @@ assert_link_points_to() {
 }
 
 @test "link-dotfiles: prune rejects a foreign ownership ledger" {
-    mkdir -p "$HOME/.local/state/dotfiles"
-    printf '{"version": 1, "repository_id": "foreign", "links": []}\n' > "$HOME/.local/state/dotfiles/links.json"
+    mkdir -p "$XDG_STATE_HOME/dotfiles"
+    printf '{"version": 1, "repository_id": "foreign", "links": []}\n' > "$XDG_STATE_HOME/dotfiles/links.json"
     run python3 "$LINK_SCRIPT" --prune --apply
     assert_failure
     assert_output --partial "Invalid or missing ownership ledger"
@@ -264,13 +264,13 @@ assert_link_points_to() {
 
 @test "link-dotfiles: prune removes a tracked link from a prior checkout" {
     local prior_root="$TEST_TEMP_DIR/prior-checkout"
-    mkdir -p "$prior_root/home" "$HOME/.local/state/dotfiles"
+    mkdir -p "$prior_root/home" "$XDG_STATE_HOME/dotfiles"
     printf 'old\n' > "$prior_root/home/.moved"
     ln -s "$prior_root/home/.moved" "$HOME/.moved"
     create_home_file ".moved" new
     local repository_id
     repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
-    printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}]}\n' "$repository_id" "$prior_root/home/.moved" "$HOME/.moved" > "$HOME/.local/state/dotfiles/links.json"
+    printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}]}\n' "$repository_id" "$prior_root/home/.moved" "$HOME/.moved" > "$XDG_STATE_HOME/dotfiles/links.json"
     run python3 "$LINK_SCRIPT" --prune --apply
     assert_success
     refute test -L "$HOME/.moved"
@@ -279,8 +279,8 @@ assert_link_points_to() {
 @test "link-dotfiles: prune preserves untracked targets" {
     local repository_id
     repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
-    mkdir -p "$HOME/.local/state/dotfiles"
-    printf '{"version": 1, "repository_id": "%s", "links": []}\n' "$repository_id" > "$HOME/.local/state/dotfiles/links.json"
+    mkdir -p "$XDG_STATE_HOME/dotfiles"
+    printf '{"version": 1, "repository_id": "%s", "links": []}\n' "$repository_id" > "$XDG_STATE_HOME/dotfiles/links.json"
     ln -s /tmp/untracked "$HOME/.untracked"
     printf 'regular\n' > "$HOME/.regular"
     mkdir "$HOME/.directory"
