@@ -93,6 +93,7 @@ class LinkManager:
         migrate_legacy_bin: bool = False,
         commands_only: bool = False,
         folder_actions: bool = False,
+        self_test_fail_after: Optional[int] = None,
     ):
         self.dry_run = dry_run
         self.force = force
@@ -102,6 +103,7 @@ class LinkManager:
         self.migrate_legacy_bin = migrate_legacy_bin
         self.commands_only = commands_only
         self.folder_actions = folder_actions
+        self.self_test_fail_after = self_test_fail_after
 
         # Counters
         self.count_created = 0
@@ -225,8 +227,9 @@ class LinkManager:
         # Create the symlink
         if not self.dry_run:
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            if os.environ.get("LINK_DOTFILES_TEST_FAIL_AFTER") == str(
-                len(self.applied_links)
+            if (
+                self.self_test_fail_after is not None
+                and len(self.applied_links) == self.self_test_fail_after
             ):
                 raise OSError("injected filesystem failure")
             target_path.symlink_to(source_path)
@@ -783,6 +786,12 @@ def main():
         action="store_true",
         help="Install Darwin Folder Actions scripts",
     )
+    parser.add_argument(
+        "--self-test-fail-after",
+        type=int,
+        metavar="N",
+        help="(Internal test only) Inject failure after N applied links",
+    )
 
     args = parser.parse_args()
 
@@ -799,6 +808,7 @@ def main():
         migrate_legacy_bin=args.migrate_legacy_bin,
         commands_only=args.commands_only,
         folder_actions=args.folder_actions,
+        self_test_fail_after=args.self_test_fail_after,
     )
 
     sys.exit(manager.run())

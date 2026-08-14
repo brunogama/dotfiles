@@ -385,6 +385,9 @@ assert_link_points_to() {
 }
 
 @test "link-dotfiles: Folder Actions link uses the canonical script extension" {
+    if [[ "$(uname)" != Darwin ]]; then
+        skip "Folder Actions are Darwin-only"
+    fi
     mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts"
     printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
     run python3 "$LINK_SCRIPT" --folder-actions --apply --yes
@@ -394,6 +397,9 @@ assert_link_points_to() {
 }
 
 @test "link-dotfiles: Folder Actions dry-run does not create target directories" {
+    if [[ "$(uname)" != Darwin ]]; then
+        skip "Folder Actions are Darwin-only"
+    fi
     mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts"
     printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
     run python3 "$LINK_SCRIPT" --folder-actions --dry-run
@@ -403,6 +409,9 @@ assert_link_points_to() {
 }
 
 @test "link-dotfiles: Folder Actions collision preserves existing target" {
+    if [[ "$(uname)" != Darwin ]]; then
+        skip "Folder Actions are Darwin-only"
+    fi
     mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts" "$HOME/Library/Scripts/Folder Action Scripts"
     printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
     printf 'existing\n' > "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
@@ -414,9 +423,16 @@ assert_link_points_to() {
 
 @test "install-folder-actions: delegates to the shared linker" {
     local installer="$(get_dotfiles_root)/bin/macos/install-folder-actions"
+    mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts"
+    printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
     run "$installer" --dry-run
-    assert_success
-    assert_output --partial "Folder Action Scripts"
+    if [[ "$(uname)" == Darwin ]]; then
+        assert_success
+        assert_output --partial "Folder Action Scripts"
+    else
+        assert_success
+        assert_output --partial "Skipping Folder Actions"
+    fi
 }
 
 @test "link-dotfiles: source symlinks are not managed" {

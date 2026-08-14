@@ -36,4 +36,4 @@ if [ "$LINT_PASS" = false ]; then
 fi
 
 psuccess "Swift SwiftLint pre-commit hook completed successfully"
-exit 1
+exit 0

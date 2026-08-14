@@ -9,6 +9,7 @@ source "$HOME/.local/bin/prints"
 sequence_editor="$(mktemp)"
 trap 'rm -f "$sequence_editor"' EXIT
 cat >"$sequence_editor" <<'EDITOR'
+#!/usr/bin/awk -f
 BEGIN { previous_subject = "" }
 /^(pick|reword|edit|squash|fixup|drop) / {
     subject = $0
@@ -20,6 +21,7 @@ BEGIN { previous_subject = "" }
 }
 { print }
 EDITOR
+chmod +x "$sequence_editor"
 
 for ((i = 0; i < 30; i++)); do
 	commit_name="$(git log --first-parent --format=%s -n 1 --skip="$i")"
@@ -30,9 +32,9 @@ for ((i = 0; i < 30; i++)); do
 	if [[ "$commit_name" == "$next_commit_name" ]]; then
 		# Check if the calculated ancestor exists; use --root if it doesn't
 		if git rev-parse --verify "HEAD~$((i + 2))" >/dev/null 2>&1; then
-			GIT_SEQUENCE_EDITOR="awk -f $sequence_editor" git rebase -i "HEAD~$((i + 2))"
+			GIT_SEQUENCE_EDITOR="$sequence_editor" git rebase -i "HEAD~$((i + 2))"
 		else
-			GIT_SEQUENCE_EDITOR="awk -f $sequence_editor" git rebase -i --root
+			GIT_SEQUENCE_EDITOR="$sequence_editor" git rebase -i --root
 		fi
 		break
 	fi

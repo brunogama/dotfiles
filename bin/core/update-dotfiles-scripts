@@ -44,7 +44,7 @@ echo "Linking public commands to ~/.local/bin..."
 echo ""
 
 # Apply command links using the convention linker
-python3 "$LINKER" --commands-only --apply --yes
+DOTFILES_ROOT="$DOTFILES_REPO" python3 "$LINKER" --commands-only --apply --yes
 
 echo ""
 echo -e "${GREEN}Scripts updated successfully!${NC}"
