@@ -1,5 +1,5 @@
 {
-  # This is the only file that should need editing for another user or Mac.
+  # This is the only Nix host configuration file that should need editing for another user or Mac.
   configurationName = "naboo";
   username = "bruno";
   computerName = "naboo";

@@ -1,0 +1,1 @@
+skills: Reusable technical procedures with explicit activation and ownership boundaries.

@@ -1,0 +1,1 @@
+agents: Roles, delegation boundaries, and handoff contracts used by coding agents.

@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/bruno/.local/bin/home-sync</string>
+        <string>__HOME__/.local/bin/home-sync</string>
         <string>daemon</string>
     </array>
 
@@ -24,20 +24,20 @@
     <integer>3600</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/bruno/.config/sync-service/logs/daemon.out</string>
+    <string>__HOME__/.config/sync-service/logs/daemon.out</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/bruno/.config/sync-service/logs/daemon.err</string>
+    <string>__HOME__/.config/sync-service/logs/daemon.err</string>
 
     <key>WorkingDirectory</key>
-    <string>/Users/bruno/.config</string>
+    <string>__HOME__/.config</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/bruno/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
-        <string>/Users/bruno</string>
+        <string>__HOME__</string>
     </dict>
 
     <key>ProcessType</key>
