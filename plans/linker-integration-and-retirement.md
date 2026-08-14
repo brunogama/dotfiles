@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 depends: [linker-lifecycle-and-migration]
 specs:
   - specs/linking-architecture.md
@@ -25,12 +25,12 @@ Wire the completed linker into installation and user-facing workflows, add excep
 
 ## Validation
 
-- [ ] Installer and help flows invoke the convention linker and document explicit legacy migration.
-- [ ] Exceptional installer modules follow the main linker's safety and ownership contract.
-- [ ] Integration tests cover clean install, collision handling, overlay resolution, migration, pruning, and partial-failure recovery.
-- [ ] ShellCheck passes for every changed shell script and Python compilation passes for the linker.
-- [ ] Repository search finds no active manifest workflow or `~/local/bin` guidance outside intentional migration history.
-- [ ] A clean temporary HOME and an isolated XDG state directory complete an end-to-end apply successfully.
+- [x] Installer and help flows invoke the convention linker and document explicit legacy migration.
+- [x] Exceptional installer modules follow the main linker's safety and ownership contract.
+- [x] Integration tests cover clean install, collision handling, overlay resolution, migration, pruning, and partial-failure recovery.
+- [x] ShellCheck passes for every changed shell script and Python compilation passes for the linker.
+- [x] Repository search finds no active manifest workflow or `~/local/bin` guidance outside intentional migration history.
+- [x] A clean temporary HOME and an isolated XDG state directory complete an end-to-end apply successfully.
 
 ## Risks / unknowns
 

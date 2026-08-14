@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [linking-shell-core-source-tree]
 specs:
   - specs/linking-architecture.md
@@ -23,10 +23,10 @@ Migrate the remaining common shell configuration, library, and completion files 
 
 ## Validation
 
-- [ ] Each migrated support file maps one-for-one from `home/` to its intended `$HOME` destination.
-- [ ] Shell references to libraries and completions resolve to the migrated paths.
-- [ ] No directory-wide managed link is introduced.
-- [ ] The focused source-layout checks pass.
+- [x] Each migrated support file maps one-for-one from `home/` to its intended `$HOME` destination.
+- [x] Shell references to libraries and completions resolve to the migrated paths.
+- [x] No directory-wide managed link is introduced.
+- [x] The focused source-layout checks pass.
 
 ## Risks / unknowns
 

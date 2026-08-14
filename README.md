@@ -126,10 +126,9 @@ The repository layout is the source of truth for links: files beneath `home/`, p
 ```bash
 python3 bin/core/link-dotfiles.py --dry-run
 python3 bin/core/link-dotfiles.py --apply --yes
-python3 bin/core/link-dotfiles.py --migrate-legacy-bin --apply
 ```
 
-The linker maps home trees below `$HOME`, exposes public commands in `~/.local/bin`, and keeps the legacy `~/local/bin` directory unchanged unless explicit migration is requested.
+The linker maps home trees below `$HOME` and exposes public commands in `~/.local/bin`.
 
 ### Manage credentials
 

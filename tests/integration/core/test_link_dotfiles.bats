@@ -14,6 +14,7 @@ setup() {
     mkdir -p "$TEST_DOTFILES/home"
     export DOTFILES_ROOT="$TEST_DOTFILES"
     export DOTFILES_HOSTNAME="test-host"
+    export XDG_STATE_HOME="$TEST_TEMP_DIR/state"
 }
 
 create_home_file() {
@@ -51,7 +52,7 @@ assert_link_points_to() {
     assert_output --partial "Convention-based"
 }
 
-@test "link-dotfiles: ignores a malformed legacy manifest" {
+@test "link-dotfiles: ignores a malformed historical manifest" {
     create_home_file ".example"
     printf 'not json' > "$TEST_DOTFILES/LinkingManifest.json"
     run python3 "$LINK_SCRIPT" --dry-run
@@ -176,6 +177,24 @@ assert_link_points_to() {
     assert_link_points_to "$TEST_DOTFILES/home/.collision" "$HOME/.collision"
 }
 
+@test "link-dotfiles: preserves Nix-managed targets even with force" {
+    create_home_file ".gitconfig"
+    create_home_file ".linker-test/unmanaged"
+    local nix_source="$TEST_TEMP_DIR/nix-managed-gitconfig"
+    printf 'nix-managed\n' > "$nix_source"
+    nix_source="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$nix_source")"
+    rm -f "$HOME/.gitconfig"
+    ln -s "$nix_source" "$HOME/.gitconfig"
+
+    run python3 "$LINK_SCRIPT" --apply --force --yes
+
+    assert_success
+    assert_output --partial "Skipped (Nix-managed): $HOME/.gitconfig"
+    assert_link_points_to "$nix_source" "$HOME/.gitconfig"
+    assert_link_points_to "$TEST_DOTFILES/home/.linker-test/unmanaged" "$HOME/.linker-test/unmanaged"
+    refute grep -Fq '"target": "'"$HOME/.gitconfig"'"' "$HOME/.local/state/dotfiles/links.json"
+}
+
 @test "link-dotfiles: correct existing links are idempotent" {
     create_home_file ".example"
     ln -s "$TEST_DOTFILES/home/.example" "$HOME/.example"
@@ -194,6 +213,27 @@ assert_link_points_to() {
     assert_success
 }
 
+@test "link-dotfiles: records completed links after an apply failure and converges on rerun" {
+    create_home_file ".first"
+    create_home_file ".second"
+
+    run env LINK_DOTFILES_TEST_FAIL_AFTER=1 python3 "$LINK_SCRIPT" --apply --yes
+    assert_failure
+    assert_output --partial "injected filesystem failure"
+
+    local ledger="$HOME/.local/state/dotfiles/links.json"
+    run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}]' "$ledger" "$TEST_DOTFILES/home/.first" "$HOME/.first"
+    assert_success
+    assert_link_points_to "$TEST_DOTFILES/home/.first" "$HOME/.first"
+    refute test -e "$HOME/.second"
+
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    assert_link_points_to "$TEST_DOTFILES/home/.second" "$HOME/.second"
+    run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}, {"source": str(pathlib.Path(sys.argv[4]).resolve()), "target": sys.argv[5]}]' "$ledger" "$TEST_DOTFILES/home/.first" "$HOME/.first" "$TEST_DOTFILES/home/.second" "$HOME/.second"
+    assert_success
+}
+
 @test "link-dotfiles: prune removes a stale tracked symlink" {
     create_home_file ".stale"
     run python3 "$LINK_SCRIPT" --apply --yes
@@ -204,21 +244,42 @@ assert_link_points_to() {
     refute test -L "$HOME/.stale"
 }
 
+@test "link-dotfiles: prune preserves desired command links" {
+    create_command core retained-command
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    assert_link_points_to "$TEST_DOTFILES/bin/core/retained-command" "$HOME/.local/bin/retained-command"
+}
+
+@test "link-dotfiles: prune rejects a foreign ownership ledger" {
+    mkdir -p "$HOME/.local/state/dotfiles"
+    printf '{"version": 1, "repository_id": "foreign", "links": []}\n' > "$HOME/.local/state/dotfiles/links.json"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_failure
+    assert_output --partial "Invalid or missing ownership ledger"
+}
+
 @test "link-dotfiles: prune removes a tracked link from a prior checkout" {
     local prior_root="$TEST_TEMP_DIR/prior-checkout"
     mkdir -p "$prior_root/home" "$HOME/.local/state/dotfiles"
     printf 'old\n' > "$prior_root/home/.moved"
     ln -s "$prior_root/home/.moved" "$HOME/.moved"
     create_home_file ".moved" new
-    printf '{"version": 1, "repository_id": "stable", "links": [{"source": "%s", "target": "%s"}]}\n' "$prior_root/home/.moved" "$HOME/.moved" > "$HOME/.local/state/dotfiles/links.json"
+    local repository_id
+    repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
+    printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}]}\n' "$repository_id" "$prior_root/home/.moved" "$HOME/.moved" > "$HOME/.local/state/dotfiles/links.json"
     run python3 "$LINK_SCRIPT" --prune --apply
     assert_success
     refute test -L "$HOME/.moved"
 }
 
 @test "link-dotfiles: prune preserves untracked targets" {
+    local repository_id
+    repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
     mkdir -p "$HOME/.local/state/dotfiles"
-    printf '{"version": 1, "repository_id": "test", "links": []}\n' > "$HOME/.local/state/dotfiles/links.json"
+    printf '{"version": 1, "repository_id": "%s", "links": []}\n' "$repository_id" > "$HOME/.local/state/dotfiles/links.json"
     ln -s /tmp/untracked "$HOME/.untracked"
     printf 'regular\n' > "$HOME/.regular"
     mkdir "$HOME/.directory"
@@ -261,6 +322,42 @@ assert_link_points_to() {
     assert_symlink_exists "$HOME/local/bin/managed-command"
     refute test -e "$HOME/.local/bin/managed-command"
     assert_output --partial "Preserving"
+}
+
+@test "link-dotfiles: migration leaves unproven files directories and symlinks untouched without force and yes" {
+    create_command core managed-command
+    mkdir -p "$HOME/local/bin/unproven-directory"
+    printf 'custom\n' > "$HOME/local/bin/unproven-file"
+    ln -s /tmp/unproven "$HOME/local/bin/managed-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force
+    assert_success
+    assert_file_exists "$HOME/local/bin/unproven-file"
+    assert_dir_exists "$HOME/local/bin/unproven-directory"
+    assert_symlink_exists "$HOME/local/bin/managed-command"
+    refute test -e "$XDG_STATE_HOME/dotfiles/legacy-bin-backups"
+    assert_output --partial "Preserving unproven"
+}
+
+@test "link-dotfiles: force and yes move unproven legacy entries into XDG state backups" {
+    create_command core managed-command
+    mkdir -p "$HOME/local/bin/unproven-directory"
+    printf 'custom\n' > "$HOME/local/bin/unproven-file"
+    printf 'nested\n' > "$HOME/local/bin/unproven-directory/file"
+    ln -s /tmp/unproven "$HOME/local/bin/managed-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
+    assert_success
+    refute test -e "$HOME/local/bin/unproven-file"
+    refute test -e "$HOME/local/bin/unproven-directory"
+    refute test -L "$HOME/local/bin/managed-command"
+    local backup_root
+    backup_root="$(find "$XDG_STATE_HOME/dotfiles/legacy-bin-backups" -mindepth 1 -maxdepth 1 -type d)"
+    assert_file_exists "$backup_root/unproven-file"
+    assert_file_exists "$backup_root/unproven-directory/file"
+    assert_symlink_exists "$backup_root/managed-command"
+    assert_output --partial "Backed up unproven legacy entry"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
+    assert_success
+    assert_equal "$(find "$XDG_STATE_HOME/dotfiles/legacy-bin-backups" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" "1"
 }
 
 @test "link-dotfiles: migration dry-run changes neither legacy nor command links" {

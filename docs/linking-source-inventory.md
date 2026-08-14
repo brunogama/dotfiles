@@ -1,4 +1,4 @@
-# Convention Linker Source Inventory
+# Historical Convention Linker Migration Inventory
 
 ## Managed Home Trees
 
@@ -42,9 +42,9 @@ commands.
 | `bin/git/lib/` | internal support | Remove legacy manifest exposure; no public links |
 | `bin/lib/` | internal support | Remove legacy manifest exposure; no public links |
 
-The checked executable basenames are unique across the public command
-directories. Home Manager currently adds both `~/local/bin` and `~/.local/bin`
-to `PATH`; the lifecycle plan owns the explicit legacy-directory migration.
+Historical migration note: the checked executable basenames are unique across
+the public command directories. Home Manager retains both `~/local/bin` and
+`~/.local/bin` on `PATH` for existing installations; Nix ownership is unchanged.
 
 ## Exceptional Installer Input
 
