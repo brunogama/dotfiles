@@ -6,49 +6,49 @@
     "shell": {
       "zsh": [
         {
-          "source": "zsh/.zshenv",
+          "source": "home/.zshenv",
           "target": "~/.zshenv",
           "description": "Zsh environment file (sets ZDOTDIR)",
           "note": "This MUST be in $HOME to bootstrap ZDOTDIR"
         },
         {
-          "source": "zsh/.zshrc",
+          "source": "home/.config/zsh/.zshrc",
           "target": "~/.config/zsh/.zshrc",
           "description": "Zsh main configuration"
         },
         {
-          "source": "zsh/.zprofile",
+          "source": "home/.config/zsh/.zprofile",
           "target": "~/.config/zsh/.zprofile",
           "description": "Zsh profile (login shell)"
         },
         {
-          "source": "zsh/.zpreztorc",
+          "source": "home/.config/zsh/.zpreztorc",
           "target": "~/.config/zsh/.zpreztorc",
           "description": "Prezto configuration"
         },
         {
-          "source": "zsh/starship.toml",
+          "source": "home/.config/starship.toml",
           "target": "~/.config/starship.toml",
           "description": "Starship prompt configuration"
         },
         {
-          "source": "zsh/work-config.zsh",
+          "source": "home/.config/zsh/work-config.zsh",
           "target": "~/.config/zsh/work-config.zsh",
           "description": "Work environment configuration"
         },
         {
-          "source": "zsh/personal-config.zsh",
+          "source": "home/.config/zsh/personal-config.zsh",
           "target": "~/.config/zsh/personal-config.zsh",
           "description": "Personal environment configuration"
         },
         {
-          "source": "zsh/lib/",
+          "source": "home/.config/zsh/lib/",
           "target": "~/.config/zsh/lib",
           "description": "Zsh library files (lazy-load, etc.)",
           "type": "directory-contents"
         },
         {
-          "source": "zsh/completion/",
+          "source": "home/.config/zsh/completion/",
           "target": "~/.config/zsh/completion",
           "description": "Custom zsh completion functions",
           "type": "directory-contents"
@@ -57,31 +57,31 @@
     },
     "git": [
       {
-        "source": "git/.gitconfig",
+        "source": "home/.gitconfig",
         "target": "~/.gitconfig",
         "description": "Git global configuration"
       },
       {
-        "source": "git/.gitignore_global",
+        "source": "home/.gitignore_global",
         "target": "~/.gitignore_global",
         "description": "Git global ignore patterns (400+ patterns for macOS, Swift, Python, AI agents)",
         "note": "Referenced by core.excludesfile in .gitconfig"
       },
       {
-        "source": "git/conventional-commits-gitmessage",
+        "source": "home/.config/git/conventional-commits-gitmessage",
         "target": "~/.config/git/conventional-commits-gitmessage",
         "description": "Conventional commits message template",
         "note": "Referenced by commit.template in .gitconfig"
       },
       {
-        "source": "git/github-flow-aliases.gitconfig",
+        "source": "home/.config/git/github-flow-aliases.gitconfig",
         "target": "~/.config/git/github-flow-aliases.gitconfig",
         "description": "GitHub Flow workflow git aliases",
         "optional": true,
         "note": "Can be included in .gitconfig with [include] path"
       },
       {
-        "source": "git/ios.gitattributes",
+        "source": "home-darwin/.config/git/ios.gitattributes",
         "target": "~/.config/git/ios.gitattributes",
         "description": "iOS-specific git attributes (text handling, diff drivers)",
         "platforms": ["darwin"],
@@ -92,7 +92,7 @@
     "packages": {
       "homebrew": [
         {
-          "source": "packages/homebrew/Brewfile",
+          "source": "home-darwin/Brewfile",
           "target": "~/Brewfile",
           "description": "Homebrew bundle file",
           "platforms": ["darwin"]
@@ -100,20 +100,20 @@
       ],
       "mise": [
         {
-          "source": "packages/mise/config.toml",
+          "source": "home/.config/mise/config.toml",
           "target": "~/.config/mise/config.toml",
           "description": "Mise version manager configuration"
         }
       ],
       "sync-service": [
         {
-          "source": "packages/syncservice/com.brunogama.home-sync.plist",
+          "source": "home-darwin/Library/LaunchAgents/com.brunogama.home-sync.plist",
           "target": "~/Library/LaunchAgents/com.brunogama.home-sync.plist",
           "description": "Home sync service launch agent",
           "platforms": ["darwin"]
         },
         {
-          "source": "packages/syncservice/config.yml",
+          "source": "home/.config/home-sync/config.yml",
           "target": "~/.config/home-sync/config.yml",
           "description": "Home sync service configuration"
         }

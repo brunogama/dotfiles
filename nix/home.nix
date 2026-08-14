@@ -10,63 +10,63 @@ let
   legacyLinks = [
     {
       target = ".zshenv";
-      source = ../zsh/.zshenv;
+      source = ../home/.zshenv;
     }
     {
       target = ".config/zsh/.zshrc";
-      source = ../zsh/.zshrc;
+      source = ../home/.config/zsh/.zshrc;
     }
     {
       target = ".config/zsh/.zprofile";
-      source = ../zsh/.zprofile;
+      source = ../home/.config/zsh/.zprofile;
     }
     {
       target = ".config/zsh/.zpreztorc";
-      source = ../zsh/.zpreztorc;
+      source = ../home/.config/zsh/.zpreztorc;
     }
     {
       target = ".config/starship.toml";
-      source = ../zsh/starship.toml;
+      source = ../home/.config/starship.toml;
     }
     {
       target = ".config/zsh/work-config.zsh";
-      source = ../zsh/work-config.zsh;
+      source = ../home/.config/zsh/work-config.zsh;
     }
     {
       target = ".config/zsh/personal-config.zsh";
-      source = ../zsh/personal-config.zsh;
+      source = ../home/.config/zsh/personal-config.zsh;
     }
     {
       target = ".config/zsh/lib/lazy-load.zsh";
-      source = ../zsh/lib/lazy-load.zsh;
+      source = ../home/.config/zsh/lib/lazy-load.zsh;
     }
     {
       target = ".config/zsh/completion/_pi";
-      source = ../zsh/completion/_pi;
+      source = ../home/.config/zsh/completion/_pi;
     }
     {
       target = ".config/zsh/completion/git-ignore-completion";
-      source = ../zsh/completion/git-ignore-completion;
+      source = ../home/.config/zsh/completion/git-ignore-completion;
     }
     {
       target = ".gitconfig";
-      source = ../git/.gitconfig;
+      source = ../home/.gitconfig;
     }
     {
       target = ".gitignore_global";
-      source = ../git/.gitignore_global;
+      source = ../home/.gitignore_global;
     }
     {
       target = ".config/git/github-flow-aliases.gitconfig";
-      source = ../git/github-flow-aliases.gitconfig;
+      source = ../home/.config/git/github-flow-aliases.gitconfig;
     }
     {
       target = ".config/git/conventional-commits-gitmessage";
-      source = ../git/conventional-commits-gitmessage;
+      source = ../home/.config/git/conventional-commits-gitmessage;
     }
     {
       target = ".config/git/ios.gitattributes";
-      source = ../git/ios.gitattributes;
+      source = ../home-darwin/.config/git/ios.gitattributes;
     }
   ];
   legacyLinkSource =
@@ -141,9 +141,9 @@ in
       enable = true;
       dotDir = "${config.xdg.configHome}/zsh";
       enableCompletion = false;
-      envExtra = builtins.readFile ../zsh/.zshenv;
-      profileExtra = builtins.readFile ../zsh/.zprofile;
-      initContent = lib.mkOrder 1000 (builtins.readFile ../zsh/.zshrc);
+      envExtra = builtins.readFile ../home/.zshenv;
+      profileExtra = builtins.readFile ../home/.config/zsh/.zprofile;
+      initContent = lib.mkOrder 1000 (builtins.readFile ../home/.config/zsh/.zshrc);
     };
   };
 
@@ -152,21 +152,21 @@ in
     ".codex/AGENTS.md".source = ../docs/agents/AGENTS.md;
     ".claude/CLAUDE.md".source = ../docs/agents/AGENTS.md;
 
-    ".gitignore_global".source = ../git/.gitignore_global;
-    ".config/git/github-flow-aliases.gitconfig".source = ../git/github-flow-aliases.gitconfig;
-    ".config/git/conventional-commits-gitmessage".source = ../git/conventional-commits-gitmessage;
-    ".config/git/ios.gitattributes".source = ../git/ios.gitattributes;
+    ".gitignore_global".source = ../home/.gitignore_global;
+    ".config/git/github-flow-aliases.gitconfig".source = ../home/.config/git/github-flow-aliases.gitconfig;
+    ".config/git/conventional-commits-gitmessage".source = ../home/.config/git/conventional-commits-gitmessage;
+    ".config/git/ios.gitattributes".source = ../home-darwin/.config/git/ios.gitattributes;
 
-    ".config/zsh/.zpreztorc".source = ../zsh/.zpreztorc;
-    ".config/starship.toml".source = ../zsh/starship.toml;
-    ".config/zsh/work-config.zsh".source = ../zsh/work-config.zsh;
-    ".config/zsh/personal-config.zsh".source = ../zsh/personal-config.zsh;
+    ".config/zsh/.zpreztorc".source = ../home/.config/zsh/.zpreztorc;
+    ".config/starship.toml".source = ../home/.config/starship.toml;
+    ".config/zsh/work-config.zsh".source = ../home/.config/zsh/work-config.zsh;
+    ".config/zsh/personal-config.zsh".source = ../home/.config/zsh/personal-config.zsh;
     ".config/zsh/lib" = {
-      source = ../zsh/lib;
+      source = ../home/.config/zsh/lib;
       recursive = true;
     };
     ".config/zsh/completion" = {
-      source = ../zsh/completion;
+      source = ../home/.config/zsh/completion;
       recursive = true;
     };
   };

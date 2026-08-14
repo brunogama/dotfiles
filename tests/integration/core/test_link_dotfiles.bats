@@ -1,550 +1,296 @@
 #!/usr/bin/env bats
-# Integration tests for link-dotfiles.py
+# Integration tests for convention-based link-dotfiles.py
 
 load '../../helpers/test-helpers'
 load '../../helpers/file-helpers'
 load '../../helpers/setup-teardown'
 load '../../helpers/bats-support/load.bash'
 load '../../helpers/bats-assert/load.bash'
-load '../../helpers/bats-file/load.bash'
 
 setup() {
     standard_setup
-
-    # Get dotfiles root and script path
-    local dotfiles_root
-    dotfiles_root="$(get_dotfiles_root)"
-    export LINK_SCRIPT="$dotfiles_root/bin/core/link-dotfiles.py"
-
-    # Create test dotfiles structure
+    export LINK_SCRIPT="$(get_dotfiles_root)/bin/core/link-dotfiles.py"
     export TEST_DOTFILES="$TEST_TEMP_DIR/dotfiles"
-    mkdir -p "$TEST_DOTFILES"
-    cd "$TEST_DOTFILES"
-
-    # Set DOTFILES_ROOT for script
+    mkdir -p "$TEST_DOTFILES/home"
     export DOTFILES_ROOT="$TEST_DOTFILES"
-
-    # Create source files
-    mkdir -p zsh git vim
-    echo "test zshrc" > zsh/.zshrc
-    echo "test gitconfig" > git/.gitconfig
-    echo "test vimrc" > vim/.vimrc
+    export DOTFILES_HOSTNAME="test-host"
 }
 
-teardown() {
-    standard_teardown
+create_home_file() {
+    local path="$1"
+    mkdir -p "$(dirname "$TEST_DOTFILES/home/$path")"
+    printf '%s\n' "${2:-content}" > "$TEST_DOTFILES/home/$path"
 }
 
-# Helper to create manifest
-create_test_manifest() {
-    cat > "$TEST_DOTFILES/LinkingManifest.json" << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "zsh/.zshrc",
-      "target": "~/.zshrc",
-      "platform": "all",
-      "optional": false
-    },
-    {
-      "source": "git/.gitconfig",
-      "target": "~/.gitconfig",
-      "platform": "all",
-      "optional": false
-    },
-    {
-      "source": "vim/.vimrc",
-      "target": "~/.vimrc",
-      "platform": "all",
-      "optional": true
+create_overlay_file() {
+    local tree="$1" path="$2"
+    mkdir -p "$(dirname "$TEST_DOTFILES/$tree/$path")"
+    printf '%s\n' "${3:-content}" > "$TEST_DOTFILES/$tree/$path"
+}
+
+create_command() {
+    local domain="$1" name="$2"
+    mkdir -p "$TEST_DOTFILES/bin/$domain"
+    printf '#!/usr/bin/env bash\n' > "$TEST_DOTFILES/bin/$domain/$name"
+    chmod +x "$TEST_DOTFILES/bin/$domain/$name"
+}
+
+assert_link_points_to() {
+    local expected="$1" link="$2" actual
+    expected="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$expected")"
+    actual="$(readlink "$link")"
+    [[ "$actual" == "$expected" ]] || {
+        printf 'expected %s, got %s\n' "$expected" "$actual" >&2
+        return 1
     }
-  ]
-}
-EOF
 }
 
-# Help and Version Tests
-
-@test "link-dotfiles: --help shows usage" {
+@test "link-dotfiles: help describes convention-based linking" {
     run python3 "$LINK_SCRIPT" --help
     assert_success
-    assert_output --partial "link-dotfiles"
-    assert_output --partial "Usage"
-    assert_output --partial "Options"
+    assert_output --partial "Convention-based"
 }
 
-# Prerequisite Tests
-
-@test "link-dotfiles: fails without LinkingManifest.json" {
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_failure
-    assert_output --partial "LinkingManifest.json not found"
-}
-
-@test "link-dotfiles: fails with invalid JSON" {
-    echo "invalid json" > "$TEST_DOTFILES/LinkingManifest.json"
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_failure
-    assert_output --partial "invalid JSON"
-}
-
-@test "link-dotfiles: succeeds with valid manifest" {
-    create_test_manifest
-
+@test "link-dotfiles: ignores a malformed legacy manifest" {
+    create_home_file ".example"
+    printf 'not json' > "$TEST_DOTFILES/LinkingManifest.json"
     run python3 "$LINK_SCRIPT" --dry-run
     assert_success
+    assert_output --partial ".example"
 }
 
-# Dry-run Mode Tests
-
-@test "link-dotfiles: dry-run does not create symlinks" {
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_success
-
-    # No symlinks should be created
-    assert_file_not_exists "$HOME/.zshrc"
-    assert_file_not_exists "$HOME/.gitconfig"
-}
-
-@test "link-dotfiles: dry-run reports what would be done" {
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_success
-    assert_output --partial "Would create"
-}
-
-@test "link-dotfiles: dry-run reports all links" {
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_success
-    assert_output --partial ".zshrc"
-    assert_output --partial ".gitconfig"
-    assert_output --partial ".vimrc"
-}
-
-# Apply Mode Tests
-
-@test "link-dotfiles: --apply creates symlinks" {
-    create_test_manifest
-
+@test "link-dotfiles: maps common files recursively below HOME" {
+    create_home_file ".linker-test/example/config"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # Symlinks should be created
-    assert_symlink_exists "$HOME/.zshrc"
-    assert_symlink_exists "$HOME/.gitconfig"
-    assert_symlink_exists "$HOME/.vimrc"
+    assert_link_points_to "$TEST_DOTFILES/home/.linker-test/example/config" "$HOME/.linker-test/example/config"
 }
 
-@test "link-dotfiles: --apply creates correct symlink targets" {
-    create_test_manifest
+@test "link-dotfiles: dry-run creates neither links nor parent directories" {
+    create_home_file ".linker-test/example/config"
+    run python3 "$LINK_SCRIPT" --dry-run
+    assert_success
+    refute test -e "$HOME/.linker-test"
+    refute test -L "$HOME/.linker-test/example/config"
+}
 
+@test "link-dotfiles: platform overlay wins over common source" {
+    create_home_file ".linker-test/example/config" common
+    create_overlay_file "home-$(uname | tr '[:upper:]' '[:lower:]')" ".linker-test/example/config" platform
+    run python3 "$LINK_SCRIPT" --apply --yes --verbose
+    assert_success
+    assert_link_points_to "$TEST_DOTFILES/home-$(uname | tr '[:upper:]' '[:lower:]')/.linker-test/example/config" "$HOME/.linker-test/example/config"
+    assert_output --partial "home-$(uname | tr '[:upper:]' '[:lower:]')"
+}
+
+@test "link-dotfiles: hostname overlay wins over platform source" {
+    local platform
+    platform="$(uname | tr '[:upper:]' '[:lower:]')"
+    create_overlay_file "home-$platform" ".example" platform
+    create_overlay_file "home-host-test-host" ".example" host
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
-    assert_symlink_to "$HOME/.gitconfig" "$TEST_DOTFILES/git/.gitconfig"
+    assert_link_points_to "$TEST_DOTFILES/home-host-test-host/.example" "$HOME/.example"
 }
 
-@test "link-dotfiles: creates parent directories" {
-    cat > "$TEST_DOTFILES/LinkingManifest.json" << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "git/.gitconfig",
-      "target": "~/.config/git/config",
-      "platform": "all",
-      "optional": false
-    }
-  ]
-}
-EOF
-
+@test "link-dotfiles: only current platform overlay is discovered" {
+    create_overlay_file "home-linux" ".linux-only"
+    create_overlay_file "home-darwin" ".darwin-only"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # Parent directory should be created
-    assert_dir_exists "$HOME/.config/git"
-    assert_symlink_exists "$HOME/.config/git/config"
-}
-
-# Platform Filtering Tests
-
-@test "link-dotfiles: filters links by platform" {
-    cat > "$TEST_DOTFILES/LinkingManifest.json" << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "zsh/.zshrc",
-      "target": "~/.zshrc",
-      "platform": "all",
-      "optional": false
-    },
-    {
-      "source": "git/.gitconfig",
-      "target": "~/.macos-only",
-      "platform": "darwin",
-      "optional": false
-    },
-    {
-      "source": "vim/.vimrc",
-      "target": "~/.linux-only",
-      "platform": "linux",
-      "optional": false
-    }
-  ]
-}
-EOF
-
-    run python3 "$LINK_SCRIPT" --apply --yes
-    assert_success
-
-    # All platform should be created
-    assert_symlink_exists "$HOME/.zshrc"
-
-    # Platform-specific links depend on current platform
-    if [[ "$(uname)" == "Darwin" ]]; then
-        assert_symlink_exists "$HOME/.macos-only"
-        assert_file_not_exists "$HOME/.linux-only"
+    if [[ "$(uname)" == Darwin ]]; then
+        assert_symlink_exists "$HOME/.darwin-only"
+        refute test -e "$HOME/.linux-only"
     else
-        assert_file_not_exists "$HOME/.macos-only"
         assert_symlink_exists "$HOME/.linux-only"
+        refute test -e "$HOME/.darwin-only"
     fi
 }
 
-# Optional Links Tests
-
-@test "link-dotfiles: creates optional links" {
-    create_test_manifest
-
+@test "link-dotfiles: discovers executable public commands" {
+    create_command core example-command
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # Optional link should still be created if source exists
-    assert_symlink_exists "$HOME/.vimrc"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/example-command" "$HOME/.local/bin/example-command"
+    refute test -e "$HOME/local/bin/example-command"
 }
 
-@test "link-dotfiles: skips optional links with missing source" {
-    cat > "$TEST_DOTFILES/LinkingManifest.json" << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "zsh/.zshrc",
-      "target": "~/.zshrc",
-      "platform": "all",
-      "optional": false
-    },
-    {
-      "source": "nonexistent/file",
-      "target": "~/.optional",
-      "platform": "all",
-      "optional": true
-    }
-  ]
+@test "link-dotfiles: commands-only skips home-tree sources" {
+    create_home_file ".not-linked"
+    create_command core public-command
+    run python3 "$LINK_SCRIPT" --commands-only --apply --yes
+    assert_success
+    refute test -e "$HOME/.not-linked"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/public-command" "$HOME/.local/bin/public-command"
 }
-EOF
 
+@test "link-dotfiles: commands-only preserves prior ownership state" {
+    create_home_file ".tracked"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # Required link created
-    assert_symlink_exists "$HOME/.zshrc"
-
-    # Optional link skipped
-    assert_file_not_exists "$HOME/.optional"
+    create_command core public-command
+    run python3 "$LINK_SCRIPT" --commands-only --apply --yes
+    assert_success
+    rm "$TEST_DOTFILES/home/.tracked"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    refute test -e "$HOME/.tracked"
 }
 
-# Existing File Handling Tests
-
-@test "link-dotfiles: skips already correct symlinks" {
-    create_test_manifest
-
-    # Create symlink first
-    ln -sf "$TEST_DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
-
+@test "link-dotfiles: ignores nested and non-executable command files" {
+    create_command core public-command
+    mkdir -p "$TEST_DOTFILES/bin/core/nested"
+    touch "$TEST_DOTFILES/bin/core/nested/hidden" "$TEST_DOTFILES/bin/core/not-public"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # Should report as already linked
-    assert_output --partial "Already linked"
+    assert_symlink_exists "$HOME/.local/bin/public-command"
+    refute test -e "$HOME/.local/bin/hidden"
+    refute test -e "$HOME/.local/bin/not-public"
 }
 
-@test "link-dotfiles: prompts for existing files in interactive mode" {
-    create_test_manifest
-
-    # Create existing file
-    echo "existing" > "$HOME/.zshrc"
-
-    # In non-interactive mode with --yes, should overwrite
+@test "link-dotfiles: duplicate commands fail before filesystem mutation" {
+    create_home_file ".valid"
+    create_command core duplicate
+    create_command git duplicate
     run python3 "$LINK_SCRIPT" --apply --yes
-    assert_success
-
-    # Should have replaced with symlink
-    assert_symlink_exists "$HOME/.zshrc"
+    assert_failure
+    assert_output --partial "Duplicate command name"
+    refute test -e "$HOME/.valid"
 }
 
-@test "link-dotfiles: --force overwrites existing files" {
-    create_test_manifest
+@test "link-dotfiles: collision fails before filesystem mutation" {
+    create_home_file ".valid"
+    create_home_file ".collision"
+    printf 'existing\n' > "$HOME/.collision"
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_failure
+    assert_output --partial "Collision"
+    refute test -e "$HOME/.valid"
+}
 
-    # Create existing file
-    echo "existing" > "$HOME/.zshrc"
-
+@test "link-dotfiles: force and yes explicitly replace collisions" {
+    create_home_file ".collision"
+    printf 'existing\n' > "$HOME/.collision"
     run python3 "$LINK_SCRIPT" --apply --force --yes
     assert_success
-
-    # Should have replaced with symlink
-    assert_symlink_exists "$HOME/.zshrc"
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
+    assert_link_points_to "$TEST_DOTFILES/home/.collision" "$HOME/.collision"
 }
 
-# Verbose Output Tests
-
-@test "link-dotfiles: --verbose shows detailed output" {
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run --verbose
-    assert_success
-    assert_output --partial "DEBUG"
-}
-
-@test "link-dotfiles: verbose shows processing steps" {
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run --verbose
-    assert_success
-    assert_output --partial "Processing:"
-}
-
-# Statistics Tests
-
-@test "link-dotfiles: reports statistics" {
-    create_test_manifest
-
+@test "link-dotfiles: correct existing links are idempotent" {
+    create_home_file ".example"
+    ln -s "$TEST_DOTFILES/home/.example" "$HOME/.example"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # Should show count of created links
-    assert_output --partial "Created:"
+    assert_output --partial "already linked"
 }
 
-# Error Handling Tests
-
-@test "link-dotfiles: handles missing source file" {
-    cat > "$TEST_DOTFILES/LinkingManifest.json" << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "nonexistent/file",
-      "target": "~/.nonexistent",
-      "platform": "all",
-      "optional": false
-    }
-  ]
-}
-EOF
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_success
-
-    # Should report source not found
-    assert_output --partial "not found"
-}
-
-# Complex Manifest Tests
-
-@test "link-dotfiles: handles multiple links" {
-    cat > "$TEST_DOTFILES/LinkingManifest.json" << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "zsh/.zshrc",
-      "target": "~/.zshrc",
-      "platform": "all",
-      "optional": false
-    },
-    {
-      "source": "git/.gitconfig",
-      "target": "~/.gitconfig",
-      "platform": "all",
-      "optional": false
-    },
-    {
-      "source": "vim/.vimrc",
-      "target": "~/.vimrc",
-      "platform": "all",
-      "optional": false
-    },
-    {
-      "source": "zsh/.zshenv",
-      "target": "~/.zshenv",
-      "platform": "all",
-      "optional": true
-    }
-  ]
-}
-EOF
-
-    # Create .zshenv as well
-    echo "test zshenv" > "$TEST_DOTFILES/zsh/.zshenv"
-
+@test "link-dotfiles: records a versioned ownership ledger" {
+    create_home_file ".example"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # All links should be created
-    assert_symlink_exists "$HOME/.zshrc"
-    assert_symlink_exists "$HOME/.gitconfig"
-    assert_symlink_exists "$HOME/.vimrc"
-    assert_symlink_exists "$HOME/.zshenv"
-}
-
-# Platform Detection Tests
-
-@test "link-dotfiles: detects darwin platform" {
-    skip_on_linux "macOS-specific test"
-
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run --verbose
+    local ledger="$HOME/.local/state/dotfiles/links.json"
+    assert_file_exists "$ledger"
+    run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["version"] == 1; assert state["repository_id"]; assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}]' "$ledger" "$TEST_DOTFILES/home/.example" "$HOME/.example"
     assert_success
 }
 
-@test "link-dotfiles: detects linux platform" {
-    skip_on_macos "Linux-specific test"
-
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run --verbose
-    assert_success
-}
-
-# Tilde Expansion Tests
-
-@test "link-dotfiles: expands tilde in target paths" {
-    create_test_manifest
-
+@test "link-dotfiles: prune removes a stale tracked symlink" {
+    create_home_file ".stale"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    # Symlinks should be in actual HOME, not literal '~'
-    assert_symlink_exists "$HOME/.zshrc"
-    assert_dir_exists "$(dirname "$HOME/.zshrc")"
+    rm "$TEST_DOTFILES/home/.stale"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    refute test -L "$HOME/.stale"
 }
 
-# Exit Code Tests
-
-@test "link-dotfiles: exits 0 on success" {
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_equal "$status" 0
+@test "link-dotfiles: prune removes a tracked link from a prior checkout" {
+    local prior_root="$TEST_TEMP_DIR/prior-checkout"
+    mkdir -p "$prior_root/home" "$HOME/.local/state/dotfiles"
+    printf 'old\n' > "$prior_root/home/.moved"
+    ln -s "$prior_root/home/.moved" "$HOME/.moved"
+    create_home_file ".moved" new
+    printf '{"version": 1, "repository_id": "stable", "links": [{"source": "%s", "target": "%s"}]}\n' "$prior_root/home/.moved" "$HOME/.moved" > "$HOME/.local/state/dotfiles/links.json"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    refute test -L "$HOME/.moved"
 }
 
-@test "link-dotfiles: exits non-zero on missing manifest" {
-    run python3 "$LINK_SCRIPT" --dry-run
+@test "link-dotfiles: prune preserves untracked targets" {
+    mkdir -p "$HOME/.local/state/dotfiles"
+    printf '{"version": 1, "repository_id": "test", "links": []}\n' > "$HOME/.local/state/dotfiles/links.json"
+    ln -s /tmp/untracked "$HOME/.untracked"
+    printf 'regular\n' > "$HOME/.regular"
+    mkdir "$HOME/.directory"
+    run python3 "$LINK_SCRIPT" --prune --apply
+    assert_success
+    assert_symlink_exists "$HOME/.untracked"
+    assert_file_exists "$HOME/.regular"
+    assert_dir_exists "$HOME/.directory"
+}
+
+@test "link-dotfiles: prune dry-run leaves a stale tracked symlink" {
+    create_home_file ".stale"
+    run python3 "$LINK_SCRIPT" --apply --yes
+    assert_success
+    rm "$TEST_DOTFILES/home/.stale"
+    run python3 "$LINK_SCRIPT" --prune --dry-run
+    assert_success
+    assert_symlink_exists "$HOME/.stale"
+    assert_output --partial "Would prune"
+}
+
+@test "link-dotfiles: migrates a proven legacy command link" {
+    create_command core legacy-command
+    mkdir -p "$HOME/local/bin"
+    ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    assert_success
+    refute test -L "$HOME/local/bin/legacy-command"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/.local/bin/legacy-command"
+}
+
+@test "link-dotfiles: migration preserves unmanaged legacy entries" {
+    create_command core managed-command
+    mkdir -p "$HOME/local/bin"
+    printf 'custom\n' > "$HOME/local/bin/custom-command"
+    ln -s /tmp/unmanaged "$HOME/local/bin/managed-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    assert_success
+    assert_file_exists "$HOME/local/bin/custom-command"
+    assert_symlink_exists "$HOME/local/bin/managed-command"
+    refute test -e "$HOME/.local/bin/managed-command"
+    assert_output --partial "Preserving"
+}
+
+@test "link-dotfiles: migration dry-run changes neither legacy nor command links" {
+    create_command core legacy-command
+    mkdir -p "$HOME/local/bin"
+    ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --dry-run
+    assert_success
+    assert_symlink_exists "$HOME/local/bin/legacy-command"
+    refute test -e "$HOME/.local/bin/legacy-command"
+    assert_output --partial "Would migrate"
+}
+
+@test "link-dotfiles: migration refuses a conflicting command target" {
+    create_command core legacy-command
+    mkdir -p "$HOME/local/bin" "$HOME/.local/bin"
+    ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
+    printf 'conflict\n' > "$HOME/.local/bin/legacy-command"
+    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
     assert_failure
+    assert_symlink_exists "$HOME/local/bin/legacy-command"
+    assert_file_exists "$HOME/.local/bin/legacy-command"
+    assert_output --partial "Collision"
 }
 
-@test "link-dotfiles: exits non-zero on invalid JSON" {
-    echo "invalid" > "$TEST_DOTFILES/LinkingManifest.json"
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_failure
-}
-
-# Color Output Tests
-
-@test "link-dotfiles: uses ANSI colors in output" {
-    create_test_manifest
-
-    run python3 "$LINK_SCRIPT" --dry-run
-    assert_success
-
-    # Output should contain color codes or formatted messages
-    # (even if not visible in test output)
-}
-
-# Idempotency Tests
-
-@test "link-dotfiles: is idempotent" {
-    create_test_manifest
-
-    # Run twice
+@test "link-dotfiles: source symlinks are not managed" {
+    create_home_file ".real"
+    ln -s "$TEST_DOTFILES/home/.real" "$TEST_DOTFILES/home/.source-link"
     run python3 "$LINK_SCRIPT" --apply --yes
     assert_success
-
-    run python3 "$LINK_SCRIPT" --apply --yes
-    assert_success
-
-    # Should still have correct symlinks
-    assert_symlink_exists "$HOME/.zshrc"
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
-}
-
-# Symlink Replacement Tests
-
-@test "link-dotfiles: replaces incorrect symlinks" {
-    create_test_manifest
-
-    # Create symlink to wrong location
-    mkdir -p "$TEST_TEMP_DIR/wrong"
-    echo "wrong" > "$TEST_TEMP_DIR/wrong/.zshrc"
-    ln -sf "$TEST_TEMP_DIR/wrong/.zshrc" "$HOME/.zshrc"
-
-    run python3 "$LINK_SCRIPT" --apply --yes --force
-    assert_success
-
-    # Should point to correct location now
-    assert_symlink_to "$HOME/.zshrc" "$TEST_DOTFILES/zsh/.zshrc"
-}
-
-# Directory Creation Tests
-
-@test "link-dotfiles: creates nested directories" {
-    cat > "$TEST_DOTFILES/LinkingManifest.json" << 'EOF'
-{
-  "version": "1.0",
-  "links": [
-    {
-      "source": "git/.gitconfig",
-      "target": "~/.config/deep/nested/config",
-      "platform": "all",
-      "optional": false
-    }
-  ]
-}
-EOF
-
-    run python3 "$LINK_SCRIPT" --apply --yes
-    assert_success
-
-    assert_dir_exists "$HOME/.config/deep/nested"
-    assert_symlink_exists "$HOME/.config/deep/nested/config"
-}
-
-# Cleanup Tests
-
-@test "link-dotfiles: removes broken symlinks when re-run" {
-    create_test_manifest
-
-    # Create broken symlink
-    ln -sf "/nonexistent/path" "$HOME/.zshrc"
-    assert_broken_symlink "$HOME/.zshrc"
-
-    run python3 "$LINK_SCRIPT" --apply --yes --force
-    assert_success
-
-    # Should be fixed
-    assert_symlink_exists "$HOME/.zshrc"
-    refute_broken_symlink "$HOME/.zshrc"
+    assert_symlink_exists "$HOME/.real"
+    refute test -e "$HOME/.source-link"
 }
