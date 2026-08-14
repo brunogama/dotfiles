@@ -13,7 +13,7 @@ require_candidate_staging = true
 include_github_workflows = true
 
 [skills]
-include_base_skills = ["architect", "imprint", "recover", "remember", "review", "skill-forge"]
+include_base_skills = ["architect", "recover", "remember", "review", "skill-forge"]
 
 [external_skills]
 manifest = "skill-sources.json"
