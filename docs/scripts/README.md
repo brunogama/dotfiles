@@ -36,7 +36,7 @@ cat docs/scripts/quick-reference.md
 | `get-api-key` | Retrieve credentials | Credentials |
 | `zsh-benchmark` | Measure shell startup performance | Core |
 | `conventional-commit` | Guided conventional commits | Git |
-| `link-dotfiles` | Apply symlinks from manifest | Core |
+| `link-dotfiles` | Apply convention-based links | Core |
 
 ## By Task
 

@@ -46,6 +46,7 @@ Wire the completed linker into installation and user-facing workflows, add excep
 - Third integration slice retires the manifest validation hook, its pre-commit and CI registrations, and corresponding hook tests. Manifest content remains until the dedicated retirement slice.
 - Fourth integration slice retires the unused manifest fixture and replaces the new-machine manifest-presence assertion with convention-linker source-tree coverage.
 - Fifth integration slice updates the README, quick start guide, and interactive help to describe convention-based linking and `~/.local/bin` command exposure.
+- Sixth integration slice updates IDE repository discovery and script-reference documentation to use convention-linker markers instead of the manifest.
 
 ## Follow-ups
 
