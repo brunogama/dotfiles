@@ -110,6 +110,19 @@ teardown() {
     assert_success
 }
 
+@test "check-no-emojis: treats pipe-prefixed staged filenames as data" {
+    printf '%s\n' '#!/usr/bin/env bash' "touch '$TEST_REPO_DIR/executed'" \
+        > "check-no-emojis-exploit.sh"
+    chmod +x "check-no-emojis-exploit.sh"
+    create_test_file "|check-no-emojis-exploit.sh" "safe"
+    git add -- "|check-no-emojis-exploit.sh"
+
+    run env "PATH=$TEST_REPO_DIR:$PATH" "$HOOKS_DIR/check-no-emojis"
+
+    assert_success
+    refute test -e "$TEST_REPO_DIR/executed"
+}
+
 # Check-commit-msg Hook Tests
 
 @test "check-commit-msg: validates conventional commit format" {
