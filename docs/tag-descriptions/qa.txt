@@ -1,0 +1,1 @@
+qa: Deterministic validation plus fresh-agent review of generated repository assets.

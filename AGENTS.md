@@ -100,11 +100,13 @@ openspec/            # Change proposals and specs
 These instructions are for AI assistants working in this project.
 
 Always open `@/openspec/AGENTS.md` when the request:
+
 - Mentions planning or proposals (words like proposal, spec, change, plan)
 - Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
 - Sounds ambiguous and you need the authoritative spec before coding
 
 Use `@/openspec/AGENTS.md` to learn:
+
 - How to create and apply change proposals
 - Spec format and conventions
 - Project structure and guidelines
@@ -112,3 +114,26 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+
+---
+
+## Agent infrastructure
+
+### Required startup
+
+For agent-infrastructure changes, read `CLAUDE.md`, `docs/domain.md`,
+`docs/sop-conventions.md`, and `learnings/CORRECTIONS.md` before editing.
+
+### Skill lifecycle
+
+No skill becomes permanent without collection, induction, deduction,
+de-duplication, and explicit human approval. Stage drafts only under the
+harness-specific `_candidates/<skill-name>/` directory. Do not promote a
+candidate or record it as active without approval.
+
+### Quality
+
+- Run `uv run scripts/qa_repository.py .` before completing agent-infrastructure changes.
+- Request a fresh agent review using `qa/QA_AGENT.md` after deterministic QA passes.
+- Never enable or execute an external skill source before review.
+- Do not place credentials, tokens, or private URLs in generated prompts or workflows.
