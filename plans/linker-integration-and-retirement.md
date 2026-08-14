@@ -47,6 +47,7 @@ Wire the completed linker into installation and user-facing workflows, add excep
 - Fourth integration slice retires the unused manifest fixture and replaces the new-machine manifest-presence assertion with convention-linker source-tree coverage.
 - Fifth integration slice updates the README, quick start guide, and interactive help to describe convention-based linking and `~/.local/bin` command exposure.
 - Sixth integration slice updates IDE repository discovery and script-reference documentation to use convention-linker markers instead of the manifest.
+- Seventh integration slice updates agent-facing project guidance with the convention source trees, safe apply command, and lifecycle operations.
 
 ## Follow-ups
 

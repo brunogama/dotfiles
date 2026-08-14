@@ -89,6 +89,16 @@ teardown() {
 
 # Setup Verification Tests
 
+@test "new machine: agent guidance describes convention linking" {
+    local dotfiles_root
+    dotfiles_root="$(get_dotfiles_root)"
+
+    assert_file_contains "$dotfiles_root/AGENTS.md" "convention-based links"
+    assert_file_contains "$dotfiles_root/CLAUDE.md" "Convention-Based Symlink Management"
+    run grep -F "LinkingManifest.json" "$dotfiles_root/AGENTS.md" "$dotfiles_root/CLAUDE.md"
+    assert_failure
+}
+
 @test "setup verification: can check git version" {
     skip_if_no_command "git" "git not available"
 
