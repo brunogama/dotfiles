@@ -17,10 +17,18 @@ from typing import Any
 
 JINJA_OPEN_BRACE = re.escape(chr(123))
 JINJA_MARKER = re.compile(
-    "(?<![$" + chr(123) + "])(?:"
-    + JINJA_OPEN_BRACE + JINJA_OPEN_BRACE + "(?!" + JINJA_OPEN_BRACE + ")|"
-    + JINJA_OPEN_BRACE + "%|"
-    + JINJA_OPEN_BRACE + "#)"
+    "(?<![$"
+    + chr(123)
+    + "])(?:"
+    + JINJA_OPEN_BRACE
+    + JINJA_OPEN_BRACE
+    + "(?!"
+    + JINJA_OPEN_BRACE
+    + ")|"
+    + JINJA_OPEN_BRACE
+    + "%|"
+    + JINJA_OPEN_BRACE
+    + "#)"
 )
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 TEXT_SUFFIXES = {".json", ".md", ".py", ".toml", ".txt", ".yml", ".yaml"}
@@ -48,7 +56,9 @@ def validate_repository(repository_root: Path) -> list[str]:
     return failures
 
 
-def _validate_manifest_hashes(repository_root: Path, manifest: dict[str, Any]) -> list[str]:
+def _validate_manifest_hashes(
+    repository_root: Path, manifest: dict[str, Any]
+) -> list[str]:
     failures: list[str] = []
     files = manifest.get("files")
     if not isinstance(files, dict):
@@ -64,7 +74,9 @@ def _validate_manifest_hashes(repository_root: Path, manifest: dict[str, Any]) -
     return failures
 
 
-def _validate_required_paths(repository_root: Path, manifest: dict[str, Any]) -> list[str]:
+def _validate_required_paths(
+    repository_root: Path, manifest: dict[str, Any]
+) -> list[str]:
     required = [
         "AGENTS.md",
         "README.md",
@@ -77,38 +89,73 @@ def _validate_required_paths(repository_root: Path, manifest: dict[str, Any]) ->
     if "claude" in harnesses:
         required.extend(["CLAUDE.md", ".claude/agents/qa.md", ".claude/commands/qa.md"])
     if "pi" in harnesses:
-        required.extend([".pi/settings.json", ".pi/prompts/qa.md", ".pi/skills/skill-forge/SKILL.md"])
+        required.extend(
+            [
+                ".pi/settings.json",
+                ".pi/prompts/qa.md",
+                ".pi/skills/skill-forge/SKILL.md",
+            ]
+        )
     if "codex" in harnesses:
         required.extend([".agents/agents/qa.md", ".agents/skills/skill-forge/SKILL.md"])
-    return [f"required: missing {name}" for name in required if not (repository_root / name).is_file()]
+    return [
+        f"required: missing {name}"
+        for name in required
+        if not (repository_root / name).is_file()
+    ]
 
 
 def _validate_skill_frontmatter(repository_root: Path) -> list[str]:
     failures: list[str] = []
-    skill_roots = [repository_root / ".claude/skills", repository_root / ".pi/skills", repository_root / ".agents/skills"]
-    for skill_path in sorted(path for root in skill_roots if root.is_dir() for path in root.glob("*/SKILL.md")):
+    skill_roots = [
+        repository_root / ".claude/skills",
+        repository_root / ".pi/skills",
+        repository_root / ".agents/skills",
+    ]
+    for skill_path in sorted(
+        path
+        for root in skill_roots
+        if root.is_dir()
+        for path in root.glob("*/SKILL.md")
+    ):
         text = skill_path.read_text(encoding="utf-8")
         if not text.startswith("---\n"):
-            failures.append(f"skill: missing frontmatter {skill_path.relative_to(repository_root)}")
+            failures.append(
+                f"skill: missing frontmatter {skill_path.relative_to(repository_root)}"
+            )
             continue
         frontmatter = text.split("---\n", 2)[1]
         name_match = re.search(r"^name:\s*([^\n]+)$", frontmatter, re.MULTILINE)
-        description_match = re.search(r"^description:\s*([^\n]+)$", frontmatter, re.MULTILINE)
+        description_match = re.search(
+            r"^description:\s*([^\n]+)$", frontmatter, re.MULTILINE
+        )
         if not name_match or not SKILL_NAME.fullmatch(name_match.group(1).strip()):
-            failures.append(f"skill: invalid name {skill_path.relative_to(repository_root)}")
+            failures.append(
+                f"skill: invalid name {skill_path.relative_to(repository_root)}"
+            )
         if not description_match or not description_match.group(1).strip():
-            failures.append(f"skill: missing description {skill_path.relative_to(repository_root)}")
+            failures.append(
+                f"skill: missing description {skill_path.relative_to(repository_root)}"
+            )
     return failures
 
 
 def _validate_text_files(repository_root: Path) -> list[str]:
     failures: list[str] = []
-    for path in sorted(item for item in repository_root.rglob("*") if item.is_file() and item.suffix in TEXT_SUFFIXES):
+    for path in sorted(
+        item
+        for item in repository_root.rglob("*")
+        if item.is_file() and item.suffix in TEXT_SUFFIXES
+    ):
         text = path.read_text(encoding="utf-8")
         if JINJA_MARKER.search(text):
-            failures.append(f"template: unresolved marker in {path.relative_to(repository_root)}")
+            failures.append(
+                f"template: unresolved marker in {path.relative_to(repository_root)}"
+            )
         if str(Path.home()) in text:
-            failures.append(f"path: author-machine home path in {path.relative_to(repository_root)}")
+            failures.append(
+                f"path: author-machine home path in {path.relative_to(repository_root)}"
+            )
     return failures
 
 
@@ -122,15 +169,21 @@ def _validate_external_sources(repository_root: Path) -> list[str]:
     for source in manifest.get("sources", []):
         argv = source.get("install_argv", [])
         if argv[:3] != ["npx", "skills", "add"]:
-            failures.append(f"external sources: invalid argv for {source.get('name', '<unnamed>')}")
+            failures.append(
+                f"external sources: invalid argv for {source.get('name', '<unnamed>')}"
+            )
         if source.get("enabled") and source.get("repository") == "owner/repository":
-            failures.append("external sources: placeholder repository cannot be enabled")
+            failures.append(
+                "external sources: placeholder repository cannot be enabled"
+            )
     for script_path in (repository_root / "scripts").glob("*.py"):
         if script_path.name == "qa_repository.py":
             continue
         script = script_path.read_text(encoding="utf-8")
         if "subprocess" in script and "skills" in script and "add" in script:
-            failures.append(f"external sources: automatic installer in {script_path.name}")
+            failures.append(
+                f"external sources: automatic installer in {script_path.name}"
+            )
     return failures
 
 
