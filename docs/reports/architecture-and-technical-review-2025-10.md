@@ -2266,10 +2266,10 @@ installation:
 dotfiles template list --remote
 # Output:
 # Available Templates:
-# - devops-kubernetes (⭐ 324) - Kubernetes DevOps toolkit
-# - mobile-ios (⭐ 256) - iOS development setup
-# - data-science-python (⭐ 198) - Python data science tools
-# - frontend-react (⭐ 176) - React development setup
+# - devops-kubernetes (324 stars) - Kubernetes DevOps toolkit
+# - mobile-ios (256 stars) - iOS development setup
+# - data-science-python (198 stars) - Python data science tools
+# - frontend-react (176 stars) - React development setup
 
 # Install template
 dotfiles template install devops-kubernetes
@@ -2283,9 +2283,9 @@ dotfiles template install devops-kubernetes
 # Search templates
 dotfiles template search "git"
 # Results:
-# - git-worktree-extended (⭐ 324) - Enhanced worktree management
-# - git-flow-pro (⭐ 198) - Git flow automation
-# - git-analytics (⭐ 156) - Repository insights
+# - git-worktree-extended (324 stars) - Enhanced worktree management
+# - git-flow-pro (198 stars) - Git flow automation
+# - git-analytics (156 stars) - Repository insights
 
 # Update installed templates
 dotfiles template update devops-kubernetes
