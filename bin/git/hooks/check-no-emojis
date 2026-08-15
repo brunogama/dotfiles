@@ -45,7 +45,7 @@ for file in "${files[@]}"; do
 		continue
 	fi
 
-	if ! perl -CSD -ne 'exit 1 if /\p{Extended_Pictographic}/' <"$contents"; then
+	if ! perl -CSD -ne 'exit 1 if /\p{Extended_Pictographic}|\p{Regional_Indicator}/' <"$contents"; then
 		printf '%bERROR: Emojis found in %s%b\n' "$RED" "$file" "$NC"
 		echo 'MINDSET.MD Rule 2: No emojis allowed in documentation or code'
 		found=true
