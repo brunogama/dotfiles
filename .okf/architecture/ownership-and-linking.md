@@ -4,7 +4,7 @@ title: Configuration ownership and linking
 description: Home Manager owns declared targets while the convention linker safely manages remaining eligible home files and public commands.
 resource: https://github.com/brunogama/dotfiles/blob/main/bin/core/link-dotfiles.py
 tags: [home-manager, linking, symlinks, filesystem, safety]
-timestamp: 2026-08-15T01:29:12Z
+timestamp: 2026-08-15T01:58:48Z
 ---
 
 # Configuration ownership and linking
@@ -26,7 +26,7 @@ This separation avoids competing mutations of the same target. Do not introduce 
 
 ## Linker contract
 
-The linker derives home-file destinations from the source-tree layout and puts public commands in `~/.local/bin`. It previews by default, validates the complete plan before mutating the filesystem, and rejects unmanaged collisions unless `--force` is explicitly supplied. It records links it owns in local state and prunes only those recorded targets.
+The linker derives home-file destinations from the source-tree layout and puts public commands in `~/.local/bin`. It previews by default, validates the complete plan before mutating the filesystem, and rejects unmanaged collisions unless `--force --yes` is explicitly supplied. It records links it owns in local state and prunes only those recorded targets.
 
 Use the narrowest operation that meets the need:
 
@@ -36,7 +36,7 @@ uv run bin/core/link-dotfiles.py --apply --yes
 uv run bin/core/link-dotfiles.py --commands-only --apply --yes
 ```
 
-`--force` is a destructive acknowledgement, not a routine repair option. Review the dry-run plan first.
+`--force --yes` is a destructive acknowledgement, not a routine repair option. Review the dry-run plan first.
 
 ---
 

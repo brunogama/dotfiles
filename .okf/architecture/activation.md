@@ -4,7 +4,7 @@ title: Nix activation
 description: Flake-based configuration provides standalone Home Manager activation and optional privileged nix-darwin activation from shared modules.
 resource: https://github.com/brunogama/dotfiles/tree/main/nix
 tags: [nix, flakes, home-manager, nix-darwin, macos, activation]
-timestamp: 2026-08-15T01:29:12Z
+timestamp: 2026-08-15T01:58:48Z
 ---
 
 # Nix activation
@@ -19,7 +19,7 @@ The flake is the declarative entry point. It imports a host-local configuration 
 - a nix-darwin configuration for optional system-level macOS activation; and
 - a development shell with validation and maintenance tooling.
 
-Both activation routes use the same Home Manager module, so user configuration is shared rather than duplicated. The host module is the intentionally small machine-specific boundary. Before activation on another machine, update its account, host, architecture, and Git identity values.
+Both activation routes use the same Home Manager module, so user configuration is shared rather than duplicated. The host module is the intentionally small machine-specific boundary. Before activation on another machine, update its account, host, architecture, Git identity, and Nix-daemon ownership (`manageNix`) values. Set `manageNix = false` when using Determinate Nix, which owns its own daemon.
 
 ---
 
