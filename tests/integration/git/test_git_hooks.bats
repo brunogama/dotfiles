@@ -152,6 +152,16 @@ teardown() {
     refute test -e "$TEST_REPO_DIR/executed"
 }
 
+@test "check-no-emojis: rejects regional indicator flags" {
+    create_test_file "flag.txt" $'Flag \U0001F1FA\U0001F1F8'
+    git add flag.txt
+
+    run "$HOOKS_DIR/check-no-emojis"
+
+    assert_failure
+    assert_output --partial "flag.txt"
+}
+
 # Check-commit-msg Hook Tests
 
 @test "check-commit-msg: validates conventional commit format" {
