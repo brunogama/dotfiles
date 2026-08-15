@@ -1,5 +1,7 @@
 # Modern Dotfiles
 
+[![CI](https://github.com/brunogama/dotfiles/actions/workflows/ci.yml/badge.svg)](https://github.com/brunogama/dotfiles/actions/workflows/ci.yml)
+
 A Nix-first, macOS-oriented home-environment configuration for a reproducible developer setup. It combines Home Manager and optional nix-darwin activation with shell configuration, safe convention-based linking, credential utilities, Git helpers, and local synchronization tools.
 
 > [!IMPORTANT]
@@ -150,7 +152,8 @@ zsh-trim-history
 │   ├── credentials/ # Keychain and encrypted-credential tools
 │   ├── git/         # Git workflow helpers and hooks
 │   ├── ide/         # IDE integrations
-│   └── macos/       # macOS-specific utilities
+│   ├── macos/       # macOS-specific utilities
+│   └── test/        # Repository test runner
 ├── packages/        # Package-manager configuration
 ├── git/             # Git configuration and shared helpers
 ├── zsh/             # Zsh configuration and support files
@@ -181,7 +184,13 @@ bin/test/run-tests
 # Focused Python tests
 python3 tests/test_git_smart_merge.py
 python3 tests/test_uv_resolver.py
+
+# Full local macOS CI gate before opening or updating a pull request
+scripts/local-ci.sh
 ```
+
+> [!NOTE]
+> `scripts/local-ci.sh` runs each macOS stage in an isolated temporary workspace. Use `--include-destructive` only when you explicitly want to test Nix installation in a disposable VM.
 
 See [`tests/README.md`](tests/README.md) for Bats test prerequisites, filtering, timing, TAP output, and parallel execution.
 
@@ -193,3 +202,4 @@ See [`tests/README.md`](tests/README.md) for Bats test prerequisites, filtering,
 - [Convention linker source inventory](docs/linking-source-inventory.md)
 - [Credential management guide](docs/guides/CREDENTIAL_MANAGEMENT.md)
 - [Git virtual worktree guide](docs/git-virtual-worktree.md)
+- [Script quick reference](docs/scripts/quick-reference.md)
