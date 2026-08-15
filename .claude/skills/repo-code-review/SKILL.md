@@ -3,7 +3,6 @@ name: repo-code-review
 description: Use when completing recurring Modern Dotfiles audits. Owns exhaustive severity-tagged repository checks. Do not use for initial diff reviews or CodeRabbit execution.
 tags: [code-review, dotfiles, nix, shell, security]
 date: 2026-08-14
-candidate: true
 triggers:
   - recurring full-codebase audit
   - post-review repository audit
@@ -13,7 +12,7 @@ triggers:
 
 # Audit Modern Dotfiles Review Standards
 
-Apply this candidate checklist during recurring full-codebase audits of this Nix-first, macOS-oriented dotfiles repository.
+Apply this checklist during recurring full-codebase audits of this Nix-first, macOS-oriented dotfiles repository.
 
 ## When to use
 
@@ -29,8 +28,7 @@ Do not use for initial diff-review procedure or CodeRabbit execution.
 
 1. Map audited modules to the relevant checklist sections.
 2. Treat every Blocking item as merge-blocking until resolved or explicitly accepted.
-3. Run the narrowest matching check from `.github/workflows/ci.yml` or `.github/workflows/qa.yml`.
-4. Report findings with affected paths, impact, evidence, and required remediation.
+3. Report findings with affected paths, impact, evidence, and required remediation.
 
 ---
 
@@ -39,7 +37,7 @@ Do not use for initial diff-review procedure or CodeRabbit execution.
 ### Architecture & structure
 
 - [ ] (Blocking) Verify `link-dotfiles.py` preserves Nix-owned target exclusions defined in `nix/home.nix`.
-- [ ] (Blocking) Ensure installer changes retain `--nix` activation and `--scripts-only` command-linking behavior.
+- [ ] (Blocking) Ensure installer changes retain `--backend`, `--nix`, `--legacy`, and `--scripts-only` routing.
 - [ ] (Blocking) Confirm public commands remain directly below `bin/<domain>/` for convention-based linking.
 - [ ] (Warning) Check home-file changes distinguish `home/`, `home-darwin/`, and host-specific source roots.
 - [ ] (Warning) Verify Nix activation and convention linking never manage the same target.

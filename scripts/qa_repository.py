@@ -178,13 +178,31 @@ def _validate_skill_lifecycle(repository_root: Path) -> list[str]:
         repository_root / ".pi/skills",
         repository_root / ".agents/skills",
     ]
-    return [
-        f"lifecycle: active skill {skill_path.relative_to(repository_root)}"
+    active_skills = [
+        skill_path
         for root in skill_roots
         if root.is_dir()
         for skill_path in sorted(root.glob("*/SKILL.md"))
-        if skill_path.parent.name not in approved_names
     ]
+    failures: list[str] = []
+    for skill_path in active_skills:
+        relative_path = skill_path.relative_to(repository_root)
+        text = skill_path.read_text(encoding="utf-8")
+        name_match = re.search(r"^name:\s*([^\n]+)$", text, re.MULTILINE)
+        declared_name = name_match.group(1).strip() if name_match else None
+        if declared_name != skill_path.parent.name:
+            failures.append(
+                f"lifecycle: active skill {relative_path} name must match its directory"
+            )
+            continue
+        if declared_name not in approved_names:
+            failures.append(f"lifecycle: active skill {relative_path}")
+            continue
+        if re.search(r"^candidate:\s*true\s*$", text, re.MULTILINE):
+            failures.append(
+                f"lifecycle: active skill {relative_path} is marked as candidate"
+            )
+    return failures
 
 
 def _validate_text_files(repository_root: Path) -> list[str]:
