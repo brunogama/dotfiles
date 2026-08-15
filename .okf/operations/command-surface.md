@@ -4,7 +4,7 @@ title: Dotfiles command surface
 description: Executable tools are organized by operational domain and expose installation, Nix, linking, credential, Git, shell, and synchronization workflows.
 resource: https://github.com/brunogama/dotfiles/tree/main/bin
 tags: [cli, commands, operations, shell, credentials, synchronization]
-timestamp: 2026-08-15T01:41:31Z
+timestamp: 2026-08-15T01:58:48Z
 ---
 
 # Dotfiles command surface
@@ -31,7 +31,7 @@ Nested files are implementation details unless a wrapper intentionally exposes t
 ## Safety rules
 
 - Run dry-run variants before any installer, linker, Nix, or synchronization command that can mutate local state.
-- Do not pass secrets as arguments. Credential commands should receive them through an interactive prompt, standard input, or a file to avoid shell-history and process-list exposure.
+- Do not pass secrets as arguments. Credential commands should receive them through an interactive prompt, standard input, or a permission-restricted temporary file, such as mode `0600`, that is deleted after use.
 - Treat forceful synchronization or replacement modes as destructive. Confirm their scope before use.
 - Preserve the Nix/linker ownership boundary described in [configuration ownership and linking](../architecture/ownership-and-linking.md).
 

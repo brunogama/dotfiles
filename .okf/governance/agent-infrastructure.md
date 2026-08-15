@@ -4,7 +4,7 @@ title: Agent infrastructure governance
 description: Agent skills and harness content are staged, reviewed, and validated before becoming active repository capabilities.
 resource: https://github.com/brunogama/dotfiles/tree/main/.agents
 tags: [agents, skills, governance, qa, harnesses]
-timestamp: 2026-08-15T01:29:12Z
+timestamp: 2026-08-15T01:58:48Z
 ---
 
 # Agent infrastructure governance
@@ -46,3 +46,6 @@ The QA procedure verifies enabled-harness coverage, candidate lifecycle safety, 
 [2] [Shared agent instructions](../../docs/agents/AGENTS.md)
 [3] [QA assignment](../../qa/QA_AGENT.md)
 [4] [Claude harness workflow](../../CLAUDE.md)
+[5] [Domain model](../../docs/domain.md)
+[6] [SOP conventions](../../docs/sop-conventions.md)
+[7] [Corrections record](../../learnings/CORRECTIONS.md)
