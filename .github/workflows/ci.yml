@@ -346,9 +346,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install bats-core
+      - name: Install Bats and GNU Parallel
         run: |
-          brew install bats-core
+          brew install bats-core parallel
 
       - name: Install bats libraries
         run: |
@@ -360,8 +360,9 @@ jobs:
 
       - name: Run maintained integration tests
         run: |
-          bats --tap tests/integration/core/test_install.bats
-          bats --tap tests/integration/core/test_work_mode.bats
+          bats --tap --jobs "${BATS_JOBS:-2}" \
+            tests/integration/core/test_install.bats \
+            tests/integration/core/test_work_mode.bats
 
       - name: Upload test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -382,10 +383,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install bats-core
+      - name: Install Bats and GNU Parallel
         run: |
           sudo apt-get update
-          sudo apt-get install -y bats
+          sudo apt-get install -y bats parallel
 
       - name: Install bats libraries
         run: |
@@ -397,8 +398,9 @@ jobs:
 
       - name: Run maintained integration tests
         run: |
-          bats --tap tests/integration/core/test_install.bats
-          bats --tap tests/integration/core/test_work_mode.bats
+          bats --tap --jobs "${BATS_JOBS:-2}" \
+            tests/integration/core/test_install.bats \
+            tests/integration/core/test_work_mode.bats
 
       - name: Upload test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
