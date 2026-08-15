@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.qa_repository import validate_repository
 
@@ -61,6 +65,65 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
 
         self.assertFalse(
             any(failure.startswith("lifecycle:") for failure in failures),
+            failures,
+        )
+
+    def test_rejects_active_skill_with_mismatched_directory_and_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_required_files(repository_root)
+            (repository_root / ".agent-scaffold").mkdir()
+            (repository_root / ".agent-scaffold/dotfiles.toml").write_text(
+                "[repository]\n"
+                "require_candidate_staging = true\n"
+                'approved_active_skills = ["repo-code-review"]\n',
+                encoding="utf-8",
+            )
+            skill_path = repository_root / ".pi/skills/repo-code-review/SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(
+                "---\n"
+                "name: unapproved-skill\n"
+                "description: Use when auditing this repository.\n"
+                "---\n",
+                encoding="utf-8",
+            )
+
+            failures = validate_repository(repository_root)
+
+        self.assertIn(
+            "lifecycle: active skill .pi/skills/repo-code-review/SKILL.md "
+            "name must match its directory",
+            failures,
+        )
+
+    def test_rejects_approved_active_skills_marked_as_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_required_files(repository_root)
+            (repository_root / ".agent-scaffold").mkdir()
+            (repository_root / ".agent-scaffold/dotfiles.toml").write_text(
+                "[repository]\n"
+                "require_candidate_staging = true\n"
+                'approved_active_skills = ["repo-code-review"]\n',
+                encoding="utf-8",
+            )
+            skill_path = repository_root / ".pi/skills/repo-code-review/SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(
+                "---\n"
+                "name: repo-code-review\n"
+                "candidate: true\n"
+                "description: Use when auditing this repository.\n"
+                "---\n",
+                encoding="utf-8",
+            )
+
+            failures = validate_repository(repository_root)
+
+        self.assertIn(
+            "lifecycle: active skill .pi/skills/repo-code-review/SKILL.md "
+            "is marked as candidate",
             failures,
         )
 
