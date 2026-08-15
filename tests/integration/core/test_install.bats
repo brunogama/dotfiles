@@ -498,6 +498,30 @@ teardown() {
 
 # Dry-run Mode Tests
 
+@test "install: handles long Homebrew version output without SIGPIPE" {
+    skip_on_linux "macOS-specific Homebrew behavior"
+
+    local mock_bin
+    mock_bin="$BATS_TEST_TMPDIR/homebrew-version-bin"
+    mkdir -p "$mock_bin"
+    cat > "$mock_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1-}" == "--version" ]]; then
+    printf 'Homebrew 4.0.0\n'
+    for _ in {1..200000}; do
+        printf 'additional version detail\n'
+    done
+fi
+EOF
+    chmod +x "$mock_bin/brew"
+
+    run env PATH="$mock_bin:$PATH" "$DOTFILES_ROOT/install" \
+        --dry-run --yes --skip-packages --skip-links
+
+    assert_success
+    assert_output --partial "Homebrew 4.0.0"
+}
+
 @test "install: dry-run reports would install Homebrew" {
     skip_on_linux "macOS-specific test"
 
