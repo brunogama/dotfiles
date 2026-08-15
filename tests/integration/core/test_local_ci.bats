@@ -87,27 +87,18 @@ EOF
     [[ -f "$probe_directory/markers-verified" ]]
 }
 
-@test "local-ci: runs maintained Bats suites in parallel" {
-    local arguments_file
-    arguments_file="$BATS_TEST_TMPDIR/bats-arguments"
-
-    run bash -s -- "$LOCAL_CI" "$arguments_file" <<'EOF'
+@test "local-ci: skips GitHub-only stages without container tooling" {
+    run bash -s -- "$LOCAL_CI" "$BATS_TEST_TMPDIR/results.tsv" <<'EOF'
 set -euo pipefail
 
 local_ci="$1"
-arguments_file="$2"
+results="$2"
 set --
 source "$local_ci"
-workspace="$(mktemp -d "$BATS_TEST_TMPDIR/workspace.XXXXXX")"
-
-bats() {
-    printf '%s\n' "$*" >"$arguments_file"
-}
-
-macos_integration
-
-[[ "$(wc -l <"$arguments_file")" -eq 1 ]]
-[[ "$(cat "$arguments_file")" == '--tap --jobs 2 tests/integration/core/test_install.bats tests/integration/core/test_work_mode.bats' ]]
+: >"$results"
+record_github_only_stages
+! grep -Eq '\<(act|docker)\>' "$local_ci"
+[[ "$(awk -F '\t' '$4 == "skip" { count += 1 } END { print count }' "$results")" == 6 ]]
 EOF
 
     assert_success
