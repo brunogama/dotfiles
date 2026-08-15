@@ -15,6 +15,7 @@ Options:
 
 Environment:
   ACT_IMAGE                Ubuntu act image (default: ghcr.io/catthehacker/ubuntu:full-latest).
+  BATS_JOBS                Bats worker count (default: 2).
   CODECOV_TOKEN            Optional token used only with --include-remote-only.
   GITHUB_TOKEN             Required for the close-prs stage.
   LOCAL_CI_CLOSE_EVENT     Required pull_request_target event JSON for close-prs.
@@ -303,9 +304,9 @@ macos_test() (
 
 macos_integration() (
 	cd "$workspace"
-	bats --tap tests/integration/core/test_install.bats
-	bats --tap tests/integration/core/test_work_mode.bats
-	bats --tap tests/integration/core/test_local_ci.bats
+	bats --tap --jobs "${BATS_JOBS:-2}" \
+		tests/integration/core/test_install.bats \
+		tests/integration/core/test_work_mode.bats
 )
 
 act_ci_job() {
