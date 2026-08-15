@@ -110,16 +110,45 @@ teardown() {
     assert_success
 }
 
+@test "check-no-emojis: scans staged content rather than the working tree" {
+    create_test_file "staged.md" "safe"
+    git add staged.md
+    git commit -m "Add staged file"
+    create_test_file "staged.md" "staged 😀"
+    git add staged.md
+    create_test_file "staged.md" "safe"
+
+    run "$HOOKS_DIR/check-no-emojis"
+
+    assert_failure
+    assert_output --partial "staged.md"
+}
+
+@test "check-no-emojis: scans renamed staged files" {
+    create_test_file "original.md" "first\nsecond\nthird\nfourth\nfifth"
+    git add original.md
+    git commit -m "Add original file"
+    git mv original.md renamed.md
+    append_to_file "renamed.md" "😀"
+    git add renamed.md
+
+    run "$HOOKS_DIR/check-no-emojis"
+
+    assert_failure
+    assert_output --partial "renamed.md"
+}
+
 @test "check-no-emojis: treats pipe-prefixed staged filenames as data" {
     printf '%s\n' '#!/usr/bin/env bash' "touch '$TEST_REPO_DIR/executed'" \
         > "check-no-emojis-exploit.sh"
     chmod +x "check-no-emojis-exploit.sh"
-    create_test_file "|check-no-emojis-exploit.sh" "safe"
+    create_test_file "|check-no-emojis-exploit.sh" "😀"
     git add -- "|check-no-emojis-exploit.sh"
 
     run env "PATH=$TEST_REPO_DIR:$PATH" "$HOOKS_DIR/check-no-emojis"
 
-    assert_success
+    assert_failure
+    assert_output --partial "|check-no-emojis-exploit.sh"
     refute test -e "$TEST_REPO_DIR/executed"
 }
 
