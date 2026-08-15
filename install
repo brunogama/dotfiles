@@ -320,7 +320,8 @@ phase_homebrew() {
     if command_exists brew; then
         log_success "Homebrew is already installed"
         local brew_version
-        brew_version=$(brew --version | head -1)
+        brew_version="$(brew --version)"
+        brew_version="${brew_version%%$'\n'*}"
         log_info "$brew_version"
     else
         log_warning "Homebrew is not installed"

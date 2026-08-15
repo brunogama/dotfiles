@@ -201,7 +201,7 @@ git-virtual-worktree merge add-auth-flow
 # Output:
 # [git-smart-merge] No conflicts detected
 # [git-smart-merge] Strategy selected: rebase
-# ✓ Feature successfully integrated into main
+# Feature successfully integrated into main
 
 # Push and cleanup
 git push origin main
@@ -275,7 +275,7 @@ cd ../project-feat-c  # Independent clone
 ```bash
 # If clone directory deleted manually
 git-virtual-worktree status my-feature
-# Shows: ✗ Virtual worktree not found
+# Shows: Virtual worktree not found
 
 # Clean up metadata
 git-virtual-worktree cleanup my-feature
