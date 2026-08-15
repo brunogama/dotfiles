@@ -10,12 +10,15 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 files=()
+scan_staged=false
 if (($#)); then
 	files=("$@")
 else
+	scan_staged=true
 	staged_files="$(mktemp)"
-	trap 'rm -f "$staged_files"' EXIT
-	if ! git diff --cached --name-only -z --diff-filter=ACM >"$staged_files"; then
+	staged_contents="$(mktemp)"
+	trap 'rm -f "$staged_files" "$staged_contents"' EXIT
+	if ! git diff --cached --name-only -z --diff-filter=ACMR >"$staged_files"; then
 		printf 'Failed to read staged files\n' >&2
 		exit 1
 	fi
@@ -31,8 +34,18 @@ for file in "${files[@]}"; do
 	*) continue ;;
 	esac
 
-	if [[ -f "$file" ]] &&
-		! perl -CSD -ne 'exit 1 if /[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{231A}-\x{23F3}]/' <"$file"; then
+	contents="$file"
+	if [[ "$scan_staged" == true ]]; then
+		if ! git show ":$file" >"$staged_contents"; then
+			printf 'Failed to read staged file: %s\n' "$file" >&2
+			exit 1
+		fi
+		contents="$staged_contents"
+	elif [[ ! -f "$file" ]]; then
+		continue
+	fi
+
+	if ! perl -CSD -ne 'exit 1 if /\p{Extended_Pictographic}/' <"$contents"; then
 		printf '%bERROR: Emojis found in %s%b\n' "$RED" "$file" "$NC"
 		echo 'MINDSET.MD Rule 2: No emojis allowed in documentation or code'
 		found=true
