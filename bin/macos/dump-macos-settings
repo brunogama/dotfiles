@@ -10,7 +10,7 @@
 set -euo pipefail
 
 readonly SCRIPT_NAME="$(basename "$0")"
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
+DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/dotfiles}"
 readonly DEFAULT_OUTPUT="$DOTFILES_ROOT/packages/macos/macos-settings-$(date +%Y%m%d-%H%M%S).sh"
 
 # Colors for output

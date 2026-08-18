@@ -349,7 +349,7 @@ zsh-benchmark
 
 **Check compiled files:**
 ```bash
-ls -lh ~/.config-fixing-dot-files-bugs/zsh/*.zwc
+ls -lh ~/dotfiles/zsh/*.zwc
 ```
 
 **Re-compile after changes:**

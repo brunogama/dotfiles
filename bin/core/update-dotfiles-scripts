@@ -5,7 +5,7 @@
 #
 # Usage: update-dotfiles-scripts
 # DOTFILES_REPO selects the repository; it defaults to
-# ~/.config-fixing-dot-files-bugs.
+# ~/dotfiles.
 # Run manually to update scripts or schedule via cron/launchd.
 # Replaces inline auto-update logic that slowed shell startup.
 #
@@ -19,7 +19,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-DOTFILES_REPO="${DOTFILES_REPO:-$HOME/.config-fixing-dot-files-bugs}"
+DOTFILES_REPO="${DOTFILES_REPO:-$HOME/dotfiles}"
 
 if [[ ! -d "$DOTFILES_REPO" ]]; then
     echo -e "${RED}Error: Dotfiles repository not found: $DOTFILES_REPO${NC}" >&2

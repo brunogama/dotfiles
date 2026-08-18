@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
+DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/dotfiles}"
 BREWFILE_PATH="$DOTFILES_ROOT/home-darwin/Brewfile"
 BACKUP_DIR="$HOME/.homebrew-backups"
 
