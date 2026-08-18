@@ -34,6 +34,23 @@
         "bin/core/agent-github-mint"
       ],
       "summary": "Mint GitHub App installation tokens"
+    },
+    {
+      "agent": "pi",
+      "run_id": "stack-003-manifest-gate",
+      "started_at": "2026-08-19T00:15:00Z",
+      "ended_at": "2026-08-19T00:25:00Z",
+      "exit_code": 0,
+      "files_changed": [
+        ".github/workflows/qa.yml",
+        "bin/core/agent-evidence",
+        "scripts/verify_agent_evidence.py",
+        "scripts/local-ci.sh",
+        "tests/test_verify_agent_evidence.py",
+        "AGENTS.md",
+        "scripts/agent-self-check.sh"
+      ],
+      "summary": "Verify committed agent evidence in CI"
     }
   ]
 }

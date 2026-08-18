@@ -113,6 +113,13 @@ de-duplication, and explicit human approval. Stage drafts only under the
 harness-specific `_candidates/<skill-name>/` directory. Do not promote a
 candidate or record it as active without approval.
 
+### Agent evidence
+
+- The coding-agent CLI wrappers inject a harness-agnostic identity and write a per-run evidence record to `.agents/evidence/` automatically.
+- Before committing a change, record evidence with `agent-evidence --summary "what changed"`; this appends the latest run-record to the committed `.agents/evidence.json`.
+- Self-check before pushing: `scripts/agent-self-check.sh` verifies the manifest and files-changed consistency, then runs deterministic QA.
+- CI re-derives pass/fail independently; never hand-edit the evidence manifest to fake a passing verdict.
+
 ### Quality
 
 - Run `uv run scripts/qa_repository.py .` before completing agent-infrastructure changes.

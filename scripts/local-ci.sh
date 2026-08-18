@@ -266,6 +266,8 @@ record_github_only_stages() {
 	record_skip CI ubuntu-latest documentation "$note"
 	record_skip 'Agent repository QA' 'ubuntu-latest / setup-uv@v6' \
 		deterministic-qa "$note"
+	record_skip 'Agent repository QA' 'ubuntu-latest / setup-uv@v6' \
+		agent-evidence "$note"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
