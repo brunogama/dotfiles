@@ -1,0 +1,102 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+"""Record a committed evidence entry from a run-record.
+
+Promotes the latest .agents/evidence/run-*.json record (or --from FILE) into a
+compact entry in the committed .agents/evidence.json manifest. The run-record's
+identity is hoisted to manifest level so it is not repeated per entry.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+ENTRY_FIELDS = ("agent", "run_id", "started_at", "ended_at", "exit_code", "files_changed")
+
+
+def latest_run_record(directory: Path) -> Path | None:
+    records = sorted(directory.glob("run-*.json"))
+    return records[-1] if records else None
+
+
+def compact_entry(record: dict, summary: str | None) -> dict:
+    entry = {field: record.get(field) for field in ENTRY_FIELDS}
+    if summary:
+        entry["summary"] = summary
+    return entry
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--from",
+        dest="source",
+        help="run-record file (default: latest in .agents/evidence/)",
+    )
+    parser.add_argument("--manifest", default=".agents/evidence.json")
+    parser.add_argument("--summary", help="human summary to attach")
+    args = parser.parse_args()
+
+    if args.source:
+        source = Path(args.source)
+        if not source.is_file():
+            print(f"agent-evidence: {source} not found", file=sys.stderr)
+            return 1
+    else:
+        source = latest_run_record(Path(".agents/evidence"))
+        if source is None:
+            print(
+                "agent-evidence: no run-records found in .agents/evidence/",
+                file=sys.stderr,
+            )
+            return 1
+
+    try:
+        record = json.loads(source.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"agent-evidence: cannot read {source}: {exc}", file=sys.stderr)
+        return 1
+    if not isinstance(record, dict):
+        print(f"agent-evidence: {source} is not a JSON object", file=sys.stderr)
+        return 1
+
+    identity = record.get("identity")
+    if not isinstance(identity, dict):
+        identity = {}
+    entry = compact_entry(record, args.summary)
+
+    manifest = Path(args.manifest)
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"agent-evidence: cannot read {manifest}: {exc}", file=sys.stderr)
+            return 1
+    else:
+        data = {"identity": identity, "entries": []}
+    if not isinstance(data, dict):
+        print(
+            f"agent-evidence: {manifest} is not an object with identity and entries",
+            file=sys.stderr,
+        )
+        return 1
+    if not data.get("identity"):
+        data["identity"] = identity
+    entries = data.setdefault("entries", [])
+    if not isinstance(entries, list):
+        print(f"agent-evidence: {manifest} entries is not a list", file=sys.stderr)
+        return 1
+    entries.append(entry)
+    manifest.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    print(f"agent-evidence: recorded {source} -> {manifest}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
