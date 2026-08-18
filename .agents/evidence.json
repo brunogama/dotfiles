@@ -23,6 +23,17 @@
         ".agents/evidence.json"
       ],
       "summary": "Inject agent identity and record run evidence in wrappers"
+    },
+    {
+      "agent": "pi",
+      "run_id": "stack-002-token-mint",
+      "started_at": "2026-08-19T00:10:00Z",
+      "ended_at": "2026-08-19T00:15:00Z",
+      "exit_code": 0,
+      "files_changed": [
+        "bin/core/agent-github-mint"
+      ],
+      "summary": "Mint GitHub App installation tokens"
     }
   ]
 }
