@@ -8,6 +8,7 @@ load '../../helpers/bats-assert/load.bash'
 
 setup() {
     standard_setup
+    cd "$TEST_TEMP_DIR"
     CORE_DIR="$(get_dotfiles_root)/bin/core"
     export CORE_DIR
     ZSHRC="$(get_dotfiles_root)/home/.config/zsh/.zshrc"
