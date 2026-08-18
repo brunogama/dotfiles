@@ -1,0 +1,28 @@
+{
+  "identity": {
+    "name": "agent",
+    "email": "agent@example.com"
+  },
+  "entries": [
+    {
+      "agent": "pi",
+      "run_id": "stack-001-wrappers",
+      "started_at": "2026-08-19T00:00:00Z",
+      "ended_at": "2026-08-19T00:10:00Z",
+      "exit_code": 0,
+      "files_changed": [
+        ".gitignore",
+        "home/.config/dotfiles/agent.conf",
+        "bin/core/lib/agent-session.sh",
+        "bin/core/pi",
+        "bin/core/codex",
+        "bin/core/claude",
+        "tests/integration/core/test_agent_cli_wrappers.bats",
+        "tests/integration/core/test_agent_identity_evidence.bats",
+        ".agent-scaffold.json",
+        ".agents/evidence.json"
+      ],
+      "summary": "Inject agent identity and record run evidence in wrappers"
+    }
+  ]
+}

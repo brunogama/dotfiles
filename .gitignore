@@ -248,7 +248,16 @@ result-*
 zsh/.zcompdump
 
 
+# Agent wrapper libraries must be tracked even though the global gitignore
+# excludes Python-style `lib/` directories.
+!bin/core/lib/
+!bin/core/lib/**
+
 ########### AGENTS
+
+# Agent per-run evidence records (transient, generated at runtime)
+.agents/evidence/
+
 # === Global Ignore: Coding Agents and Context Frameworks ===
 
 # Cursor IDE

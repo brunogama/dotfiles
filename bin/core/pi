@@ -21,6 +21,8 @@ SCRIPT_DIR="$(resolve_script_dir)"
 readonly SCRIPT_DIR
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/agent-credential-loader.sh"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/agent-session.sh"
 
 # Pi provider credentials listed by `pi --help`; keep this list explicit so
 # unrelated Keychain credentials are never exposed to the Pi process.
@@ -62,4 +64,4 @@ readonly PI_BIN="${DOTFILES_PI_BIN:-${DOTFILES_NPM_BIN:-${XDG_DATA_HOME:-$HOME/.
     exit 127
 }
 
-exec "$PI_BIN" "$@"
+run_agent pi "$PI_BIN" "$@"
