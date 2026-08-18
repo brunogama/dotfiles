@@ -51,6 +51,17 @@
         "scripts/agent-self-check.sh"
       ],
       "summary": "Verify committed agent evidence in CI"
+    },
+    {
+      "agent": "pi",
+      "run_id": "stack-004-squash-push",
+      "started_at": "2026-08-19T00:25:00Z",
+      "ended_at": "2026-08-19T00:30:00Z",
+      "exit_code": 0,
+      "files_changed": [
+        "bin/core/agent-push"
+      ],
+      "summary": "Squash local drafts into an App-authored commit"
     }
   ]
 }
