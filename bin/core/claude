@@ -47,6 +47,8 @@ SCRIPT_DIR="$(resolve_script_dir)"
 readonly SCRIPT_DIR
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/agent-credential-loader.sh"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/agent-session.sh"
 
 load_agent_api_key ANTHROPIC_API_KEY
 
@@ -60,4 +62,4 @@ fi
 }
 readonly CLAUDE_BIN
 
-exec "$CLAUDE_BIN" "$@"
+run_agent claude "$CLAUDE_BIN" "$@"
