@@ -21,6 +21,8 @@ SCRIPT_DIR="$(resolve_script_dir)"
 readonly SCRIPT_DIR
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/agent-credential-loader.sh"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/agent-session.sh"
 
 find_codex_bin() {
     local candidate
@@ -48,4 +50,4 @@ fi
 }
 readonly CODEX_BIN
 
-exec "$CODEX_BIN" "$@"
+run_agent codex "$CODEX_BIN" "$@"
