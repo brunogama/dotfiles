@@ -88,7 +88,7 @@ repos:
         entry: bin/git/hooks/check-no-emojis
         language: script
         types: [text]
-        exclude: ^(\.git|\.claude|ai_docs/legacy)
+        exclude: ^(\.git|\.claude|ai_docs/legacy|\.genesis/)
 
       # Check for uppercase directories (MINDSET Rule 1)
       - id: lowercase-dirs
