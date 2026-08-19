@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Configuration
 readonly SCRIPT_NAME="$(basename "$0")"
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.config-fixing-dot-files-bugs}"
+DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/dotfiles}"
 readonly PREFS_DIR="$DOTFILES_ROOT/packages/macos"
 readonly BACKUP_DIR="$HOME/.macos-preferences-backups"
 readonly CURRENT_DUMP="$PREFS_DIR/current-preferences.plist"

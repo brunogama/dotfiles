@@ -47,7 +47,7 @@ DEFAULT_ENVIRONMENT = "personal"
 
 # Dotfiles repository search locations
 DOTFILES_LOCATIONS = [
-    "~/.config-fixing-dot-files-bugs",
+    "~/dotfiles",
     "~/.config",
     "~/.dotfiles",
     "~/dotfiles",
