@@ -12,7 +12,33 @@ jobs:
   deterministic-qa:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
       - name: Validate agent repository
         run: uv run scripts/qa_repository.py .
+
+  agent-evidence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+      - name: Verify agent evidence
+        env:
+          AGENT_NAME: ${{ vars.AGENT_NAME }}
+          AGENT_EMAIL: ${{ vars.AGENT_EMAIL }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          args=(--manifest .agents/evidence.json)
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            args+=(--range "$PR_BASE_SHA..$PR_HEAD_SHA")
+          fi
+          if [[ -n "${AGENT_NAME:-}" && -n "${AGENT_EMAIL:-}" ]]; then
+            args+=(--name "$AGENT_NAME" --email "$AGENT_EMAIL")
+          fi
+          uv run scripts/verify_agent_evidence.py "${args[@]}"
