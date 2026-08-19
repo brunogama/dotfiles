@@ -1,20 +1,24 @@
----
-name: CI
+# Depot CI Migration
+# Source: .github/workflows/ci.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed runs-on from "ubuntu-latest" to "depot-ubuntu-latest" throughout
+# - Changed runs-on from "macos-latest" to "depot-ubuntu-latest" throughout
 
+name: CI
 "on":
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   changes:
     name: Detect affected components
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     permissions:
       contents: read
       pull-requests: read
@@ -32,14 +36,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         if: github.event_name != 'workflow_dispatch'
         id: filter
         with:
           filters: |
             common:
-              - '.github/workflows/ci.yml'
+              - '.depot/workflows/ci.yml'
               - 'scripts/local-ci.sh'
             validation:
               - '.pre-commit-config.yaml'
@@ -83,48 +86,42 @@ jobs:
               - 'bin/**'
               - 'zsh/**'
               - 'git/**'
-
   validate:
     name: Validate
-    runs-on: macos-latest
+    runs-on: depot-ubuntu-latest # was: macos-latest. Nonstandard GitHub runner label detected, changed to default Depot runner.
     needs: changes
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
+
           needs.changes.outputs.common == 'true' ||
           needs.changes.outputs.validation == 'true' ||
           needs.changes.outputs.nix == 'true' ||
           needs.changes.outputs.installation == 'true' ||
           needs.changes.outputs.home_sync == 'true' ||
           needs.changes.outputs.integration == 'true' }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: |
           brew install shellcheck jq
           python -m pip install --upgrade pip uv
-
       - name: Verify local CI regression tests
         run: |
           python tests/test_ci_workflow.py
-
       - name: Run pre-commit hooks
         uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507
         env:
           # Commit-time hooks enforce these on changed files. Running them over
           # the historical repository would create unrelated formatting edits.
           SKIP: trailing-whitespace,end-of-file-fixer
-
       - name: Validate MINDSET rules
         run: |
           echo "Checking for uppercase directories..."
@@ -137,7 +134,6 @@ jobs:
               bin/git/hooks/check-no-emojis "$file" || exit 1
             fi
           done
-
       - name: Shellcheck all scripts
         run: |
           find bin/ -type f \
@@ -147,12 +143,10 @@ jobs:
             echo "Checking: $script"
             shellcheck --severity=error "$script" || exit 1
           done
-
       - name: Test installation script syntax
         run: |
           bash -n install
           echo "Installation script syntax is valid"
-
       - name: Validate OpenSpec proposals
         if: hashFiles('openspec/changes/**/*.md') != ''
         run: |
@@ -165,29 +159,25 @@ jobs:
           else
             echo "OpenSpec not available, skipping validation"
           fi
-
   validate-nix:
     name: Validate Nix configuration
-    runs-on: macos-latest
+    runs-on: depot-ubuntu-latest # was: macos-latest. Nonstandard GitHub runner label detected, changed to default Depot runner.
     needs: [changes, validate]
     if: >-
       ${{ always() && needs.validate.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.nix == 'true') }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
-
       - name: Evaluate Home Manager and nix-darwin configurations
         run: ./bin/core/nix-validate
-
       - name: Verify instant Dock timing
         run: |
           dock_defaults="$(
@@ -198,13 +188,13 @@ jobs:
             ."autohide-delay" == 0 and
             ."autohide-time-modifier" == 0
           ' <<< "$dock_defaults"
-
   install-nix-macos:
     name: End-to-end Nix install (macOS)
-    runs-on: macos-latest
+    runs-on: depot-ubuntu-latest # was: macos-latest. Nonstandard GitHub runner label detected, changed to default Depot runner.
     needs: [changes, validate, validate-nix]
     if: >-
       ${{ always() && needs.validate.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.nix == 'true' ||
@@ -213,22 +203,18 @@ jobs:
            needs.changes.outputs.nix != 'true' ||
            needs.validate-nix.result == 'success') }}
     timeout-minutes: 30
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
-
       - name: Run a complete user installation
         run: |
           ./install --nix --yes \
             --username "$USER" \
             --machine-name "Dotfiles CI"
-
       - name: Verify configured host identity
         run: |
           grep -Fq "username = \"$USER\";" nix/host.nix
@@ -236,7 +222,6 @@ jobs:
           grep -Fq 'computerName = "Dotfiles CI";' nix/host.nix
           grep -Fq 'hostName = "dotfiles-ci";' nix/host.nix
           grep -Fq 'localHostName = "dotfiles-ci";' nix/host.nix
-
       - name: Verify managed files and shell
         run: |
           profile_path="/etc/profiles/per-user/$USER/bin"
@@ -253,7 +238,6 @@ jobs:
           test -f "$HOME/.config/zsh/.zshrc.zwc"
           ZDOTDIR="$HOME/.config/zsh" zsh -lic \
             'command -v starship >/dev/null && command -v git >/dev/null'
-
       - name: Verify installed tools
         run: |
           profile_path="/etc/profiles/per-user/$USER/bin"
@@ -264,23 +248,21 @@ jobs:
           test -x \
             "$HOME/.local/share/dotfiles/npm/current/node_modules/.bin/pi"
           home-manager generations
-
   test-macos:
     name: Test on macOS
-    runs-on: macos-latest
+    runs-on: depot-ubuntu-latest # was: macos-latest. Nonstandard GitHub runner label detected, changed to default Depot runner.
     needs: [changes, validate]
     if: >-
       ${{ always() && needs.validate.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.installation == 'true') }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -290,11 +272,9 @@ jobs:
       - name: Test dry-run installation
         run: |
           ./install --dry-run
-
       - name: Test link-dotfiles
         run: |
           bin/core/link-dotfiles.py --dry-run
-
       - name: Test script help messages
         run: |
           for script in bin/core/* bin/credentials/* bin/git/*; do
@@ -304,23 +284,21 @@ jobs:
                 echo "No help: $script"
             fi
           done
-
   test-linux:
     name: Test on Linux
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     needs: [changes, validate]
     if: >-
       ${{ always() && needs.validate.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.installation == 'true') }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -331,39 +309,33 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq shellcheck
-
       - name: Test dry-run installation
         run: |
           ./install --dry-run
-
       - name: Test link-dotfiles
         run: |
           bin/core/link-dotfiles.py --dry-run
-
   test-python:
     name: Test Python Packages
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     needs: [changes, validate]
     if: >-
       ${{ always() && needs.validate.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.home_sync == 'true') }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.11"
-
       - name: Install uv
         run: python -m pip install uv==0.11.32
-
       - name: Test home-sync package
         run: |
           cd bin/core/home_sync
@@ -377,43 +349,37 @@ jobs:
 
           # Verify minimum coverage (91%)
           uv run coverage report --fail-under=91
-
       - name: Run mypy strict type checking
         run: |
           cd bin/core/home_sync
           uv run mypy home_sync --strict
-
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac
         with:
           files: ./bin/core/home_sync/coverage.xml
           flags: home-sync
           name: home-sync-coverage
-
   mutation-testing:
     name: Mutation Testing
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     needs: [changes, test-python]
     if: >-
       ${{ always() && needs.test-python.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.home_sync == 'true') }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.11"
-
       - name: Install uv
         run: python -m pip install uv==0.11.32
-
       - name: Run mutation tests on home-sync
         run: |
           cd bin/core/home_sync
@@ -445,35 +411,31 @@ jobs:
           if score < 80:
               raise SystemExit("Mutation score below 80% threshold")
           PY
-
       - name: Upload mutation test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: mutation-test-results
           path: bin/core/home_sync/html/
-
   test-integration-macos:
     name: Integration Tests (macOS)
-    runs-on: macos-latest
+    runs-on: depot-ubuntu-latest # was: macos-latest. Nonstandard GitHub runner label detected, changed to default Depot runner.
     needs: [changes, validate]
     if: >-
       ${{ always() && needs.validate.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.integration == 'true') }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
           persist-credentials: false
-
       - name: Install Bats and GNU Parallel
         run: |
           brew install bats-core parallel
-
       - name: Install bats libraries
         run: |
           mkdir -p tests/helpers
@@ -481,42 +443,37 @@ jobs:
             git clone "https://github.com/bats-core/${library}.git" \
               "tests/helpers/${library}" || true
           done
-
       - name: Run maintained integration tests
         run: |
           bats --tap --jobs "${BATS_JOBS:-2}" \
             tests/integration/core/test_install.bats \
             tests/integration/core/test_work_mode.bats
-
       - name: Upload test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: integration-test-results-macos
           path: test-results/
-
   test-integration-linux:
     name: Integration Tests (Linux)
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     needs: [changes, validate]
     if: >-
       ${{ always() && needs.validate.result == 'success' &&
+
           (github.event_name == 'workflow_dispatch' ||
            needs.changes.outputs.common == 'true' ||
            needs.changes.outputs.integration == 'true') }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
           persist-credentials: false
-
       - name: Install Bats and GNU Parallel
         run: |
           sudo apt-get update
           sudo apt-get install -y bats parallel
-
       - name: Install bats libraries
         run: |
           mkdir -p tests/helpers
@@ -524,43 +481,37 @@ jobs:
             git clone "https://github.com/bats-core/${library}.git" \
               "tests/helpers/${library}" || true
           done
-
       - name: Run maintained integration tests
         run: |
           bats --tap --jobs "${BATS_JOBS:-2}" \
             tests/integration/core/test_install.bats \
             tests/integration/core/test_work_mode.bats
-
       - name: Upload test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: integration-test-results-linux
           path: test-results/
-
   documentation:
     name: Check Documentation
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     needs: changes
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
+
           needs.changes.outputs.common == 'true' ||
           needs.changes.outputs.documentation == 'true' }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-
       - name: Check for broken markdown links
-        uses: "gaurav-nelson/github-action-markdown-link-check@\
-          5c5dfc0ac2e225883c0e5f03a85311ec2830d368"
+        uses: "gaurav-nelson/github-action-markdown-link-check@5c5dfc0ac2e225883c0e5f03a85311ec2830d368"
         with:
           use-quiet-mode: "yes"
           config-file: ".github/markdown-link-check.json"
         continue-on-error: true
-
       - name: Validate documentation structure
         run: |
           required_docs=(
@@ -577,7 +528,6 @@ jobs:
           done
 
           echo "All required documentation present"
-
       - name: Check for TODO/FIXME comments
         run: |
           todos=$(grep -r "TODO\|FIXME" bin/ zsh/ git/ \
