@@ -19,10 +19,10 @@ Optionally, add to your PATH:
 
 ```bash
 # Add to ~/.zshrc or ~/.bashrc
-export PATH="$HOME/.config-fixing-dot-files-bugs/bin/git:$PATH"
+export PATH="$HOME/dotfiles/bin/git:$PATH"
 
 # Or create an alias
-alias gsm='~/.config-fixing-dot-files-bugs/bin/git/git-smart-merge'
+alias gsm='~/dotfiles/bin/git/git-smart-merge'
 ```
 
 ## Usage

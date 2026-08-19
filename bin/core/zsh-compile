@@ -60,8 +60,8 @@ error_count=0
 ZSH_CONFIG_DIR=""
 if [[ -f ~/.config/zsh/.zshrc ]]; then
     ZSH_CONFIG_DIR=~/.config/zsh
-elif [[ -f ~/.config-fixing-dot-files-bugs/zsh/.zshrc ]]; then
-    ZSH_CONFIG_DIR=~/.config-fixing-dot-files-bugs/zsh
+elif [[ -f ~/dotfiles/zsh/.zshrc ]]; then
+    ZSH_CONFIG_DIR=~/dotfiles/zsh
 elif [[ -f ~/.zshrc ]]; then
     ZSH_CONFIG_DIR=~
 else

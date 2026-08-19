@@ -35,14 +35,14 @@ For a 2GB monorepo with 100k commits:
 
 ```bash
 # Script is in bin/git/
-cd ~/.config-fixing-dot-files-bugs
+cd ~/dotfiles
 chmod +x bin/git/git-virtual-worktree
 
 # Add to PATH (optional)
-export PATH="$HOME/.config-fixing-dot-files-bugs/bin/git:$PATH"
+export PATH="$HOME/dotfiles/bin/git:$PATH"
 
 # Or create alias
-alias gvw='~/.config-fixing-dot-files-bugs/bin/git/git-virtual-worktree'
+alias gvw='~/dotfiles/bin/git/git-virtual-worktree'
 ```
 
 ## Usage
