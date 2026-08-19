@@ -1,21 +1,18 @@
-# Depot CI Migration
-# Source: .github/workflows/close-prs.yml
-#
-# Changes made:
-# - Changed GitHub runs-on labels to their Depot equivalents
-
 name: Close pull requests
+
 on:
   # Write access is required; no pull request content is checked out or run.
   pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, reopened]
+
 permissions:
   pull-requests: write
+
 jobs:
   close:
     name: Comment and close
     if: github.event.pull_request.user.login != github.repository_owner
-    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
+    runs-on: ubuntu-latest
     steps:
       - name: Comment and close pull request
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
