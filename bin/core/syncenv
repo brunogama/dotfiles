@@ -50,7 +50,6 @@ DOTFILES_LOCATIONS = [
     "~/dotfiles",
     "~/.config",
     "~/.dotfiles",
-    "~/dotfiles",
 ]
 
 

@@ -192,7 +192,7 @@ primary() {
   claude --agent primary-agent "$@"
 }
 
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="${PI_NODE_BIN:-$HOME/.local/share/pi-node/current/bin}:$HOME/.local/bin:$PATH"
 
 # Starship owns the prompt; Prezto still provides completion, history, editing,
 # syntax highlighting, and autosuggestions without loading its prompt module.
