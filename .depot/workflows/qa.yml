@@ -1,16 +1,19 @@
-name: Agent repository QA
+# Depot CI Migration
+# Source: .github/workflows/qa.yml
+#
+# Changes made:
+# - Changed GitHub runs-on labels to their Depot equivalents
 
+name: Agent repository QA
 on:
   pull_request:
   push:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
   deterministic-qa:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

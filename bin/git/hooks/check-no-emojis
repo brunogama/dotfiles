@@ -30,6 +30,9 @@ fi
 found=false
 for file in "${files[@]}"; do
 	case "$file" in
+	.genesis/*) continue ;;
+	esac
+	case "$file" in
 	*.md | *.sh | *.zsh | *.bash | *.txt | *.yaml | *.json) ;;
 	*) continue ;;
 	esac

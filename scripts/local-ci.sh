@@ -284,27 +284,27 @@ fi
 
 if ((mac_validation_passed)); then
 	if command -v nix >/dev/null 2>&1; then
-		if run_macos_stage CI macos-latest validate-nix macos_validate_nix; then
-			if ((include_destructive)); then
-				run_macos_stage CI macos-latest install-nix-macos macos_install_nix || true
-			else
-				record_skip CI macos-latest install-nix-macos \
-					'requires --include-destructive in a disposable macOS VM'
-			fi
-		else
-			record_skip CI macos-latest install-nix-macos 'validate-nix failed'
-		fi
+		run_macos_stage CI macos-latest validate-nix macos_validate_nix || true
 	else
 		record_skip CI macos-latest validate-nix 'Nix is not installed'
-		record_skip CI macos-latest install-nix-macos 'requires validate-nix'
 	fi
 	run_macos_stage CI 'macos-latest / Python 3.11' test-macos macos_test || true
 	run_macos_stage CI macos-latest test-integration-macos macos_integration || true
+	if command -v nix >/dev/null 2>&1; then
+		if ((include_destructive)); then
+			run_macos_stage CI macos-latest install-nix-macos macos_install_nix || true
+		else
+			record_skip CI macos-latest install-nix-macos \
+				'requires --include-destructive in a disposable macOS VM'
+		fi
+	else
+		record_skip CI macos-latest install-nix-macos 'requires validate-nix'
+	fi
 else
 	record_skip CI macos-latest validate-nix 'validate failed or was unavailable'
-	record_skip CI macos-latest install-nix-macos 'validate-nix was not run'
 	record_skip CI 'macos-latest / Python 3.11' test-macos 'validate was not passed'
 	record_skip CI macos-latest test-integration-macos 'validate was not passed'
+	record_skip CI macos-latest install-nix-macos 'validate was not passed'
 fi
 
 record_github_only_stages
