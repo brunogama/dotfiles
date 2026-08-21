@@ -33,6 +33,7 @@ JINJA_MARKER = re.compile(
 )
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 TEXT_SUFFIXES = {".json", ".md", ".py", ".toml", ".txt", ".yml", ".yaml"}
+TEMPLATE_DIRS = {".genesis"}  # project-ritual templates with intentional Jinja markers
 
 
 class RepositoryQaError(RuntimeError):
@@ -213,7 +214,8 @@ def _validate_text_files(repository_root: Path) -> list[str]:
         if item.is_file() and item.suffix in TEXT_SUFFIXES
     ):
         text = path.read_text(encoding="utf-8")
-        if JINJA_MARKER.search(text):
+        is_template = path.relative_to(repository_root).parts[0] in TEMPLATE_DIRS
+        if not is_template and JINJA_MARKER.search(text):
             failures.append(
                 f"template: unresolved marker in {path.relative_to(repository_root)}"
             )
@@ -253,7 +255,7 @@ def _validate_external_sources(repository_root: Path) -> list[str]:
 
 
 def _validate_workflow(repository_root: Path) -> list[str]:
-    workflow_path = repository_root / ".github/workflows/qa.yml"
+    workflow_path = repository_root / ".depot/workflows/qa.yml"
     if not workflow_path.exists():
         return []
     workflow = workflow_path.read_text(encoding="utf-8")
