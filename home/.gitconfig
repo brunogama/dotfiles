@@ -5,6 +5,8 @@
 	excludesfile = ~/.gitignore_global
 [include]
 	path = ~/.config/git/github-flow-aliases.gitconfig
+[alias]
+	browse = !git-browse.sh
 [push]
 	autoSetupRemote = true
 [filter "lfs"]
