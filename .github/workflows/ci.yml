@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     name: Validate
-    runs-on: macos-latest
+    runs-on: blacksmith-6vcpu-macos-15
 
     steps:
       - name: Checkout code
@@ -88,7 +88,7 @@ jobs:
 
   validate-nix:
     name: Validate Nix configuration
-    runs-on: macos-latest
+    runs-on: blacksmith-6vcpu-macos-15
     needs: validate
 
     steps:
@@ -116,7 +116,7 @@ jobs:
 
   test-macos:
     name: Test on macOS
-    runs-on: macos-latest
+    runs-on: blacksmith-6vcpu-macos-15
     needs: validate-nix
 
     steps:
@@ -151,7 +151,7 @@ jobs:
 
   test-integration-macos:
     name: Integration Tests (macOS)
-    runs-on: macos-latest
+    runs-on: blacksmith-6vcpu-macos-15
     needs: test-macos
 
     steps:
@@ -180,7 +180,7 @@ jobs:
 
   install-nix-macos:
     name: End-to-end Nix install (macOS)
-    runs-on: macos-latest
+    runs-on: blacksmith-6vcpu-macos-15
     needs: test-integration-macos
     timeout-minutes: 30
 
