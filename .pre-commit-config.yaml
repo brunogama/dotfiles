@@ -22,7 +22,7 @@ repos:
         language: script
         types: [text]
         require_serial: true
-        exclude: ^(\.git|\.claude)
+        exclude: ^(\.git/|\.claude/)
 
       - id: shellcheck
         name: ShellCheck (system)

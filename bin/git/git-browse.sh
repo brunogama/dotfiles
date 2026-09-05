@@ -20,6 +20,8 @@ parse_remote_url() {
     local url="$1"
     local address
 
+    url="${url%%\?*}"
+    url="${url%%\#*}"
     url="${url%/}"
     url="${url%.git}"
 
@@ -42,13 +44,49 @@ parse_remote_url() {
         die "unsupported remote URL: $1"
 }
 
+url_encode() {
+    local value="$1"
+    local preserve_slashes="$2"
+    local encoded=""
+    local character
+    local escaped_character
+    local index
+    local LC_ALL=C
+
+    for ((index = 0; index < ${#value}; index++)); do
+        character="${value:index:1}"
+        case "$character" in
+            [a-zA-Z0-9.~_-])
+                encoded+="$character"
+                ;;
+            /)
+                if [[ "$preserve_slashes" == true ]]; then
+                    encoded+="$character"
+                else
+                    encoded+='%2F'
+                fi
+                ;;
+            *)
+                printf -v escaped_character '%%%02X' "'$character"
+                encoded+="$escaped_character"
+                ;;
+        esac
+    done
+
+    printf '%s\n' "$encoded"
+}
+
 append_path() {
     local base_url="$1"
+    local encoded_branch
+    local encoded_relative_path
 
+    encoded_branch="$(url_encode "$branch" true)"
     if [[ -n "$relative_path" ]]; then
-        printf '%s/%s/%s\n' "$base_url" "$branch" "$relative_path"
+        encoded_relative_path="$(url_encode "$relative_path" true)"
+        printf '%s/%s/%s\n' "$base_url" "$encoded_branch" "$encoded_relative_path"
     else
-        printf '%s/%s\n' "$base_url" "$branch"
+        printf '%s/%s\n' "$base_url" "$encoded_branch"
     fi
 }
 
@@ -106,8 +144,9 @@ case "$remote_host" in
         browse_url="$(append_path "$base_url/src")"
         ;;
     dev.azure.com)
-        azure_path="/${relative_path:-}"
-        browse_url="$base_url?path=$azure_path&version=GB$branch"
+        azure_path="$(url_encode "/${relative_path:-}" false)"
+        azure_version="GB$(url_encode "$branch" false)"
+        browse_url="$base_url?path=$azure_path&version=$azure_version"
         ;;
     ssh.dev.azure.com|vs-ssh.visualstudio.com)
         azure_remote_path="${remote_path#v3/}"
@@ -116,8 +155,9 @@ case "$remote_host" in
         azure_project="${azure_remote_path%%/*}"
         azure_repository="${azure_remote_path#*/}"
         if [[ "$remote_path" == v3/* && "$azure_remote_path" == */* ]]; then
-            azure_path="/${relative_path:-}"
-            browse_url="https://dev.azure.com/$azure_organization/$azure_project/_git/$azure_repository?path=$azure_path&version=GB$branch"
+            azure_path="$(url_encode "/${relative_path:-}" false)"
+            azure_version="GB$(url_encode "$branch" false)"
+            browse_url="https://dev.azure.com/$azure_organization/$azure_project/_git/$azure_repository?path=$azure_path&version=$azure_version"
         else
             browse_url="$base_url"
         fi
@@ -126,10 +166,12 @@ case "$remote_host" in
         browse_url="$(append_path "$base_url/src/branch")"
         ;;
     git.sr.ht)
+        encoded_branch="$(url_encode "$branch" true)"
         if [[ -n "$relative_path" ]]; then
-            browse_url="$base_url/tree/$branch/item/$relative_path"
+            encoded_relative_path="$(url_encode "$relative_path" true)"
+            browse_url="$base_url/tree/$encoded_branch/item/$encoded_relative_path"
         else
-            browse_url="$base_url/tree/$branch"
+            browse_url="$base_url/tree/$encoded_branch"
         fi
         ;;
     *)
