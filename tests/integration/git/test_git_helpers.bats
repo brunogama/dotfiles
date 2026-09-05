@@ -96,10 +96,97 @@ teardown() {
 
 # Git-browse Tests
 
-@test "git-browse: opens repository in browser" {
-    skip "Requires browser and network"
+@test "git-browse: opens public forge repository URLs" {
+	local browser_dir="$BATS_TEST_TMPDIR/browser"
+	local capture_file="$BATS_TEST_TMPDIR/opened-url"
+	local browser
+	local remote_url
+	local expected_url
+	local dotfiles_root
+
+	dotfiles_root="$(get_dotfiles_root)"
+	mkdir -p "$browser_dir"
+	for browser in open xdg-open gnome-open; do
+		printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$1" >"$GIT_BROWSE_CAPTURE"' >"$browser_dir/$browser"
+		chmod +x "$browser_dir/$browser"
+	done
+
+	while IFS='|' read -r remote_url expected_url; do
+		git remote remove origin 2>/dev/null || true
+		git remote add origin "$remote_url"
+		run env "GIT_BROWSE_CAPTURE=$capture_file" "GIT_CONFIG_GLOBAL=$dotfiles_root/home/.gitconfig" \
+			"GIT_CONFIG_NOSYSTEM=1" "PATH=$browser_dir:$dotfiles_root/bin/git:$PATH" git browse
+		assert_success
+		assert_equal "$(<"$capture_file")" "$expected_url"
+	done <<'EOF'
+git@github.com:owner/repository.git|https://github.com/owner/repository/tree/main
+git@gitlab.com:group/repository.git|https://gitlab.com/group/repository/-/tree/main
+git@bitbucket.org:workspace/repository.git|https://bitbucket.org/workspace/repository/src/main
+https://dev.azure.com/organization/project/_git/repository|https://dev.azure.com/organization/project/_git/repository?path=%2F&version=GBmain
+git@ssh.dev.azure.com:v3/organization/project/repository|https://dev.azure.com/organization/project/_git/repository?path=%2F&version=GBmain
+git@codeberg.org:owner/repository.git|https://codeberg.org/owner/repository/src/branch/main
+git@git.sr.ht:~owner/repository|https://git.sr.ht/~owner/repository/tree/main
+EOF
+
+	git remote set-url origin 'git@github.com:owner/repository.git'
+	mkdir -p nested/directory
+	cd nested/directory
+	run env "GIT_BROWSE_CAPTURE=$capture_file" "GIT_CONFIG_GLOBAL=$dotfiles_root/home/.gitconfig" \
+		"GIT_CONFIG_NOSYSTEM=1" "PATH=$browser_dir:$dotfiles_root/bin/git:$PATH" git browse
+	assert_success
+	assert_equal "$(<"$capture_file")" 'https://github.com/owner/repository/tree/main/nested/directory'
+
+	cd "$TEST_REPO_DIR"
+	git remote set-url origin 'https://github.com/owner/repository.git?access_token=secret#fragment'
+	run env "GIT_BROWSE_CAPTURE=$capture_file" "GIT_CONFIG_GLOBAL=$dotfiles_root/home/.gitconfig" \
+		"GIT_CONFIG_NOSYSTEM=1" "PATH=$browser_dir:$dotfiles_root/bin/git:$PATH" git browse
+	assert_success
+	assert_equal "$(<"$capture_file")" 'https://github.com/owner/repository/tree/main'
+	refute_output --partial 'access_token'
+
+	cd "$TEST_REPO_DIR"
+	git remote set-url origin 'git@github.com:owner/repository.git'
+	git checkout -b 'feature/#browse'
+	mkdir -p 'nested/#notes'
+	cd 'nested/#notes'
+	run env "GIT_BROWSE_CAPTURE=$capture_file" "GIT_CONFIG_GLOBAL=$dotfiles_root/home/.gitconfig" \
+		"GIT_CONFIG_NOSYSTEM=1" "PATH=$browser_dir:$dotfiles_root/bin/git:$PATH" git browse
+	assert_success
+	assert_equal "$(<"$capture_file")" 'https://github.com/owner/repository/tree/feature/%23browse/nested/%23notes'
+
+	git remote set-url origin 'https://dev.azure.com/organization/project/_git/repository'
+	run env "GIT_BROWSE_CAPTURE=$capture_file" "GIT_CONFIG_GLOBAL=$dotfiles_root/home/.gitconfig" \
+		"GIT_CONFIG_NOSYSTEM=1" "PATH=$browser_dir:$dotfiles_root/bin/git:$PATH" git browse
+	assert_success
+	assert_equal "$(<"$capture_file")" 'https://dev.azure.com/organization/project/_git/repository?path=%2Fnested%2F%23notes&version=GBfeature%2F%23browse'
 }
 
+@test "git-browse: rejects unsupported remote URLs" {
+	git remote add origin 'not-a-remote-url'
+	local dotfiles_root
+	dotfiles_root="$(get_dotfiles_root)"
+
+	run "$dotfiles_root/bin/git/git-browse.sh"
+	assert_failure
+	assert_output --partial 'git-browse: unsupported remote URL: not-a-remote-url'
+}
+
+@test "git-browse: reports when Linux has no browser opener" {
+	local command_dir
+	local dotfiles_root
+	dotfiles_root="$(get_dotfiles_root)"
+	command_dir="$BATS_TEST_TMPDIR/commands"
+	mkdir -p "$command_dir"
+	ln -s "$(command -v bash)" "$command_dir/bash"
+	ln -s "$(command -v git)" "$command_dir/git"
+	printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" Linux' > "$command_dir/uname"
+	chmod +x "$command_dir/uname"
+	git remote add origin 'git@github.com:owner/repository.git'
+
+	run env "PATH=$command_dir" "$dotfiles_root/bin/git/git-browse.sh"
+	assert_failure
+	assert_output --partial 'git-browse: no browser opener found'
+}
 # Git-subrm Tests
 
 @test "git-subrm: removes submodule" {

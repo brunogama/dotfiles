@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Format files selected by pre-commit and re-stage only formatter changes.
+set -euo pipefail
+
+if (( $# == 0 )); then
+    exit 0
+fi
+
+repository_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+formatter_config="$repository_root/.pre-commit-formatters.yaml"
+
+if [[ ! -f "$formatter_config" ]] || ! command -v pre-commit >/dev/null 2>&1; then
+    exit 0
+fi
+
+pre-commit run --config "$formatter_config" --files "$@" || true
+
+while IFS= read -r -d '' file; do
+    git -C "$repository_root" add -- "$file" || true
+done < <(git -C "$repository_root" diff --name-only -z -- "$@")
+
+exit 0
