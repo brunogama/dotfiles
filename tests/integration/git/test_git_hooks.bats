@@ -267,6 +267,26 @@ teardown() {
     [[ "$status" -ne 0 ]]
 }
 
+# Formatter Hook Tests
+
+@test "format-and-stage: stages formatter output without blocking commits" {
+    local formatter_bin
+    formatter_bin="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$formatter_bin"
+    printf '%s\n' '#!/usr/bin/env bash' 'printf "formatted\\n" > "${!#}"' 'exit 1' > "$formatter_bin/pre-commit"
+    chmod +x "$formatter_bin/pre-commit"
+
+    create_test_file "format.txt" "original"
+    git add format.txt
+    touch .pre-commit-formatters.yaml
+
+    run env "PATH=$formatter_bin:$PATH" "$HOOKS_DIR/format-and-stage" format.txt
+    assert_success
+
+    run git show :format.txt
+    assert_success
+    assert_output "formatted"
+}
 # Error Message Tests
 
 @test "check-lowercase-dirs: provides helpful error message" {

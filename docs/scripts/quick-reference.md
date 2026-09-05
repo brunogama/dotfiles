@@ -74,7 +74,7 @@ credfile get ssh_key /tmp/key
 | `git-restore-last-savepoint` | Restore last savepoint | `git-restore-last-savepoint` |
 | `git-restore-wip` | Restore last WIP | `git-restore-wip` |
 | `git-restore-wip-all` | Restore all WIP commits | `git-restore-wip-all` |
-| `git-browse` | Open repo in browser | `git-browse` |
+| `git browse [remote]` | Open branch on supported forges, otherwise repo root | `git browse` |
 | `interactive-cherry-pick` | Interactive cherry-pick | `interactive-cherry-pick` |
 | `git-add-only-changed-today` | Stage today's changes | `git-add-only-changed-today` |
 
