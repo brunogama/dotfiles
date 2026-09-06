@@ -1,0 +1,24 @@
+name: Mirror to GitHub
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git remote add github https://bruno:${GITHUB_TOKEN}@github.com/brunogama/dotfiles.git 2>/dev/null || git remote set-url github https://bruno:${GITHUB_TOKEN}@github.com/brunogama/dotfiles.git
+          git push github --all
+          git push github --tags
