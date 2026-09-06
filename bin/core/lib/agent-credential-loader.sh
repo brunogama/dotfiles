@@ -11,12 +11,14 @@ load_agent_api_key() {
     local key_value
     local credential_status
     local credential_stderr
+    local previous_return_trap
 
     credential_stderr="$(mktemp)" || {
         printf 'Unable to create credential stderr capture\n' >&2
         return 0
     }
-    trap '[[ -n "${credential_stderr:-}" ]] && rm -f -- "$credential_stderr"' RETURN
+    previous_return_trap="$(trap -p RETURN || true)"
+    trap 'rm -f -- "$credential_stderr"; if [[ -n "$previous_return_trap" ]]; then eval "$previous_return_trap"; else trap - RETURN; fi' RETURN
 
     if key_value="$("$AGENT_CREDENTIALS_BIN" get "$key_name" 2>"$credential_stderr")"; then
         rm -f "$credential_stderr"

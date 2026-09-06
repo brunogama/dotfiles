@@ -232,6 +232,38 @@ assert_key_not_exported() {
 
     [[ ! -e "$capture_path" ]]
 }
+
+@test "credential loader preserves an existing RETURN trap" {
+    run env "DOTFILES_CREDENTIALS_BIN=$CREDENTIALS_BIN" bash -c '
+        set -euo pipefail
+        source "$1"
+        trap '\''printf caller-return >> "$2"'\'' RETURN
+        before="$(trap -p RETURN)"
+        load_agent_api_key OPENAI_API_KEY
+        after="$(trap -p RETURN)"
+        [[ "$before" == "$after" ]]
+    ' _ "$CORE_DIR/lib/agent-credential-loader.sh" "$TEST_TEMP_DIR/return-trap-log"
+
+    assert_success
+}
+
+@test "credential loader RETURN trap does not delete caller-local paths" {
+    local caller_path="$TEST_TEMP_DIR/caller-credential-stderr"
+    touch "$caller_path"
+
+    run env "DOTFILES_CREDENTIALS_BIN=$CREDENTIALS_BIN" bash -c '
+        set -euo pipefail
+        source "$1"
+        caller() {
+            local credential_stderr="$2"
+            load_agent_api_key OPENAI_API_KEY
+        }
+        caller "$1" "$2"
+        [[ -e "$2" ]]
+    ' _ "$CORE_DIR/lib/agent-credential-loader.sh" "$caller_path"
+
+    assert_success
+}
 @test "agent-github-key decodes a valid env key" {
     local encoded
 
@@ -283,6 +315,19 @@ assert_key_not_exported() {
 
     assert_failure
     assert_output --partial "agent-github-key: Keychain item 'GITHUB_APP_PRIVATE_KEY' not found"
+    refute_output --partial 'Traceback'
+}
+
+@test "agent-github-key reports security execution errors distinctly" {
+    local command_dir="$TEST_TEMP_DIR/security-permission-bin"
+
+    mkdir -p "$command_dir/security"
+    ln -s "$(command -v uv)" "$command_dir/uv"
+
+    run env "HOME=$TEST_HOME" "PATH=$command_dir" "$CORE_DIR/agent-github-key"
+
+    assert_failure
+    assert_output --partial "agent-github-key: Keychain lookup failed for 'GITHUB_APP_PRIVATE_KEY'"
     refute_output --partial 'Traceback'
 }
 

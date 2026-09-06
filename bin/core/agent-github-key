@@ -68,8 +68,10 @@ def keychain_get(name: str) -> str:
             capture_output=True,
             text=True,
         )
-    except OSError as exc:
+    except FileNotFoundError as exc:
         raise RuntimeError(f"Keychain item '{name}' not found") from exc
+    except OSError as exc:
+        raise RuntimeError(f"Keychain lookup failed for '{name}': {exc}") from exc
     if proc.returncode != 0:
         raise RuntimeError(f"Keychain item '{name}' not found")
     return proc.stdout.rstrip("\n")
