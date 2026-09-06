@@ -218,6 +218,20 @@ assert_key_not_exported() {
     assert_output --partial 'Unable to load credential OPENAI_API_KEY (exit 2)'
     assert_key_not_exported OPENAI_API_KEY
 }
+
+@test "credential backend stderr capture is removed after lookup failure" {
+    local capture_path="$TEST_TEMP_DIR/captured-credential-stderr"
+
+    printf '%s\n' \
+        '#!/usr/bin/env bash' \
+        'set -euo pipefail' \
+        "printf '%s\\n' '$capture_path'" > "$TEST_BIN/mktemp"
+    chmod +x "$TEST_BIN/mktemp"
+
+    run_agent_wrapper codex DOTFILES_CODEX_BIN FAILED_API_KEY=OPENAI_API_KEY
+
+    [[ ! -e "$capture_path" ]]
+}
 @test "agent-github-key decodes a valid env key" {
     local encoded
 
@@ -256,6 +270,19 @@ assert_key_not_exported() {
     assert_failure
     assert_output --partial "agent-github-key: Keychain item 'GITHUB_APP_PRIVATE_KEY' not found"
     assert_file_contains "$KEYCHAIN_LOOKUP_LOG" 'find-generic-password'
+    refute_output --partial 'Traceback'
+}
+
+@test "agent-github-key reports missing security executable without traceback" {
+    local command_dir="$TEST_TEMP_DIR/no-security-bin"
+
+    mkdir -p "$command_dir"
+    ln -s "$(command -v uv)" "$command_dir/uv"
+
+    run env "HOME=$TEST_HOME" "PATH=$command_dir" "$CORE_DIR/agent-github-key"
+
+    assert_failure
+    assert_output --partial "agent-github-key: Keychain item 'GITHUB_APP_PRIVATE_KEY' not found"
     refute_output --partial 'Traceback'
 }
 

@@ -16,6 +16,7 @@ load_agent_api_key() {
         printf 'Unable to create credential stderr capture\n' >&2
         return 0
     }
+    trap '[[ -n "${credential_stderr:-}" ]] && rm -f -- "$credential_stderr"' RETURN
 
     if key_value="$("$AGENT_CREDENTIALS_BIN" get "$key_name" 2>"$credential_stderr")"; then
         rm -f "$credential_stderr"

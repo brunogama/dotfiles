@@ -62,11 +62,14 @@ def keychain_get(name: str) -> str:
     account = keychain_account()
     if account:
         command[2:2] = ["-a", account]
-    proc = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        raise RuntimeError(f"Keychain item '{name}' not found") from exc
     if proc.returncode != 0:
         raise RuntimeError(f"Keychain item '{name}' not found")
     return proc.stdout.rstrip("\n")

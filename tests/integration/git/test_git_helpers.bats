@@ -187,6 +187,27 @@ EOF
 	assert_failure
 	assert_output --partial 'git-browse: no browser opener found'
 }
+
+
+@test "git-browse: reports when Linux browser opener fails" {
+	local command_dir
+	local dotfiles_root
+	dotfiles_root="$(get_dotfiles_root)"
+	command_dir="$BATS_TEST_TMPDIR/commands"
+	mkdir -p "$command_dir"
+	ln -s "$(command -v bash)" "$command_dir/bash"
+	ln -s "$(command -v git)" "$command_dir/git"
+	printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" Linux' > "$command_dir/uname"
+	printf '%s\n' '#!/usr/bin/env bash' 'exit 66' > "$command_dir/xdg-open"
+	chmod +x "$command_dir/uname" "$command_dir/xdg-open"
+	git remote add origin 'git@github.com:owner/repository.git'
+
+	run env "PATH=$command_dir" "$dotfiles_root/bin/git/git-browse.sh"
+
+	assert_failure
+	assert_output --partial 'git-browse: no browser opener found'
+	assert_output --partial 'Please open this URL in your browser: https://github.com/owner/repository/tree/main'
+}
 # Git-subrm Tests
 
 @test "git-subrm: removes submodule" {

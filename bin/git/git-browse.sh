@@ -98,15 +98,15 @@ open_url() {
             open "$url"
             ;;
         Linux)
-            if command -v xdg-open >/dev/null 2>&1; then
-                xdg-open "$url"
-            elif command -v gnome-open >/dev/null 2>&1; then
-                gnome-open "$url"
-            else
-                printf 'git-browse: no browser opener found\n' >&2
-                printf 'Please open this URL in your browser: %s\n' "$url" >&2
-                exit 1
+            if command -v xdg-open >/dev/null 2>&1 && xdg-open "$url"; then
+                return
             fi
+            if command -v gnome-open >/dev/null 2>&1 && gnome-open "$url"; then
+                return
+            fi
+            printf 'git-browse: no browser opener found\n' >&2
+            printf 'Please open this URL in your browser: %s\n' "$url" >&2
+            exit 1
             ;;
         MINGW*|MSYS*|CYGWIN*)
             if ! cmd.exe //c start "" "$url" >/dev/null 2>&1; then
