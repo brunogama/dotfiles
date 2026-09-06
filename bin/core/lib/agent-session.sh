@@ -2,7 +2,7 @@
 # Agent session: identity injection, authenticated token minting, and per-run
 # evidence recording for the coding-agent CLI wrappers.
 #
-# Harness-agnostic by design: identity and GitHub App settings come from one
+# Harness-agnostic by design: identity and GitHub settings come from one
 # global config file (home/.config/dotfiles/agent.conf), never from this file.
 
 set -euo pipefail
@@ -70,6 +70,18 @@ mint_agent_github_token() {
         return 0
     fi
 
+    # Prefer the user's gh CLI login (keyring-backed) so agent token minting
+    # works without a dedicated GitHub App. The gh token is scoped to the
+    # logged-in account, so agent PRs and pushes remain attributable to it.
+    if command -v gh >/dev/null 2>&1; then
+        if token="$(gh auth token 2>/dev/null)" && [[ -n "$token" ]]; then
+            export GH_TOKEN="$token"
+            export GITHUB_TOKEN="$token"
+            return 0
+        fi
+    fi
+
+    # Fall back to a GitHub App installation token when no gh login exists.
     [[ -n "${GITHUB_APP_ID:-}" ]] || return 0
 
     script_base="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
