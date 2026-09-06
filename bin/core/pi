@@ -58,9 +58,9 @@ readonly -a PI_PROVIDER_API_KEYS=(
 )
 load_agent_api_keys "${PI_PROVIDER_API_KEYS[@]}"
 
-readonly PI_BIN="${DOTFILES_PI_BIN:-${DOTFILES_NPM_BIN:-${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/npm/current/node_modules/.bin}/pi}"
+readonly PI_BIN="${DOTFILES_PI_BIN:-${HOME}/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js}"
 [[ -x "$PI_BIN" ]] || {
-    echo "pi: executable not found; run nix-npm-sync or set DOTFILES_PI_BIN" >&2
+    echo "pi: executable not found; run 'npm install -g --ignore-scripts @earendil-works/pi-coding-agent' or set DOTFILES_PI_BIN" >&2
     exit 127
 }
 

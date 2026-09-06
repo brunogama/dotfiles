@@ -1,183 +1,101 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-set -euo pipefail
+# Exit on error
+set -e
 
-usage() {
-    cat <<'EOF'
-Usage: git browse [remote]
+# Get the remote URL for origin
+remote_url=$(git config --get remote.origin.url)
+echo "Original URL: $remote_url"
 
-Open the current branch and directory in the configured remote's web interface.
-Defaults to the origin remote.
-EOF
-}
-
-die() {
-    printf 'git-browse: %s\n' "$*" >&2
-    exit 1
-}
-
-parse_remote_url() {
+# Function to convert SSH URL to HTTPS
+convert_url() {
     local url="$1"
-    local address
-
-    url="${url%%\?*}"
-    url="${url%%\#*}"
-    url="${url%/}"
-    url="${url%.git}"
-
-    if [[ "$url" == *://* ]]; then
-        address="${url#*://}"
-        address="${address#*@}"
-        remote_host="${address%%/*}"
-        remote_host="${remote_host%%:*}"
-        remote_path="${address#*/}"
-    elif [[ "$url" == *:* ]]; then
-        address="${url#*@}"
-        remote_host="${address%%:*}"
-        remote_path="${address#*:}"
-    else
-        die "unsupported remote URL: $1"
+    # Handle GitHub SSH URLs (git@github.com:user/repo.git)
+    if [[ "$url" == *"github.com"* ]]; then
+        url=${url#git@github.com:}
+        url=${url%.git}
+        url="https://github.com/$url"
+    # Handle GitLab SSH URLs (git@gitlab.com:user/repo.git)
+    elif [[ "$url" == *"gitlab"* ]]; then
+        url=${url#git@*:}
+        url=${url%.git}
+        # Handle both gitlab.com and self-hosted instances
+        if [[ "$remote_url" == *"gitlab.com"* ]]; then
+            url="https://gitlab.com/$url"
+        else
+            # Extract domain for self-hosted GitLab
+            domain=$(echo "$remote_url" | grep -o '@.*:' | sed 's/@//;s/://')
+            url="https://$domain/$url"
+        fi
+    # Handle Bitbucket SSH URLs (git@bitbucket.org:user/repo.git)
+    elif [[ "$url" == *"bitbucket"* ]]; then
+        url=${url#git@bitbucket.org:}
+        url=${url%.git}
+        url="https://bitbucket.org/$url"
     fi
-
-    remote_path="${remote_path#/}"
-    [[ -n "$remote_host" && -n "$remote_path" && "$remote_path" != "$address" ]] || \
-        die "unsupported remote URL: $1"
+    echo "$url"
 }
 
-url_encode() {
-    local value="$1"
-    local preserve_slashes="$2"
-    local encoded=""
-    local character
-    local escaped_character
-    local index
-    local LC_ALL=C
+# Convert SSH URL to HTTPS format
+remote_url=$(convert_url "$remote_url")
 
-    for ((index = 0; index < ${#value}; index++)); do
-        character="${value:index:1}"
-        case "$character" in
-            [a-zA-Z0-9.~_-])
-                encoded+="$character"
-                ;;
-            /)
-                if [[ "$preserve_slashes" == true ]]; then
-                    encoded+="$character"
-                else
-                    encoded+='%2F'
-                fi
-                ;;
-            *)
-                printf -v escaped_character '%%%02X' "'$character"
-                encoded+="$escaped_character"
-                ;;
-        esac
-    done
+# Get current branch
+current_branch=$(git rev-parse --abbrev-ref HEAD)
 
-    printf '%s\n' "$encoded"
-}
+# Get relative path from repo root (if any)
+repo_root=$(git rev-parse --show-toplevel)
+current_dir=$(pwd)
+relative_path=""
 
-append_path() {
-    local base_url="$1"
-    local encoded_branch
-    local encoded_relative_path
-
-    encoded_branch="$(url_encode "$branch" true)"
-    if [[ -n "$relative_path" ]]; then
-        encoded_relative_path="$(url_encode "$relative_path" true)"
-        printf '%s/%s/%s\n' "$base_url" "$encoded_branch" "$encoded_relative_path"
-    else
-        printf '%s/%s\n' "$base_url" "$encoded_branch"
-    fi
-}
-
-open_url() {
-    local url="$1"
-
-    case "$(uname -s)" in
-        Darwin)
-            open "$url"
-            ;;
-        Linux)
-            if command -v xdg-open >/dev/null 2>&1; then
-                xdg-open "$url"
-            elif command -v gnome-open >/dev/null 2>&1; then
-                gnome-open "$url"
-            else
-                die "no browser opener found; open $url manually"
-            fi
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            cmd.exe /c start "" "$url" >/dev/null 2>&1 || \
-                die "could not open $url"
-            ;;
-        *)
-            die "unsupported operating system: $(uname -s)"
-            ;;
-    esac
-}
-
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-    usage
-    exit 0
+if [ "$repo_root" != "$current_dir" ]; then
+    relative_path=${current_dir#$repo_root/}
 fi
 
-[[ $# -le 1 ]] || die "expected at most one remote name"
-git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not inside a Git repository"
+# Add path based on hosting service
+if [[ "$remote_url" == *"github.com"* ]]; then
+    if [ ! -z "$relative_path" ]; then
+        remote_url="$remote_url/tree/$current_branch/$relative_path"
+    else
+        remote_url="$remote_url/tree/$current_branch"
+    fi
+elif [[ "$remote_url" == *"gitlab"* ]]; then
+    if [ ! -z "$relative_path" ]; then
+        remote_url="$remote_url/-/tree/$current_branch/$relative_path"
+    else
+        remote_url="$remote_url/-/tree/$current_branch"
+    fi
+elif [[ "$remote_url" == *"bitbucket.org"* ]]; then
+    if [ ! -z "$relative_path" ]; then
+        remote_url="$remote_url/src/$current_branch/$relative_path"
+    else
+        remote_url="$remote_url/src/$current_branch"
+    fi
+fi
 
-remote_name="${1:-origin}"
-remote_url="$(git remote get-url "$remote_name")" || die "remote '$remote_name' is not configured"
-parse_remote_url "$remote_url"
+echo "Opening: $remote_url"
 
-branch="$(git symbolic-ref --quiet --short HEAD || git rev-parse HEAD)"
-relative_path="${GIT_PREFIX:-$(git rev-parse --show-prefix)}"
-relative_path="${relative_path%/}"
-base_url="https://$remote_host/$remote_path"
-
-case "$remote_host" in
-    github.com)
-        browse_url="$(append_path "$base_url/tree")"
+# Open URL based on OS
+case "$(uname)" in
+    "Darwin")  # macOS
+        open "$remote_url"
         ;;
-    gitlab.com)
-        browse_url="$(append_path "$base_url/-/tree")"
-        ;;
-    bitbucket.org)
-        browse_url="$(append_path "$base_url/src")"
-        ;;
-    dev.azure.com)
-        azure_path="$(url_encode "/${relative_path:-}" false)"
-        azure_version="GB$(url_encode "$branch" false)"
-        browse_url="$base_url?path=$azure_path&version=$azure_version"
-        ;;
-    ssh.dev.azure.com|vs-ssh.visualstudio.com)
-        azure_remote_path="${remote_path#v3/}"
-        azure_organization="${azure_remote_path%%/*}"
-        azure_remote_path="${azure_remote_path#*/}"
-        azure_project="${azure_remote_path%%/*}"
-        azure_repository="${azure_remote_path#*/}"
-        if [[ "$remote_path" == v3/* && "$azure_remote_path" == */* ]]; then
-            azure_path="$(url_encode "/${relative_path:-}" false)"
-            azure_version="GB$(url_encode "$branch" false)"
-            browse_url="https://dev.azure.com/$azure_organization/$azure_project/_git/$azure_repository?path=$azure_path&version=$azure_version"
+    "Linux")
+        if command -v xdg-open > /dev/null; then
+            xdg-open "$remote_url"
+        elif command -v gnome-open > /dev/null; then
+            gnome-open "$remote_url"
         else
-            browse_url="$base_url"
+            echo "Error: Could not detect a way to open the URL"
+            echo "Please open this URL in your browser: $remote_url"
+            exit 1
         fi
         ;;
-    codeberg.org|gitea.com)
-        browse_url="$(append_path "$base_url/src/branch")"
-        ;;
-    git.sr.ht)
-        encoded_branch="$(url_encode "$branch" true)"
-        if [[ -n "$relative_path" ]]; then
-            encoded_relative_path="$(url_encode "$relative_path" true)"
-            browse_url="$base_url/tree/$encoded_branch/item/$encoded_relative_path"
-        else
-            browse_url="$base_url/tree/$encoded_branch"
-        fi
+    "MINGW"*|"MSYS"*|"CYGWIN"*)  # Windows
+        start "$remote_url" || echo "Please open this URL in your browser: $remote_url"
         ;;
     *)
-        browse_url="$base_url"
+        echo "Unsupported operating system"
+        echo "Please open this URL in your browser: $remote_url"
+        exit 1
         ;;
 esac
-
-printf 'Opening: %s\n' "$browse_url"
-open_url "$browse_url"

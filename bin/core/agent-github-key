@@ -1,0 +1,80 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["cryptography"]
+# ///
+"""Print the raw GitHub App private key (PEM) from a gitignored .env or the macOS Keychain.
+
+Sources, in priority order:
+1. ~/.config/dotfiles/.env  ->  GITHUB_APP_PRIVATE_KEY=<base64 PEM>  (portable)
+2. macOS Keychain           ->  ChaCha20Poly1305-encrypted PEM + separate key item
+
+Pipe into agent-github-mint / agent-push:
+
+    agent-github-key | agent-github-mint --app-id 4659463 --repo owner/repo
+"""
+import base64
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+
+ENV_PATH = Path.home() / ".config" / "dotfiles" / ".env"
+ENV_KEY = "GITHUB_APP_PRIVATE_KEY"
+KEYCHAIN_BLOB = "GITHUB_APP_PRIVATE_KEY"
+KEYCHAIN_KEY = "GITHUB_APP_PRIVATE_KEY_CHACHA_KEY"
+
+
+def load_from_env() -> bytes | None:
+    if not ENV_PATH.exists():
+        return None
+    for line in ENV_PATH.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        if key.strip() == ENV_KEY and value.strip():
+            return base64.b64decode(value.strip())
+    return None
+
+
+def keychain_get(name: str) -> str:
+    proc = subprocess.run(
+        ["security", "find-generic-password", "-a", os.environ["USER"], "-s", name, "-w"],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"Keychain item '{name}' not found")
+    return proc.stdout.rstrip("\n")
+
+
+def load_from_keychain() -> bytes:
+    envelope = json.loads(base64.b64decode(keychain_get(KEYCHAIN_BLOB)).decode())
+    key = base64.b64decode(keychain_get(KEYCHAIN_KEY))
+    nonce = base64.b64decode(envelope["nonce"])
+    ciphertext = base64.b64decode(envelope["ct"])
+    try:
+        return ChaCha20Poly1305(key).decrypt(nonce, ciphertext, None)
+    except InvalidTag as exc:
+        raise RuntimeError("decryption failed (wrong key or corrupted data)") from exc
+
+
+def main() -> int:
+    pem = load_from_env()
+    if pem is None:
+        try:
+            pem = load_from_keychain()
+        except RuntimeError as exc:
+            print(f"agent-github-key: {exc}", file=sys.stderr)
+            return 1
+    sys.stdout.buffer.write(pem)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

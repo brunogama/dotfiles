@@ -11,7 +11,7 @@ load_agent_api_key() {
     local key_value
     local credential_status
 
-    if key_value="$("$AGENT_CREDENTIALS_BIN" get "$key_name")"; then
+    if key_value="$("$AGENT_CREDENTIALS_BIN" get "$key_name" 2>/dev/null)"; then
         [[ -n "$key_value" ]] || return 0
         export "$key_name=$key_value"
         return 0

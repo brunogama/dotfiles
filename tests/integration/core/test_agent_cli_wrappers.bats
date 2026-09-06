@@ -34,6 +34,10 @@ printf '%s\n' "$key_name" >> "$API_KEY_LOOKUP_LOG"
 if [[ "${UNAVAILABLE_API_KEY:-}" == "$key_name" ]]; then
     exit 4
 fi
+if [[ "${MISSING_API_KEY:-}" == "$key_name" ]]; then
+    printf 'API key not found in keychain\n' >&2
+    exit 4
+fi
 if [[ "${FAILED_API_KEY:-}" == "$key_name" ]]; then
     printf 'credential backend unavailable\n' >&2
     exit 2
@@ -105,7 +109,7 @@ run_agent_wrapper_default() {
             default_bin="$TEST_HOME/.local/bin/$agent"
             ;;
         pi)
-            default_bin="$TEST_HOME/.local/share/dotfiles/npm/current/node_modules/.bin/pi"
+            default_bin="$TEST_HOME/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js"
             ;;
     esac
     mkdir -p "$(dirname "$default_bin")"
@@ -183,6 +187,12 @@ assert_key_not_exported() {
     assert_key_not_exported ANTHROPIC_API_KEY
 
     run_agent_wrapper pi DOTFILES_PI_BIN UNAVAILABLE_API_KEY=OPENAI_API_KEY
+    assert_key_not_exported OPENAI_API_KEY
+}
+
+@test "missing optional credentials do not print backend errors" {
+    run_agent_wrapper pi DOTFILES_PI_BIN MISSING_API_KEY=OPENAI_API_KEY
+    refute_output --partial 'API key not found in keychain'
     assert_key_not_exported OPENAI_API_KEY
 }
 
