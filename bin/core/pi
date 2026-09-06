@@ -56,11 +56,23 @@ readonly -a PI_PROVIDER_API_KEYS=(
     XIAOMI_TOKEN_PLAN_AMS_API_KEY
     XIAOMI_TOKEN_PLAN_SGP_API_KEY
 )
-load_agent_api_keys "${PI_PROVIDER_API_KEYS[@]}"
 
-readonly PI_BIN="${DOTFILES_PI_BIN:-${XDG_DATA_HOME:-${HOME}/.local/share}/dotfiles/npm/current/node_modules/.bin/pi}"
+readonly BUN_BIN="${DOTFILES_BUN_BIN:-$(command -v bun || true)}"
+if [[ $# -eq 1 && "$1" == "update" ]]; then
+    [[ -n "$BUN_BIN" && -x "$BUN_BIN" ]] || {
+        echo "pi: bun executable not found; install Bun or set DOTFILES_BUN_BIN" >&2
+        exit 127
+    }
+    exec "$BUN_BIN" update --global --latest --ignore-scripts @earendil-works/pi-coding-agent
+fi
+
+if [[ "${1:-}" != "update" ]]; then
+    load_agent_api_keys "${PI_PROVIDER_API_KEYS[@]}"
+fi
+
+readonly PI_BIN="${DOTFILES_PI_BIN:-${HOME}/.cache/.bun/bin/pi}"
 [[ -x "$PI_BIN" ]] || {
-    echo "pi: executable not found; run 'nix-npm-sync' or set DOTFILES_PI_BIN" >&2
+    echo "pi: executable not found; run 'bun add --global --ignore-scripts @earendil-works/pi-coding-agent' or set DOTFILES_PI_BIN" >&2
     exit 127
 }
 
