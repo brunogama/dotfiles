@@ -109,7 +109,7 @@ run_agent_wrapper_default() {
             default_bin="$TEST_HOME/.local/bin/$agent"
             ;;
         pi)
-            default_bin="$TEST_HOME/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js"
+            default_bin="$TEST_HOME/.local/share/dotfiles/npm/current/node_modules/.bin/pi"
             ;;
     esac
     mkdir -p "$(dirname "$default_bin")"
@@ -127,6 +127,22 @@ run_agent_wrapper_default() {
 
     assert_success
     assert_forwarded_arguments
+}
+
+install_failing_security_backend() {
+    local status_code="${1:-44}"
+
+    KEYCHAIN_LOOKUP_LOG="$TEST_TEMP_DIR/keychain-lookups"
+    export KEYCHAIN_LOOKUP_LOG
+
+    cat > "$TEST_BIN/security" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "$KEYCHAIN_LOOKUP_LOG"
+exit "${KEYCHAIN_STATUS:-44}"
+EOF
+    chmod +x "$TEST_BIN/security"
+    export KEYCHAIN_STATUS="$status_code"
 }
 
 assert_only_loaded_key() {
@@ -198,9 +214,51 @@ assert_key_not_exported() {
 
 @test "credential backend failures are reported without preventing an agent launch" {
     run_agent_wrapper codex DOTFILES_CODEX_BIN FAILED_API_KEY=OPENAI_API_KEY
+    assert_output --partial 'credential backend unavailable'
     assert_output --partial 'Unable to load credential OPENAI_API_KEY (exit 2)'
     assert_key_not_exported OPENAI_API_KEY
 }
+@test "agent-github-key decodes a valid env key" {
+    local encoded
+
+    mkdir -p "$TEST_HOME/.config/dotfiles"
+    encoded="$(printf 'pem-value' | base64)"
+    printf 'GITHUB_APP_PRIVATE_KEY=%s\n' "$encoded" > "$TEST_HOME/.config/dotfiles/.env"
+
+    run env "HOME=$TEST_HOME" "PATH=$TEST_BIN:$PATH" "$CORE_DIR/agent-github-key"
+
+    assert_success
+    assert_output 'pem-value'
+}
+
+@test "agent-github-key rejects invalid env characters before Keychain fallback" {
+    mkdir -p "$TEST_HOME/.config/dotfiles"
+    printf 'GITHUB_APP_PRIVATE_KEY=!!!!\n' > "$TEST_HOME/.config/dotfiles/.env"
+    install_failing_security_backend
+
+    run env "HOME=$TEST_HOME" "PATH=$TEST_BIN:$PATH" "KEYCHAIN_LOOKUP_LOG=$KEYCHAIN_LOOKUP_LOG" \
+        "KEYCHAIN_STATUS=$KEYCHAIN_STATUS" "$CORE_DIR/agent-github-key"
+
+    assert_failure
+    assert_output --partial "agent-github-key: Keychain item 'GITHUB_APP_PRIVATE_KEY' not found"
+    assert_file_contains "$KEYCHAIN_LOOKUP_LOG" 'find-generic-password'
+    refute_output --partial 'Traceback'
+}
+
+@test "agent-github-key rejects invalid env padding before Keychain fallback" {
+    mkdir -p "$TEST_HOME/.config/dotfiles"
+    printf 'GITHUB_APP_PRIVATE_KEY=abc\n' > "$TEST_HOME/.config/dotfiles/.env"
+    install_failing_security_backend
+
+    run env "HOME=$TEST_HOME" "PATH=$TEST_BIN:$PATH" "KEYCHAIN_LOOKUP_LOG=$KEYCHAIN_LOOKUP_LOG" \
+        "KEYCHAIN_STATUS=$KEYCHAIN_STATUS" "$CORE_DIR/agent-github-key"
+
+    assert_failure
+    assert_output --partial "agent-github-key: Keychain item 'GITHUB_APP_PRIVATE_KEY' not found"
+    assert_file_contains "$KEYCHAIN_LOOKUP_LOG" 'find-generic-password'
+    refute_output --partial 'Traceback'
+}
+
 
 @test "agent wrappers exercise their default executable paths" {
     run_agent_wrapper_default codex
