@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Watch a pull request and hand CI or review blockers to a fixer command."""
+"""Watch a pull request and run Pi for CI or review blockers."""
 
 from __future__ import annotations
 
@@ -44,6 +44,7 @@ PR_FIELDS = (
     "number,title,url,headRefName,"
     "headRefOid,reviewDecision,statusCheckRollup"
 )
+DEFAULT_FIX_COMMAND = "pi --print @{prompt_file}"
 REVIEW_THREADS_QUERY = """
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
@@ -331,6 +332,12 @@ def run_shell_command(command: str, prompt: str | None, env: dict[str, str]) -> 
     return int(completed.returncode)
 
 
+def resolve_fix_command(env: dict[str, str] | None = None) -> str:
+    """Return the explicit fixer command, defaulting to Pi."""
+    values = os.environ if env is None else env
+    return values.get("PR_AUTOFIX_COMMAND") or DEFAULT_FIX_COMMAND
+
+
 def run_fix_command(command: str, prompt_path: Path, pr_number: int, prompt: str) -> int:
     """Run the configured fixer command with prompt context."""
     rendered = command.replace("{prompt_file}", shlex.quote(str(prompt_path)))
@@ -371,8 +378,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(
         description=(
-            "Watch a PR, run PR_AUTOFIX_COMMAND for failing CI or review "
-            "blockers, and push only commits created by that command."
+            "Watch a PR, run Pi or PR_AUTOFIX_COMMAND for failing CI "
+            "or review blockers, and push only commits created by that command."
         )
     )
     parser.add_argument("--pr", type=int, help="PR number. Defaults to current branch PR.")
@@ -436,15 +443,8 @@ def run_cycle(args: argparse.Namespace, pr_number: int, cycle: int) -> int | Non
         print(prompt)
         return 2
 
-    fix_command = os.environ.get("PR_AUTOFIX_COMMAND")
-    if not fix_command:
-        print(
-            "PR_AUTOFIX_COMMAND is not set. Set it to an explicit fixer "
-            "command, for example one that reads stdin or uses "
-            "{prompt_file}.",
-            file=sys.stderr,
-        )
-        return 2
+    fix_command = resolve_fix_command()
+    print(f"Running fixer command: {fix_command}")
 
     before_head = git_text("rev-parse", "HEAD")
     status = run_fix_command(fix_command, prompt_path, pr_number, prompt)
