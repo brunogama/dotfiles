@@ -104,9 +104,6 @@ run_agent_wrapper_default() {
         codex|claude)
             default_bin="$TEST_HOME/.local/bin/$agent"
             ;;
-        pi)
-            default_bin="$TEST_HOME/.local/share/dotfiles/npm/current/node_modules/.bin/pi"
-            ;;
     esac
     mkdir -p "$(dirname "$default_bin")"
     cp "$upstream" "$default_bin"
@@ -115,7 +112,6 @@ run_agent_wrapper_default() {
         -u DOTFILES_CLAUDE_BIN \
         -u DOTFILES_CODEX_BIN \
         -u DOTFILES_NPM_BIN \
-        -u DOTFILES_PI_BIN \
         "HOME=$TEST_HOME" \
         "XDG_DATA_HOME=$TEST_HOME/.local/share" \
         "DOTFILES_CREDENTIALS_BIN=$CREDENTIALS_BIN" \
@@ -168,22 +164,12 @@ assert_key_not_exported() {
     assert_only_loaded_key ANTHROPIC_API_KEY
 }
 
-@test "pi wrapper loads its curated provider keys and forwards arguments" {
-    run_agent_wrapper pi DOTFILES_PI_BIN
-
-    assert_equal "$(cat "$API_KEY_LOOKUP_LOG")" $'ANTHROPIC_API_KEY\nANT_LING_API_KEY\nOPENAI_API_KEY\nAZURE_OPENAI_API_KEY\nDEEPSEEK_API_KEY\nNVIDIA_API_KEY\nGEMINI_API_KEY\nGROQ_API_KEY\nCEREBRAS_API_KEY\nXAI_API_KEY\nFIREWORKS_API_KEY\nTOGETHER_API_KEY\nOPENROUTER_API_KEY\nAI_GATEWAY_API_KEY\nZAI_API_KEY\nZAI_CODING_CN_API_KEY\nMISTRAL_API_KEY\nMINIMAX_API_KEY\nMOONSHOT_API_KEY\nOPENCODE_API_KEY\nKIMI_API_KEY\nCLOUDFLARE_API_KEY\nQWEN_TOKEN_PLAN_API_KEY\nQWEN_TOKEN_PLAN_CN_API_KEY\nXIAOMI_API_KEY\nXIAOMI_TOKEN_PLAN_CN_API_KEY\nXIAOMI_TOKEN_PLAN_AMS_API_KEY\nXIAOMI_TOKEN_PLAN_SGP_API_KEY'
-    assert_key_not_exported GITHUB_TOKEN
-}
-
 @test "unavailable optional credentials do not prevent agent launches" {
     run_agent_wrapper codex DOTFILES_CODEX_BIN UNAVAILABLE_API_KEY=OPENAI_API_KEY
     assert_key_not_exported OPENAI_API_KEY
 
     run_agent_wrapper claude DOTFILES_CLAUDE_BIN UNAVAILABLE_API_KEY=ANTHROPIC_API_KEY
     assert_key_not_exported ANTHROPIC_API_KEY
-
-    run_agent_wrapper pi DOTFILES_PI_BIN UNAVAILABLE_API_KEY=OPENAI_API_KEY
-    assert_key_not_exported OPENAI_API_KEY
 }
 
 @test "credential backend failures are reported without preventing an agent launch" {
@@ -195,5 +181,4 @@ assert_key_not_exported() {
 @test "agent wrappers exercise their default executable paths" {
     run_agent_wrapper_default codex
     run_agent_wrapper_default claude
-    run_agent_wrapper_default pi
 }

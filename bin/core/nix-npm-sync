@@ -3,16 +3,16 @@
 set -euo pipefail
 
 resolve_script_dir() {
-    local source_path="${BASH_SOURCE[0]}"
-    local source_dir
+	local source_path="${BASH_SOURCE[0]}"
+	local source_dir
 
-    while [[ -L "$source_path" ]]; do
-        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
-        source_path="$(readlink "$source_path")"
-        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
-    done
+	while [[ -L "$source_path" ]]; do
+		source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+		source_path="$(readlink "$source_path")"
+		[[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+	done
 
-    cd -P "$(dirname "$source_path")" && pwd
+	cd -P "$(dirname "$source_path")" && pwd
 }
 
 SCRIPT_DIR="$(resolve_script_dir)"
@@ -25,7 +25,7 @@ CHECK_ONLY=false
 MANIFEST_DIR="$DOTFILES_ROOT/packages/npm"
 
 usage() {
-    cat <<'EOF'
+	cat <<'EOF'
 Usage: nix-npm-sync [OPTIONS]
 
 Install the pinned npm toolchain into a versioned user data directory.
@@ -39,38 +39,50 @@ EOF
 }
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --check)
-            CHECK_ONLY=true
-            ;;
-        --dry-run)
-            DRY_RUN=true
-            ;;
-        --manifest-dir)
-            [[ $# -ge 2 ]] || { echo "nix-npm-sync: --manifest-dir requires a path" >&2; exit 2; }
-            MANIFEST_DIR="$2"
-            shift
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            echo "nix-npm-sync: unknown option: $1" >&2
-            usage >&2
-            exit 2
-            ;;
-    esac
-    shift
+	case "$1" in
+	--check)
+		CHECK_ONLY=true
+		;;
+	--dry-run)
+		DRY_RUN=true
+		;;
+	--manifest-dir)
+		[[ $# -ge 2 ]] || {
+			echo "nix-npm-sync: --manifest-dir requires a path" >&2
+			exit 2
+		}
+		MANIFEST_DIR="$2"
+		shift
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		echo "nix-npm-sync: unknown option: $1" >&2
+		usage >&2
+		exit 2
+		;;
+	esac
+	shift
 done
 
 readonly PACKAGE_JSON="$MANIFEST_DIR/package.json"
 readonly PACKAGE_LOCK="$MANIFEST_DIR/package-lock.json"
 
-[[ -f "$PACKAGE_JSON" ]] || { echo "nix-npm-sync: missing $PACKAGE_JSON" >&2; exit 2; }
-[[ -f "$PACKAGE_LOCK" ]] || { echo "nix-npm-sync: missing $PACKAGE_LOCK" >&2; exit 2; }
+[[ -f "$PACKAGE_JSON" ]] || {
+	echo "nix-npm-sync: missing $PACKAGE_JSON" >&2
+	exit 2
+}
+[[ -f "$PACKAGE_LOCK" ]] || {
+	echo "nix-npm-sync: missing $PACKAGE_LOCK" >&2
+	exit 2
+}
 
-command -v shasum >/dev/null 2>&1 || { echo "nix-npm-sync: shasum is required" >&2; exit 2; }
+command -v shasum >/dev/null 2>&1 || {
+	echo "nix-npm-sync: shasum is required" >&2
+	exit 2
+}
 
 MANIFEST_HASH="$(cat "$PACKAGE_JSON" "$PACKAGE_LOCK" | shasum -a 256 | awk '{print $1}')"
 readonly MANIFEST_HASH
@@ -81,45 +93,47 @@ readonly CURRENT_LINK="$INSTALL_ROOT/current"
 readonly EXPECTED_LINK="versions/$MANIFEST_HASH"
 
 is_current() {
-    [[ -L "$CURRENT_LINK" ]] \
-        && [[ "$(readlink "$CURRENT_LINK")" == "$EXPECTED_LINK" ]] \
-        && [[ -x "$CURRENT_LINK/node_modules/.bin/pi" ]]
+	[[ -L "$CURRENT_LINK" ]] &&
+		[[ "$(readlink "$CURRENT_LINK")" == "$EXPECTED_LINK" ]]
 }
 
 if is_current; then
-    echo "npm tools already match package-lock.json ($MANIFEST_HASH)"
-    exit 0
+	echo "npm tools already match package-lock.json ($MANIFEST_HASH)"
+	exit 0
 fi
 
 if [[ "$CHECK_ONLY" == "true" ]]; then
-    echo "nix-npm-sync: locked npm tools are not active" >&2
-    exit 1
+	echo "nix-npm-sync: locked npm tools are not active" >&2
+	exit 1
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
-    echo "Would install pinned npm tools into $VERSION_DIR"
-    echo "Would point $CURRENT_LINK to $EXPECTED_LINK"
-    exit 0
+	echo "Would install pinned npm tools into $VERSION_DIR"
+	echo "Would point $CURRENT_LINK to $EXPECTED_LINK"
+	exit 0
 fi
 
-command -v npm >/dev/null 2>&1 || { echo "nix-npm-sync: npm is required (enter 'nix develop' first)" >&2; exit 2; }
+command -v npm >/dev/null 2>&1 || {
+	echo "nix-npm-sync: npm is required (enter 'nix develop' first)" >&2
+	exit 2
+}
 
 mkdir -p "$INSTALL_ROOT/versions"
 
 if [[ ! -d "$VERSION_DIR" ]]; then
-    staging_dir="$(mktemp -d "$INSTALL_ROOT/.install.XXXXXX")"
-    cleanup() {
-        rm -rf "$staging_dir"
-    }
-    trap cleanup EXIT
+	staging_dir="$(mktemp -d "$INSTALL_ROOT/.install.XXXXXX")"
+	cleanup() {
+		rm -rf "$staging_dir"
+	}
+	trap cleanup EXIT
 
-    cp "$PACKAGE_JSON" "$PACKAGE_LOCK" "$staging_dir/"
-    (
-        cd "$staging_dir"
-        npm ci --omit=dev --no-audit --no-fund
-    )
-    mv "$staging_dir" "$VERSION_DIR"
-    trap - EXIT
+	cp "$PACKAGE_JSON" "$PACKAGE_LOCK" "$staging_dir/"
+	(
+		cd "$staging_dir"
+		npm ci --omit=dev --no-audit --no-fund
+	)
+	mv "$staging_dir" "$VERSION_DIR"
+	trap - EXIT
 fi
 
 ln -sfn "$EXPECTED_LINK" "$CURRENT_LINK"
