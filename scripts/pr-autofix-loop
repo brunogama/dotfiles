@@ -1,0 +1,489 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+"""Watch a pull request and hand CI or review blockers to a fixer command."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shlex
+import subprocess
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+BLOCKING_RESULTS = {
+    "ACTION_REQUIRED",
+    "CANCELLED",
+    "ERROR",
+    "FAILURE",
+    "FAILED",
+    "STARTUP_FAILURE",
+    "TIMED_OUT",
+}
+PENDING_RESULTS = {
+    "EXPECTED",
+    "IN_PROGRESS",
+    "PENDING",
+    "QUEUED",
+    "REQUESTED",
+    "WAITING",
+}
+SUCCESS_RESULTS = {
+    "NEUTRAL",
+    "SKIPPED",
+    "SUCCESS",
+}
+PR_FIELDS = (
+    "number,title,url,headRefName,"
+    "headRefOid,reviewDecision,statusCheckRollup"
+)
+REVIEW_THREADS_QUERY = """
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved
+          path
+          line
+          startLine
+          comments(first: 20) {
+            nodes {
+              author { login }
+              body
+              url
+              createdAt
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+
+@dataclass
+class PullRequestBlockers:
+    """Classification of the current PR state."""
+
+    failing_checks: list[str] = field(default_factory=list)
+    pending_checks: list[str] = field(default_factory=list)
+    changes_requested: list[str] = field(default_factory=list)
+    unresolved_threads: list[str] = field(default_factory=list)
+
+    @property
+    def needs_fix(self) -> bool:
+        return bool(
+            self.failing_checks
+            or self.changes_requested
+            or self.unresolved_threads
+        )
+
+    @property
+    def is_green(self) -> bool:
+        return not self.needs_fix and not self.pending_checks
+
+
+def run_json(argv: list[str]) -> Any:
+    """Run a command that prints JSON and return the decoded value."""
+    completed = subprocess.run(
+        argv,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
+def run_text(argv: list[str]) -> str:
+    """Run a command and return trimmed stdout."""
+    completed = subprocess.run(
+        argv,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def check_label(check: dict[str, Any]) -> str:
+    """Return a stable human label for a statusCheckRollup entry."""
+    return str(
+        check.get("name")
+        or check.get("context")
+        or check.get("workflowName")
+        or check.get("__typename")
+        or "unnamed check"
+    )
+
+
+def check_result(check: dict[str, Any]) -> str:
+    """Return the most useful status or conclusion for a check entry."""
+    for key in ("conclusion", "state", "status", "bucket"):
+        value = check.get(key)
+        if value:
+            return str(value).upper()
+    return "UNKNOWN"
+
+
+def classify_check(check: dict[str, Any]) -> str:
+    """Classify one check as pass, pending, or fail."""
+    result = check_result(check)
+    bucket = str(check.get("bucket") or "").upper()
+    status = str(check.get("status") or "").upper()
+    conclusion = str(check.get("conclusion") or "").upper()
+
+    if result in BLOCKING_RESULTS or bucket == "FAIL":
+        return "fail"
+    if conclusion in SUCCESS_RESULTS or result in SUCCESS_RESULTS or bucket == "PASS":
+        return "pass"
+    if result in PENDING_RESULTS or status in PENDING_RESULTS or bucket == "PENDING":
+        return "pending"
+    if status == "COMPLETED" and not conclusion:
+        return "pending"
+    return "pending"
+
+
+def summarize_review_thread(thread: dict[str, Any]) -> str:
+    """Return a compact summary of an unresolved review thread."""
+    raw_comments = thread.get("comments", {})
+    if isinstance(raw_comments, dict):
+        comments = raw_comments.get("nodes", []) or []
+    else:
+        comments = raw_comments or []
+    last_comment = comments[-1] if comments else {}
+    author = (last_comment.get("author") or {}).get("login") or "unknown"
+    body = " ".join(str(last_comment.get("body") or "").split())
+    body = body[:240]
+    url = str(last_comment.get("url") or "")
+    line = thread.get("line") or thread.get("startLine") or "?"
+    path = thread.get("path") or "unknown path"
+    summary = f"{path}:{line} by {author}"
+    if body:
+        summary += f" - {body}"
+    if url:
+        summary += f" ({url})"
+    return summary
+
+
+def classify_pull_request(
+    pr_info: dict[str, Any],
+    review_threads: list[dict[str, Any]],
+) -> PullRequestBlockers:
+    """Classify a pull request into blockers, pending checks, or green."""
+    blockers = PullRequestBlockers()
+
+    for check in pr_info.get("statusCheckRollup") or []:
+        label = check_label(check)
+        result = check_result(check)
+        classification = classify_check(check)
+        if classification == "fail":
+            blockers.failing_checks.append(f"{label}: {result}")
+        elif classification == "pending":
+            blockers.pending_checks.append(f"{label}: {result}")
+
+    if str(pr_info.get("reviewDecision") or "").upper() == "CHANGES_REQUESTED":
+        blockers.changes_requested.append("reviewDecision: CHANGES_REQUESTED")
+
+    for thread in review_threads:
+        if not thread.get("isResolved"):
+            blockers.unresolved_threads.append(summarize_review_thread(thread))
+
+    return blockers
+
+
+def bullet_list(items: list[str]) -> str:
+    """Format a list for the fixer prompt."""
+    if not items:
+        return "- none"
+    return "\n".join(f"- {item}" for item in items)
+
+
+def build_fix_prompt(
+    pr_info: dict[str, Any],
+    blockers: PullRequestBlockers,
+    local_check: str,
+) -> str:
+    """Build the prompt sent to the configured fixer command."""
+    number = pr_info.get("number", "unknown")
+    title = pr_info.get("title", "")
+    url = pr_info.get("url", "")
+    branch = pr_info.get("headRefName", "")
+    check_line = local_check or "the narrowest relevant local checks"
+
+    return f"""Fix PR #{number}: {title}
+
+PR URL: {url}
+Branch: {branch}
+
+Objective: make this PR green by resolving every failing check and actionable
+review blocker below.
+
+Failing checks:
+{bullet_list(blockers.failing_checks)}
+
+Pending checks to wait for, not fix yet:
+{bullet_list(blockers.pending_checks)}
+
+Review decisions:
+{bullet_list(blockers.changes_requested)}
+
+Unresolved review threads:
+{bullet_list(blockers.unresolved_threads)}
+
+Required fixer contract:
+1. Inspect the PR diff, failing logs, and review comments before editing.
+2. Reproduce each failure locally where possible.
+3. Make the smallest correct fix for the reported blocker.
+4. Run `{check_line}` before committing unless that command is unavailable.
+5. Commit only intentional fixes using this repository's commit rules.
+6. Leave unrelated work untouched and leave the working tree clean.
+7. If a blocker cannot be fixed safely, stop and report the exact blocker.
+"""
+
+
+def current_pr_number() -> int:
+    """Return the PR number for the current branch."""
+    data = run_json(["gh", "pr", "view", "--json", "number"])
+    return int(data["number"])
+
+
+def repository_owner_name() -> tuple[str, str]:
+    """Return the current GitHub repository owner and name."""
+    data = run_json(["gh", "repo", "view", "--json", "owner,name"])
+    owner_value = data["owner"]
+    if isinstance(owner_value, dict):
+        owner = str(owner_value.get("login") or owner_value.get("name"))
+    else:
+        owner = str(owner_value)
+    return owner, str(data["name"])
+
+
+def fetch_pr_info(number: int) -> dict[str, Any]:
+    """Fetch PR metadata and status checks."""
+    return run_json(["gh", "pr", "view", str(number), "--json", PR_FIELDS])
+
+
+def fetch_review_threads(owner: str, repo: str, number: int) -> list[dict[str, Any]]:
+    """Fetch unresolved and resolved review threads for the PR."""
+    data = run_json(
+        [
+            "gh",
+            "api",
+            "graphql",
+            "-f",
+            f"query={REVIEW_THREADS_QUERY}",
+            "-f",
+            f"owner={owner}",
+            "-f",
+            f"name={repo}",
+            "-F",
+            f"number={number}",
+        ]
+    )
+    pull_request = data["data"]["repository"]["pullRequest"]
+    return pull_request["reviewThreads"]["nodes"] or []
+
+
+def git_text(*args: str) -> str:
+    """Run a git command and return stdout."""
+    return run_text(["git", *args])
+
+
+def git_dir() -> Path:
+    """Return the Git directory path."""
+    path = Path(git_text("rev-parse", "--git-dir"))
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def write_prompt_file(pr_number: int, cycle: int, prompt: str) -> Path:
+    """Write the latest fixer prompt under .git so it is never committed."""
+    directory = git_dir() / "pr-autofix"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"pr-{pr_number}-cycle-{cycle}.md"
+    path.write_text(prompt, encoding="utf-8")
+    return path
+
+
+def working_tree_dirty() -> bool:
+    """Return true when the working tree has uncommitted changes."""
+    return bool(git_text("status", "--porcelain"))
+
+
+def run_shell_command(command: str, prompt: str | None, env: dict[str, str]) -> int:
+    """Run an explicit shell command."""
+    completed = subprocess.run(
+        command,
+        input=prompt,
+        shell=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    return int(completed.returncode)
+
+
+def run_fix_command(command: str, prompt_path: Path, pr_number: int, prompt: str) -> int:
+    """Run the configured fixer command with prompt context."""
+    rendered = command.replace("{prompt_file}", shlex.quote(str(prompt_path)))
+    rendered = rendered.replace("{pr}", str(pr_number))
+    env = os.environ.copy()
+    env["PR_AUTOFIX_PROMPT_FILE"] = str(prompt_path)
+    env["PR_NUMBER"] = str(pr_number)
+    stdin_prompt = None if "{prompt_file}" in command else prompt
+    return run_shell_command(rendered, stdin_prompt, env)
+
+
+def push_if_commit_created(branch: str, before_head: str) -> bool:
+    """Push HEAD to the PR branch only if the fixer created a commit."""
+    after_head = git_text("rev-parse", "HEAD")
+    if after_head == before_head:
+        print("Fix command did not create a commit; nothing to push.")
+        return False
+    if working_tree_dirty():
+        raise RuntimeError(
+            "fix command created a commit but left the working tree dirty"
+        )
+    subprocess.run(["git", "push", "origin", f"HEAD:{branch}"], check=True)
+    return True
+
+
+def print_state(blockers: PullRequestBlockers) -> None:
+    """Print a concise status line for the current cycle."""
+    print(
+        "status: "
+        f"failing={len(blockers.failing_checks)} "
+        f"review={len(blockers.changes_requested)} "
+        f"threads={len(blockers.unresolved_threads)} "
+        f"pending={len(blockers.pending_checks)}"
+    )
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    """Parse CLI arguments."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Watch a PR, run PR_AUTOFIX_COMMAND for failing CI or review "
+            "blockers, and push only commits created by that command."
+        )
+    )
+    parser.add_argument("--pr", type=int, help="PR number. Defaults to current branch PR.")
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=60,
+        help="Seconds to wait between polling cycles.",
+    )
+    parser.add_argument(
+        "--max-cycles",
+        type=int,
+        default=20,
+        help="Maximum polling or fixing cycles before giving up.",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Inspect once, run at most one fix attempt, then exit.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Write and print the fixer prompt, but do not run the fixer.",
+    )
+    parser.add_argument(
+        "--local-check",
+        default="scripts/local-ci.sh",
+        help="Command to run after the fixer creates changes. Empty disables it.",
+    )
+    parser.add_argument(
+        "--skip-local-check",
+        action="store_true",
+        help="Do not run the local check before pushing fixer commits.",
+    )
+    return parser.parse_args(argv)
+
+
+def run_cycle(args: argparse.Namespace, pr_number: int, cycle: int) -> int | None:
+    """Run one observe or fix cycle. Return an exit code when done."""
+    owner, repo = repository_owner_name()
+    pr_info = fetch_pr_info(pr_number)
+    threads = fetch_review_threads(owner, repo, pr_number)
+    blockers = classify_pull_request(pr_info, threads)
+    print_state(blockers)
+
+    if blockers.is_green:
+        print(f"PR #{pr_number} is green.")
+        return 0
+
+    if not blockers.needs_fix:
+        print(f"PR #{pr_number} has pending checks; waiting.")
+        return 3 if args.once else None
+
+    local_check = "" if args.skip_local_check else args.local_check
+    prompt = build_fix_prompt(pr_info, blockers, local_check)
+    prompt_path = write_prompt_file(pr_number, cycle, prompt)
+    print(f"Wrote fixer prompt: {prompt_path}")
+
+    if args.dry_run:
+        print(prompt)
+        return 2
+
+    fix_command = os.environ.get("PR_AUTOFIX_COMMAND")
+    if not fix_command:
+        print(
+            "PR_AUTOFIX_COMMAND is not set. Set it to an explicit fixer "
+            "command, for example one that reads stdin or uses "
+            "{prompt_file}.",
+            file=sys.stderr,
+        )
+        return 2
+
+    before_head = git_text("rev-parse", "HEAD")
+    status = run_fix_command(fix_command, prompt_path, pr_number, prompt)
+    if status != 0:
+        print(f"Fix command failed with exit code {status}.", file=sys.stderr)
+        return status
+
+    if local_check:
+        status = run_shell_command(local_check, None, os.environ.copy())
+        if status != 0:
+            print(f"Local check failed with exit code {status}.", file=sys.stderr)
+            return status
+
+    branch = str(pr_info.get("headRefName") or git_text("branch", "--show-current"))
+    try:
+        push_if_commit_created(branch, before_head)
+    except RuntimeError as error:
+        print(f"Unable to push fixer output: {error}", file=sys.stderr)
+        return 1
+
+    return 1 if args.once else None
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point."""
+    args = parse_args(argv or sys.argv[1:])
+    pr_number = args.pr if args.pr is not None else current_pr_number()
+
+    for cycle in range(1, args.max_cycles + 1):
+        print(f"Cycle {cycle}/{args.max_cycles} for PR #{pr_number}")
+        result = run_cycle(args, pr_number, cycle)
+        if result is not None:
+            return result
+        if cycle < args.max_cycles:
+            time.sleep(args.interval)
+
+    print(f"PR #{pr_number} did not become green within the cycle limit.")
+    return 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

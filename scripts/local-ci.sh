@@ -96,14 +96,27 @@ stage_slug() {
 	printf '%s\n' "${1//[^[:alnum:]._-]/_}"
 }
 
+rsync_repository() {
+	local destination="$1"
+
+	rsync -a --delete \
+		--exclude '.git' \
+		--exclude '.jj' \
+		--exclude '.local-ci' \
+		--exclude '.venv' \
+		--exclude 'packages/npm/node_modules' \
+		--exclude '*/__pycache__/' \
+		--exclude '*/.ruff_cache/' \
+		"$root/" "$destination/"
+}
+
 materialize_macos_workspace() {
 	local destination="$1"
 	local home="$2"
 
 	mkdir -p "$destination" "$home/.config" "$home/.cache" \
 		"$home/.local/state" "$home/tmp"
-	rsync -a --delete --exclude '.git' --exclude '.jj' --exclude '.local-ci' \
-		"$root/" "$destination/"
+	rsync_repository "$destination"
 	git -C "$destination" init --quiet
 	git -C "$destination" add --all --force
 	git -C "$destination" -c user.name='Local CI' -c user.email='local-ci@example.invalid' \
@@ -136,7 +149,7 @@ render_report() {
 		printf '| Workflow | Cell | Stage | Status | Notes |\n'
 		printf '|---|---|---|---|---|\n'
 		awk -F '\t' \
-			'{ printf "| %s | %s | %s | %s | %s |\\n", $1, $2, $3, $4, $5 }' \
+			'{ printf "| %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5 }' \
 			"$results"
 	} >"$report"
 	cat "$report"
@@ -160,10 +173,12 @@ prepare_workspace() {
 	else
 		mkdir -p "$workspace"
 	fi
-	rsync -a --delete --exclude '.git' --exclude '.jj' --exclude '.local-ci' "$root/" "$workspace/"
-	if ((! root_is_git_repository)); then
+	rsync_repository "$workspace"
+	if ((root_is_git_repository)); then
+		git -C "$workspace" add --all --force
+	else
 		git -C "$workspace" init --quiet
-		git -C "$workspace" add --all
+		git -C "$workspace" add --all --force
 		git -C "$workspace" -c user.name='local-ci' -c user.email='local-ci@example.invalid' \
 			commit --quiet -m 'local CI snapshot'
 	fi
