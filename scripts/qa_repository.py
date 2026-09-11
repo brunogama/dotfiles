@@ -12,9 +12,10 @@ import hashlib
 import json
 import re
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any
+
+import tomllib
 
 JINJA_OPEN_BRACE = re.escape(chr(123))
 JINJA_MARKER = re.compile(
@@ -34,6 +35,12 @@ JINJA_MARKER = re.compile(
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 TEXT_SUFFIXES = {".json", ".md", ".py", ".toml", ".txt", ".yml", ".yaml"}
 TEMPLATE_DIRS = {".genesis"}  # project-ritual templates with intentional Jinja markers
+SKIPPED_TEXT_PARTS = {
+    ".git",
+    ".venv",
+    "node_modules",
+}
+SKIPPED_TEXT_FILES = {Path(".claude/settings.local.json")}
 
 
 class RepositoryQaError(RuntimeError):
@@ -91,14 +98,6 @@ def _validate_required_paths(
     harnesses = set(manifest.get("harnesses", []))
     if "claude" in harnesses:
         required.extend(["CLAUDE.md", ".claude/agents/qa.md", ".claude/commands/qa.md"])
-    if "pi" in harnesses:
-        required.extend(
-            [
-                ".pi/settings.json",
-                ".pi/prompts/qa.md",
-                ".pi/_candidates/skill-forge/SKILL.md",
-            ]
-        )
     if "codex" in harnesses:
         required.extend(
             [
@@ -117,17 +116,12 @@ def _validate_skill_frontmatter(repository_root: Path) -> list[str]:
     failures: list[str] = []
     skill_roots = [
         repository_root / ".claude/skills",
-        repository_root / ".pi/skills",
         repository_root / ".agents/skills",
         repository_root / ".claude/_candidates",
-        repository_root / ".pi/_candidates",
         repository_root / ".agents/_candidates",
     ]
     for skill_path in sorted(
-        path
-        for root in skill_roots
-        if root.is_dir()
-        for path in root.rglob("SKILL.md")
+        path for root in skill_roots if root.is_dir() for path in root.rglob("SKILL.md")
     ):
         text = skill_path.read_text(encoding="utf-8")
         if not text.startswith("---\n"):
@@ -176,7 +170,6 @@ def _validate_skill_lifecycle(repository_root: Path) -> list[str]:
     approved_names = set(approved_active_skills)
     skill_roots = [
         repository_root / ".claude/skills",
-        repository_root / ".pi/skills",
         repository_root / ".agents/skills",
     ]
     active_skills = [
@@ -206,12 +199,21 @@ def _validate_skill_lifecycle(repository_root: Path) -> list[str]:
     return failures
 
 
+def _should_validate_text_path(repository_root: Path, path: Path) -> bool:
+    relative_path = path.relative_to(repository_root)
+    if relative_path in SKIPPED_TEXT_FILES:
+        return False
+    return not any(part in SKIPPED_TEXT_PARTS for part in relative_path.parts)
+
+
 def _validate_text_files(repository_root: Path) -> list[str]:
     failures: list[str] = []
     for path in sorted(
         item
         for item in repository_root.rglob("*")
-        if item.is_file() and item.suffix in TEXT_SUFFIXES
+        if item.is_file()
+        and item.suffix in TEXT_SUFFIXES
+        and _should_validate_text_path(repository_root, item)
     ):
         text = path.read_text(encoding="utf-8")
         is_template = path.relative_to(repository_root).parts[0] in TEMPLATE_DIRS

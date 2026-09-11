@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # Regression coverage for agent identity injection and per-run evidence
-# recording in the coding-agent CLI wrappers (pi, codex, claude).
+# recording in the coding-agent CLI wrappers (codex, claude).
 
 load '../../helpers/test-helpers'
 load '../../helpers/setup-teardown'
@@ -136,9 +136,9 @@ EOF
 
 @test "wrapper injects configured identity into git and jj env" {
     local upstream config
-    upstream="$(create_fake_upstream pi)"
+    upstream="$(create_fake_upstream codex)"
     config="$(write_agent_config 'agent-account' 'agent@example.com')"
-    run_wrapper pi "$upstream" "$config"
+    run_wrapper codex "$upstream" "$config"
 
     assert_success
     assert_equal "$(cat "$WRAPPER_ARGS_OUTPUT")" $'--model\ntest-model\ntest prompt'
@@ -176,16 +176,16 @@ EOF
 
 @test "wrapper records a passing evidence record with exit code 0" {
     local upstream config evidence
-    upstream="$(create_fake_upstream pi)"
+    upstream="$(create_fake_upstream codex)"
     config="$(write_agent_config 'agent-account' 'agent@example.com')"
-    run_wrapper pi "$upstream" "$config"
+    run_wrapper codex "$upstream" "$config"
 
     assert_success
     evidence="$(latest_evidence_file)"
     [[ -n "$evidence" ]] || fail 'no evidence record written'
     run python3 -m json.tool "$evidence"
     assert_success
-    assert_file_contains "$evidence" '"agent": "pi"'
+    assert_file_contains "$evidence" '"agent": "codex"'
     assert_file_contains "$evidence" '"files_changed":'
     assert_file_contains "$evidence" '"exit_code": 0'
     assert_file_contains "$evidence" '"identity": {"name": "agent-account", "email": "agent@example.com"}'
@@ -195,7 +195,7 @@ EOF
     local upstream config evidence
     upstream="$(create_failing_upstream)"
     config="$(write_agent_config 'agent-account' 'agent@example.com')"
-    run_wrapper pi "$upstream" "$config"
+    run_wrapper codex "$upstream" "$config"
 
     assert_failure 3
     evidence="$(latest_evidence_file)"
@@ -222,11 +222,11 @@ EOF
 
 @test "wrapper mints and exports a GitHub App token when the App is configured" {
     local upstream config
-    upstream="$(create_fake_upstream pi)"
+    upstream="$(create_fake_upstream codex)"
     config="$(write_agent_config 'agent-account' 'agent@example.com' '12345')"
     create_fake_credfile
     create_fake_token_helper
-    run_wrapper pi "$upstream" "$config"
+    run_wrapper codex "$upstream" "$config"
 
     assert_success
     run grep -Fx 'GH_TOKEN=ghs_fake-token-value' "$WRAPPER_ENV_OUTPUT"
@@ -237,10 +237,10 @@ EOF
 
 @test "wrapper skips token minting when the private key is unavailable" {
     local upstream config
-    upstream="$(create_fake_upstream pi)"
+    upstream="$(create_fake_upstream codex)"
     config="$(write_agent_config 'agent-account' 'agent@example.com' '12345')"
     create_fake_credfile unavailable
-    run_wrapper pi "$upstream" "$config"
+    run_wrapper codex "$upstream" "$config"
 
     assert_success
     run grep -E '^GH_TOKEN=' "$WRAPPER_ENV_OUTPUT"

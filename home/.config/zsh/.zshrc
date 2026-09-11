@@ -158,10 +158,8 @@ bindkey "\ef" forward-word       # Option+f
 # ============================================================================
 # Completion is initialized by Prezto's completion module. Custom fpath entries
 # are added before Prezto above so compinit runs once, not twice.
-# Register pi explicitly so stale .zcompdump caches still pick up the new file.
 if [[ -o interactive ]] && (( $+functions[compdef] )) && [[ -r "${ZDOTDIR:-$HOME/.config/zsh}/completion/_pi" ]]; then
     autoload -Uz _pi
-    compdef _pi pi
 fi
 
 # ============================================================================
@@ -192,7 +190,6 @@ primary() {
   claude --agent primary-agent "$@"
 }
 
-export PATH="${PI_NODE_BIN:-$HOME/.local/share/pi-node/current/bin}:$HOME/.local/bin:$PATH"
 
 # Starship owns the prompt; Prezto still provides completion, history, editing,
 # syntax highlighting, and autosuggestions without loading its prompt module.

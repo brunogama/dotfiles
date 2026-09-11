@@ -9,13 +9,20 @@ name: CI (macOS)
     branches: [main, develop]
   workflow_dispatch:
 
+# Cancel superseded runs so a newer push stops the previous run instead of
+# letting paid macOS runner minutes keep burning.
+concurrency:
+  group: ci-macos-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   validate:
     name: Validate
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -88,7 +95,8 @@ jobs:
 
   validate-nix:
     name: Validate Nix configuration
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-latest
+    timeout-minutes: 30
     needs: validate
 
     steps:
@@ -116,7 +124,8 @@ jobs:
 
   test-macos:
     name: Test on macOS
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-latest
+    timeout-minutes: 30
     needs: validate-nix
 
     steps:
@@ -151,7 +160,8 @@ jobs:
 
   test-integration-macos:
     name: Integration Tests (macOS)
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-latest
+    timeout-minutes: 30
     needs: test-macos
 
     steps:
@@ -180,7 +190,7 @@ jobs:
 
   install-nix-macos:
     name: End-to-end Nix install (macOS)
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-latest
     needs: test-integration-macos
     timeout-minutes: 30
 
@@ -215,7 +225,6 @@ jobs:
             "$HOME/.zshenv" \
             "$HOME/.config/zsh/.zshrc" \
             "$HOME/.config/starship.toml" \
-            "$HOME/.pi/agent/AGENTS.md" \
             "$HOME/.codex/AGENTS.md" \
             "$HOME/.claude/CLAUDE.md"; do
             test -L "$path"
@@ -231,7 +240,4 @@ jobs:
           for command in git home-manager jq rg shellcheck starship zsh; do
             command -v "$command" >/dev/null
           done
-          test -x \
-            "$HOME/.local/share/dotfiles/npm/current/node_modules/.bin/pi"
           home-manager generations
-
