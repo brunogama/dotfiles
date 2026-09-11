@@ -188,5 +188,5 @@ if [[ -o interactive ]] && command -v fzf &>/dev/null; then
         export FZF_CTRL_T_OPTS="${FZF_CTRL_T_OPTS} --preview='bat --color=always --style=numbers --line-range=:200 {}'"
     fi
 
-    source <(fzf --zsh) 2>/dev/null
+    eval "$(fzf --zsh)" 2>/dev/null
 fi
