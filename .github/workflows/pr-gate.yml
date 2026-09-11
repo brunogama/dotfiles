@@ -1,0 +1,85 @@
+---
+# PR gate for agent-authored work.
+#
+# Runs on GitHub-hosted Ubuntu (free for public repos) and never checks out
+# untrusted content. It inspects PR metadata and commit authorship only.
+#
+# Purpose: agent-opened PRs (commits authored by the shared agent identity,
+# Bruno <bruno@multivac.local>) must carry explicit Evidence and
+# Tech-debt/Impact sections in the PR body. This keeps agent work honest and
+# reviewable without spending paid Blacksmith/Depot minutes.
+name: Agent PR Gate
+
+"on":
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  gate:
+    name: Agent PR evidence and tech-debt gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Enforce evidence and tech-debt sections for agent PRs
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: number,
+            });
+            const body = pr.data.body || "";
+
+            const commits = await github.paginate(
+              github.rest.pulls.listCommits,
+              {
+                owner,
+                repo,
+                pull_number: number,
+                per_page: 100,
+              },
+            );
+
+            const agentIdentity = /bruno@multivac\.local/i;
+            const agentAuthored = commits.some(
+              (c) =>
+                c.commit?.author?.email &&
+                agentIdentity.test(c.commit.author.email),
+            );
+
+            if (!agentAuthored) {
+              console.log("No agent-authored commits; gate skipped.");
+              return;
+            }
+
+            const hasEvidence =
+              /(?:^|\n)#+\s*(Evidence|Verification)\b/i.test(body);
+            const hasTechDebt =
+              /(?:^|\n)#+\s*(Tech[- ]debt|Impact|Risks?)\b/i.test(
+                body,
+              );
+
+            const missing = [];
+            if (!hasEvidence) missing.push("Evidence/Verification");
+            if (!hasTechDebt) missing.push("Tech-debt/Impact");
+
+            if (missing.length > 0) {
+              core.setFailed(
+                "Agent-authored PR is missing required section(s): " +
+                  missing.join(", ") +
+                  ". Add a section describing the verification evidence " +
+                  "(commands + results) and a tech-debt/impact analysis.",
+              );
+            } else {
+              console.log(
+                "Agent PR carries Evidence and Tech-debt sections.",
+              );
+            }

@@ -51,7 +51,7 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
                 'approved_active_skills = ["repo-code-review"]\n',
                 encoding="utf-8",
             )
-            skill_path = repository_root / ".pi/skills/repo-code-review/SKILL.md"
+            skill_path = repository_root / ".agents/skills/repo-code-review/SKILL.md"
             skill_path.parent.mkdir(parents=True)
             skill_path.write_text(
                 "---\n"
@@ -79,7 +79,7 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
                 'approved_active_skills = ["repo-code-review"]\n',
                 encoding="utf-8",
             )
-            skill_path = repository_root / ".pi/skills/repo-code-review/SKILL.md"
+            skill_path = repository_root / ".agents/skills/repo-code-review/SKILL.md"
             skill_path.parent.mkdir(parents=True)
             skill_path.write_text(
                 "---\n"
@@ -92,7 +92,7 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             failures = validate_repository(repository_root)
 
         self.assertIn(
-            "lifecycle: active skill .pi/skills/repo-code-review/SKILL.md "
+            "lifecycle: active skill .agents/skills/repo-code-review/SKILL.md "
             "name must match its directory",
             failures,
         )
@@ -108,7 +108,7 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
                 'approved_active_skills = ["repo-code-review"]\n',
                 encoding="utf-8",
             )
-            skill_path = repository_root / ".pi/skills/repo-code-review/SKILL.md"
+            skill_path = repository_root / ".agents/skills/repo-code-review/SKILL.md"
             skill_path.parent.mkdir(parents=True)
             skill_path.write_text(
                 "---\n"
@@ -122,7 +122,7 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             failures = validate_repository(repository_root)
 
         self.assertIn(
-            "lifecycle: active skill .pi/skills/repo-code-review/SKILL.md "
+            "lifecycle: active skill .agents/skills/repo-code-review/SKILL.md "
             "is marked as candidate",
             failures,
         )
@@ -130,17 +130,14 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
     def test_accepts_candidates_outside_discovered_skill_roots(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             repository_root = Path(temporary_directory)
-            self._write_required_files(repository_root, harnesses=["pi", "codex"])
+            self._write_required_files(repository_root, harnesses=["codex"])
             for relative_name in [
-                ".pi/settings.json",
-                ".pi/prompts/qa.md",
                 ".agents/agents/qa.md",
             ]:
                 path = repository_root / relative_name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("placeholder\n", encoding="utf-8")
             for relative_name in [
-                ".pi/_candidates/skill-forge/SKILL.md",
                 ".agents/_candidates/skill-forge/SKILL.md",
             ]:
                 path = repository_root / relative_name
@@ -156,6 +153,22 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             any(failure.startswith("required: missing") for failure in failures),
             failures,
         )
+
+    def test_ignores_local_generated_text_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_required_files(repository_root)
+            local_settings = repository_root / ".claude/settings.local.json"
+            local_settings.parent.mkdir(parents=True)
+            local_settings.write_text(str(Path.home()), encoding="utf-8")
+            generated_file = repository_root / ".venv/lib/python/site.py"
+            generated_file.parent.mkdir(parents=True)
+            marker = f"{chr(123)}{chr(123)} generated {chr(125)}{chr(125)}\n"
+            generated_file.write_text(marker, encoding="utf-8")
+
+            failures = validate_repository(repository_root)
+
+        self.assertFalse(failures, failures)
 
     def _write_required_files(
         self, repository_root: Path, harnesses: list[str] | None = None

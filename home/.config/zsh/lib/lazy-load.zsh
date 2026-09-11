@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # lazy-load.zsh - Defer heavy tool initialization until first use
 # Version: 2.1
 #
