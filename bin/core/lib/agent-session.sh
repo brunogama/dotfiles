@@ -115,7 +115,7 @@ agent_json_escape() {
 		c="${s:i:1}"
 		case "$c" in
 		'"') out+='\"' ;;
-		\\) out+='\\' ;;
+		\\) out+="\\\\" ;;
 		$'\n') out+='\n' ;;
 		$'\r') out+='\r' ;;
 		$'\t') out+='\t' ;;
@@ -134,33 +134,39 @@ agent_json_escape() {
 	printf '%s' "$out"
 }
 
-# List paths changed in the working tree relative to HEAD, sorted and
-# unique. Uses NUL-delimited porcelain output so names containing spaces,
-# " -> ", or rename records parse intact.
+# List committed and working-tree paths, sorted and unique. Keep NUL
+# delimiters so names containing spaces, newlines, or rename records survive.
 agent_changed_files() {
-	local field path
+	local field path base_rev="${1:-}"
 
-	while IFS= read -r -d '' field; do
-		[[ -n "$field" ]] || continue
-		path="${field:3}"
-		printf '%s\n' "$path"
-		if [[ "$field" == R* || "$field" == C* ]]; then
-			# Rename/copy records emit the old path as the next NUL field.
-			IFS= read -r -d '' _ || true
+	{
+		if [[ -n "$base_rev" ]]; then
+			while IFS= read -r -d '' path; do
+				printf '%s\0' "$path"
+			done < <(git diff --name-only -z "$base_rev" HEAD 2>/dev/null)
 		fi
-	done < <(git status --porcelain=v1 -z 2>/dev/null) | sort -u
+		while IFS= read -r -d '' field; do
+			[[ -n "$field" ]] || continue
+			path="${field:3}"
+			printf '%s\0' "$path"
+			if [[ "$field" == R* || "$field" == C* ]]; then
+				# Rename/copy records emit the old path as the next NUL field.
+				IFS= read -r -d '' _ || true
+			fi
+		done < <(git status --porcelain=v1 -z 2>/dev/null)
+	} | sort -zu
 }
 
 # Write the per-run evidence record as JSON under AGENT_EVIDENCE_ROOT. The
 # record attests what ran and what changed; correctness is CI's to decide.
 # Returns non-zero when the record cannot be written.
 emit_agent_run_record() {
-	local agent="$1" status="$2" started_at="$3" ended_at="$4"
+	local agent="$1" status="$2" started_at="$3" ended_at="$4" base_rev="${5:-}"
 	local outdir="$AGENT_EVIDENCE_ROOT" outfile files_json file run_id
 	local first=1
 
 	files_json="["
-	while IFS= read -r file; do
+	while IFS= read -r -d '' file; do
 		[[ -n "$file" ]] || continue
 		if ((first)); then
 			first=0
@@ -168,7 +174,7 @@ emit_agent_run_record() {
 			files_json+=","
 		fi
 		files_json+="\"$(agent_json_escape "$file")\""
-	done < <(agent_changed_files)
+	done < <(agent_changed_files "$base_rev")
 	files_json+="]"
 
 	if ! mkdir -p "$outdir" 2>/dev/null; then
@@ -200,12 +206,13 @@ emit_agent_run_record() {
 run_agent() {
 	local agent="$1" binary="$2"
 	shift 2
-	local status=0 started_at ended_at
+	local status=0 started_at ended_at base_rev
 
 	load_agent_config
 	apply_agent_identity
 	mint_agent_github_token
 
+	base_rev="$(git rev-parse HEAD 2>/dev/null || true)"
 	started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 	set +e
@@ -214,7 +221,7 @@ run_agent() {
 	set -e
 
 	ended_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-	if ! emit_agent_run_record "$agent" "$status" "$started_at" "$ended_at"; then
+	if ! emit_agent_run_record "$agent" "$status" "$started_at" "$ended_at" "$base_rev"; then
 		# Preserve a nonzero harness status; only fail when the harness
 		# succeeded but could not produce its required evidence record.
 		if ((status == 0)); then

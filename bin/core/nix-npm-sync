@@ -79,12 +79,14 @@ readonly PACKAGE_LOCK="$MANIFEST_DIR/package-lock.json"
 	exit 2
 }
 
-command -v shasum >/dev/null 2>&1 || {
-	echo "nix-npm-sync: shasum is required" >&2
+if command -v shasum >/dev/null 2>&1; then
+	MANIFEST_HASH="$(cat "$PACKAGE_JSON" "$PACKAGE_LOCK" | shasum -a 256 | awk '{print $1}')"
+elif command -v sha256sum >/dev/null 2>&1; then
+	MANIFEST_HASH="$(cat "$PACKAGE_JSON" "$PACKAGE_LOCK" | sha256sum | awk '{print $1}')"
+else
+	echo "nix-npm-sync: shasum or sha256sum is required" >&2
 	exit 2
-}
-
-MANIFEST_HASH="$(cat "$PACKAGE_JSON" "$PACKAGE_LOCK" | shasum -a 256 | awk '{print $1}')"
+fi
 readonly MANIFEST_HASH
 readonly DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 readonly INSTALL_ROOT="$DATA_HOME/dotfiles/npm"
@@ -94,7 +96,8 @@ readonly EXPECTED_LINK="versions/$MANIFEST_HASH"
 
 is_current() {
 	[[ -L "$CURRENT_LINK" ]] &&
-		[[ "$(readlink "$CURRENT_LINK")" == "$EXPECTED_LINK" ]]
+		[[ "$(readlink "$CURRENT_LINK")" == "$EXPECTED_LINK" ]] &&
+		[[ -d "$VERSION_DIR" ]]
 }
 
 if is_current; then

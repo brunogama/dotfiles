@@ -187,6 +187,35 @@ EOF
     assert_file_contains "$evidence" '"identity": {"name": "agent-account", "email": "agent@example.com"}'
 }
 
+@test "wrapper records files committed by the upstream agent" {
+    local upstream config evidence
+    git init -q
+    git config user.name 'Test User'
+    git config user.email 'test@example.com'
+    printf 'initial\n' > initial.txt
+    git add initial.txt
+    git commit -qm initial
+    upstream="$TEST_BIN/upstream-commit"
+    cat > "$upstream" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'agent change\n' > committed.txt
+printf 'second change\n' > $'line\nbreak.txt'
+git add committed.txt $'line\nbreak.txt'
+git commit -qm 'add committed file'
+EOF
+    chmod +x "$upstream"
+    config="$(write_agent_config 'agent-account' 'agent@example.com')"
+
+    run_wrapper codex "$upstream" "$config"
+
+    assert_success
+    evidence="$(latest_evidence_file)"
+    assert_file_contains "$evidence" '"committed.txt"'
+    run python3 -c 'import json, sys; assert "line\nbreak.txt" in json.load(open(sys.argv[1]))["files_changed"]' "$evidence"
+    assert_success
+}
+
 @test "wrapper records a failing evidence record and propagates the exit code" {
     local upstream config evidence
     upstream="$(create_failing_upstream)"
