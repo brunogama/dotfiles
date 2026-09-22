@@ -43,7 +43,7 @@ load_agent_config() {
 	done <"$AGENT_CONFIG"
 }
 
-# Override git and jj commit authorship from the configured identity.
+# Override git commit authorship from the configured identity.
 # No-op when no identity is configured, so the environment is left untouched.
 apply_agent_identity() {
 	[[ -n "${AGENT_NAME:-}" ]] || return 0
@@ -52,8 +52,6 @@ apply_agent_identity() {
 	export GIT_AUTHOR_EMAIL="${AGENT_EMAIL:-}"
 	export GIT_COMMITTER_NAME="$AGENT_NAME"
 	export GIT_COMMITTER_EMAIL="${AGENT_EMAIL:-}"
-	export JJ_USER="$AGENT_NAME"
-	export JJ_EMAIL="${AGENT_EMAIL:-}"
 }
 
 # Mint a GitHub App installation token for the agent. The App private key is
@@ -136,9 +134,9 @@ agent_json_escape() {
 	printf '%s' "$out"
 }
 
-# List paths changed in the working tree relative to HEAD (git and colocated
-# jj share the git backend), sorted and unique. Uses NUL-delimited porcelain
-# output so names containing spaces, " -> ", or rename records parse intact.
+# List paths changed in the working tree relative to HEAD, sorted and
+# unique. Uses NUL-delimited porcelain output so names containing spaces,
+# " -> ", or rename records parse intact.
 agent_changed_files() {
 	local field path
 

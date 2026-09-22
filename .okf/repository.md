@@ -25,7 +25,7 @@ Modern Dotfiles configures a reproducible macOS developer environment. Its prima
 | Filesystem safety | [Configuration ownership and linking](architecture/ownership-and-linking.md) | The separation of Nix-managed paths from safe convention-managed links. |
 | User-facing tools | [Command surface](operations/command-surface.md) | Commands for environment, credentials, Git, synchronization, and shell maintenance. |
 | Quality | [Repository validation](operations/validation.md) | Focused checks and the locally reproducible CI executor. |
-| Agent lifecycle | [Agent infrastructure governance](governance/agent-infrastructure.md) | Candidate-skill promotion and agent-content QA. |
+| Agent lifecycle | [Agent infrastructure governance](governance/agent-infrastructure.md) | Agent-content review and QA. |
 
 ---
 

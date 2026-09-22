@@ -1,9 +1,9 @@
 ---
 type: Engineering Governance
 title: Agent infrastructure governance
-description: Agent skills and harness content are staged, reviewed, and validated before becoming active repository capabilities.
+description: Agent harness content is reviewed and validated before becoming active repository capabilities.
 resource: https://github.com/brunogama/dotfiles/tree/main/.agents
-tags: [agents, skills, governance, qa, harnesses]
+tags: [agents, governance, qa, harnesses]
 timestamp: 2026-08-15T01:58:48Z
 ---
 
@@ -13,9 +13,7 @@ timestamp: 2026-08-15T01:58:48Z
 
 ## Lifecycle
 
-New or changed skills begin as candidates in the appropriate harness-specific `_candidates/` directory. No candidate becomes active until collection, induction, deduction, de-duplication, and explicit human approval are complete. Do not promote candidates or record them as active without that approval.
-
-The repository maintains parallel harness content for supported agent environments. Keep their shared workflow guidance and active skill state aligned.
+The repository maintains parallel harness content for supported agent environments. Keep their shared workflow guidance and agent definitions aligned. Promote agent-content changes only after explicit human approval.
 
 ---
 
@@ -27,15 +25,13 @@ Before editing agent infrastructure, read the project guidance, domain model, SO
 uv run scripts/qa_repository.py .
 ```
 
-The QA procedure verifies enabled-harness coverage, candidate lifecycle safety, external skill-source safety, and content quality. It is read-only by design.
+The QA procedure verifies enabled-harness coverage and content quality. It is read-only by design.
 
 ---
 
 ## Constraints
 
-- Do not enable or execute an external skill source before review.
 - Do not place credentials, tokens, or private URLs in generated prompts or workflows.
-- Do not edit the skills log for an unapproved candidate.
 - Changes to this area also follow the [repository validation](../operations/validation.md) pull-request gate.
 
 ---

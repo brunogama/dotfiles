@@ -44,7 +44,7 @@ set -euo pipefail
 printf '%s\n' "$@" > "$WRAPPER_ARGS_OUTPUT"
 : > "$WRAPPER_ENV_OUTPUT"
 for var in GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME \
-    GIT_COMMITTER_EMAIL JJ_USER JJ_EMAIL GH_TOKEN GITHUB_TOKEN; do
+    GIT_COMMITTER_EMAIL GH_TOKEN GITHUB_TOKEN; do
     if value="$(printenv "$var" 2>/dev/null)"; then
         printf '%s=%s\n' "$var" "$value" >> "$WRAPPER_ENV_OUTPUT"
     fi
@@ -61,7 +61,7 @@ create_failing_upstream() {
 set -euo pipefail
 : > "$WRAPPER_ENV_OUTPUT"
 for var in GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME \
-    GIT_COMMITTER_EMAIL JJ_USER JJ_EMAIL GH_TOKEN GITHUB_TOKEN; do
+    GIT_COMMITTER_EMAIL GH_TOKEN GITHUB_TOKEN; do
     if value="$(printenv "$var" 2>/dev/null)"; then
         printf '%s=%s\n' "$var" "$value" >> "$WRAPPER_ENV_OUTPUT"
     fi
@@ -134,7 +134,7 @@ EOF
     export DOTFILES_AGENT_GH_MINT_BIN="$bin"
 }
 
-@test "wrapper injects configured identity into git and jj env" {
+@test "wrapper injects configured identity into git env" {
     local upstream config
     upstream="$(create_fake_upstream codex)"
     config="$(write_agent_config 'agent-account' 'agent@example.com')"
@@ -151,10 +151,6 @@ EOF
     assert_success
     run grep -Fx 'GIT_COMMITTER_EMAIL=agent@example.com' "$WRAPPER_ENV_OUTPUT"
     assert_success
-    run grep -Fx 'JJ_USER=agent-account' "$WRAPPER_ENV_OUTPUT"
-    assert_success
-    run grep -Fx 'JJ_EMAIL=agent@example.com' "$WRAPPER_ENV_OUTPUT"
-    assert_success
 }
 
 @test "wrapper leaves identity untouched when no config is present" {
@@ -170,7 +166,7 @@ EOF
         "$TEST_BIN/codex" --model test-model 'test prompt'
 
     assert_success
-    run grep -E '^(GIT_AUTHOR_NAME|GIT_COMMITTER_NAME|JJ_USER)=' "$WRAPPER_ENV_OUTPUT"
+    run grep -E '^(GIT_AUTHOR_NAME|GIT_COMMITTER_NAME)=' "$WRAPPER_ENV_OUTPUT"
     assert_failure
 }
 

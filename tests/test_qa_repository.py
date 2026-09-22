@@ -14,145 +14,8 @@ if __name__ == "__main__":
 from scripts.qa_repository import validate_repository
 
 
-class RepositoryQaLifecycleTest(unittest.TestCase):
-    """Verify that candidate staging is enforced when configured."""
-
-    def test_rejects_active_skills_when_candidate_staging_is_required(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            repository_root = Path(temporary_directory)
-            self._write_required_files(repository_root)
-            (repository_root / ".agent-scaffold").mkdir()
-            (repository_root / ".agent-scaffold/dotfiles.toml").write_text(
-                "[repository]\nrequire_candidate_staging = true\n",
-                encoding="utf-8",
-            )
-            skill_path = repository_root / ".agents/skills/review/SKILL.md"
-            skill_path.parent.mkdir(parents=True)
-            skill_path.write_text(
-                "---\nname: review\ndescription: Use when reviewing code.\n---\n",
-                encoding="utf-8",
-            )
-
-            failures = validate_repository(repository_root)
-
-        self.assertIn(
-            "lifecycle: active skill .agents/skills/review/SKILL.md",
-            failures,
-        )
-
-    def test_accepts_explicitly_approved_active_skills(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            repository_root = Path(temporary_directory)
-            self._write_required_files(repository_root)
-            (repository_root / ".agent-scaffold").mkdir()
-            (repository_root / ".agent-scaffold/dotfiles.toml").write_text(
-                "[repository]\n"
-                "require_candidate_staging = true\n"
-                'approved_active_skills = ["repo-code-review"]\n',
-                encoding="utf-8",
-            )
-            skill_path = repository_root / ".agents/skills/repo-code-review/SKILL.md"
-            skill_path.parent.mkdir(parents=True)
-            skill_path.write_text(
-                "---\n"
-                "name: repo-code-review\n"
-                "description: Use when auditing this repository.\n"
-                "---\n",
-                encoding="utf-8",
-            )
-
-            failures = validate_repository(repository_root)
-
-        self.assertFalse(
-            any(failure.startswith("lifecycle:") for failure in failures),
-            failures,
-        )
-
-    def test_rejects_active_skill_with_mismatched_directory_and_name(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            repository_root = Path(temporary_directory)
-            self._write_required_files(repository_root)
-            (repository_root / ".agent-scaffold").mkdir()
-            (repository_root / ".agent-scaffold/dotfiles.toml").write_text(
-                "[repository]\n"
-                "require_candidate_staging = true\n"
-                'approved_active_skills = ["repo-code-review"]\n',
-                encoding="utf-8",
-            )
-            skill_path = repository_root / ".agents/skills/repo-code-review/SKILL.md"
-            skill_path.parent.mkdir(parents=True)
-            skill_path.write_text(
-                "---\n"
-                "name: unapproved-skill\n"
-                "description: Use when auditing this repository.\n"
-                "---\n",
-                encoding="utf-8",
-            )
-
-            failures = validate_repository(repository_root)
-
-        self.assertIn(
-            "lifecycle: active skill .agents/skills/repo-code-review/SKILL.md "
-            "name must match its directory",
-            failures,
-        )
-
-    def test_rejects_approved_active_skills_marked_as_candidates(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            repository_root = Path(temporary_directory)
-            self._write_required_files(repository_root)
-            (repository_root / ".agent-scaffold").mkdir()
-            (repository_root / ".agent-scaffold/dotfiles.toml").write_text(
-                "[repository]\n"
-                "require_candidate_staging = true\n"
-                'approved_active_skills = ["repo-code-review"]\n',
-                encoding="utf-8",
-            )
-            skill_path = repository_root / ".agents/skills/repo-code-review/SKILL.md"
-            skill_path.parent.mkdir(parents=True)
-            skill_path.write_text(
-                "---\n"
-                "name: repo-code-review\n"
-                "candidate: true\n"
-                "description: Use when auditing this repository.\n"
-                "---\n",
-                encoding="utf-8",
-            )
-
-            failures = validate_repository(repository_root)
-
-        self.assertIn(
-            "lifecycle: active skill .agents/skills/repo-code-review/SKILL.md "
-            "is marked as candidate",
-            failures,
-        )
-
-    def test_accepts_candidates_outside_discovered_skill_roots(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            repository_root = Path(temporary_directory)
-            self._write_required_files(repository_root, harnesses=["codex"])
-            for relative_name in [
-                ".agents/agents/qa.md",
-            ]:
-                path = repository_root / relative_name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("placeholder\n", encoding="utf-8")
-            for relative_name in [
-                ".agents/_candidates/skill-forge/SKILL.md",
-            ]:
-                path = repository_root / relative_name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(
-                    "---\nname: skill-forge\ndescription: Stage a candidate skill.\n---\n",
-                    encoding="utf-8",
-                )
-
-            failures = validate_repository(repository_root)
-
-        self.assertFalse(
-            any(failure.startswith("required: missing") for failure in failures),
-            failures,
-        )
+class RepositoryQaTest(unittest.TestCase):
+    """Verify manifest, required-path, and text-file validation."""
 
     def test_ignores_local_generated_text_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -169,6 +32,20 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             failures = validate_repository(repository_root)
 
         self.assertFalse(failures, failures)
+
+    def test_reports_missing_required_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_required_files(repository_root, harnesses=["codex"])
+            # Create then remove a required codex path to trigger a failure.
+            qa_agent = repository_root / ".agents/agents/qa.md"
+            qa_agent.parent.mkdir(parents=True, exist_ok=True)
+            qa_agent.write_text("placeholder\n", encoding="utf-8")
+            qa_agent.unlink()
+
+            failures = validate_repository(repository_root)
+
+        self.assertIn("required: missing .agents/agents/qa.md", failures)
 
     def _write_required_files(
         self, repository_root: Path, harnesses: list[str] | None = None
@@ -187,8 +64,9 @@ class RepositoryQaLifecycleTest(unittest.TestCase):
             json.dumps({"files": {}, "harnesses": harnesses or []}),
             encoding="utf-8",
         )
-        (repository_root / "skill-sources.json").write_text(
-            json.dumps({"sources": []}),
+        (repository_root / ".depot/workflows").mkdir(parents=True, exist_ok=True)
+        (repository_root / ".depot/workflows/qa.yml").write_text(
+            "run: uv run scripts/qa_repository.py .\n",
             encoding="utf-8",
         )
 

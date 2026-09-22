@@ -114,11 +114,10 @@ class PrAutofixLoopTest(unittest.TestCase):
         self.assertIn("scripts/local-ci.sh", prompt)
         self.assertIn("Commit only intentional fixes", prompt)
 
-
-    def test_default_fixer_runs_pi(self) -> None:
+    def test_default_fixer_requires_explicit_command(self) -> None:
         command = self.module.resolve_fix_command({})
 
-        self.assertEqual("pi --print @{prompt_file}", command)
+        self.assertEqual("", command)
 
     def test_fixer_command_environment_override_wins(self) -> None:
         command = self.module.resolve_fix_command(
@@ -126,6 +125,7 @@ class PrAutofixLoopTest(unittest.TestCase):
         )
 
         self.assertEqual("custom-fixer {prompt_file}", command)
+
 
 if __name__ == "__main__":
     unittest.main()

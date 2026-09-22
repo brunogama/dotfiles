@@ -35,12 +35,7 @@ while (($#)); do
 done
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if root="$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null)"; then
-	root_is_git_repository=1
-else
-	root="$(jj -R "$script_dir/.." root)"
-	root_is_git_repository=0
-fi
+root="$(git -C "$script_dir" rev-parse --show-toplevel)"
 run_root="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-local-ci.XXXXXX")"
 workspace="$run_root/workspace"
 results="$run_root/results.tsv"
@@ -101,7 +96,6 @@ rsync_repository() {
 
 	rsync -a --delete \
 		--exclude '.git' \
-		--exclude '.jj' \
 		--exclude '.local-ci' \
 		--exclude '.venv' \
 		--exclude 'packages/npm/node_modules' \
@@ -168,20 +162,9 @@ prepare_workspace() {
 	require_command python3
 	require_command rsync
 
-	if ((root_is_git_repository)); then
-		git clone --quiet --no-local "$root" "$workspace"
-	else
-		mkdir -p "$workspace"
-	fi
+	git clone --quiet --no-local "$root" "$workspace"
 	rsync_repository "$workspace"
-	if ((root_is_git_repository)); then
-		git -C "$workspace" add --all --force
-	else
-		git -C "$workspace" init --quiet
-		git -C "$workspace" add --all --force
-		git -C "$workspace" -c user.name='local-ci' -c user.email='local-ci@example.invalid' \
-			commit --quiet -m 'local CI snapshot'
-	fi
+	git -C "$workspace" add --all --force
 	: >"$results"
 }
 

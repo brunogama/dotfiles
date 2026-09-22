@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Watch a pull request and run Pi for CI or review blockers."""
+"""Watch a pull request and run a coding-agent CLI for CI or review blockers."""
 
 from __future__ import annotations
 
@@ -44,7 +44,6 @@ PR_FIELDS = (
     "number,title,url,headRefName,"
     "headRefOid,reviewDecision,statusCheckRollup"
 )
-DEFAULT_FIX_COMMAND = "pi --print @{prompt_file}"
 REVIEW_THREADS_QUERY = """
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
@@ -333,9 +332,9 @@ def run_shell_command(command: str, prompt: str | None, env: dict[str, str]) -> 
 
 
 def resolve_fix_command(env: dict[str, str] | None = None) -> str:
-    """Return the explicit fixer command, defaulting to Pi."""
+    """Return the configured fixer command from PR_AUTOFIX_COMMAND."""
     values = os.environ if env is None else env
-    return values.get("PR_AUTOFIX_COMMAND") or DEFAULT_FIX_COMMAND
+    return values.get("PR_AUTOFIX_COMMAND", "")
 
 
 def run_fix_command(command: str, prompt_path: Path, pr_number: int, prompt: str) -> int:
@@ -378,7 +377,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(
         description=(
-            "Watch a PR, run Pi or PR_AUTOFIX_COMMAND for failing CI "
+            "Watch a PR, run PR_AUTOFIX_COMMAND for failing CI "
             "or review blockers, and push only commits created by that command."
         )
     )
@@ -444,6 +443,13 @@ def run_cycle(args: argparse.Namespace, pr_number: int, cycle: int) -> int | Non
         return 2
 
     fix_command = resolve_fix_command()
+    if not fix_command:
+        print(
+            "PR_AUTOFIX_COMMAND is required; set it to your coding-agent CLI "
+            "invocation.",
+            file=sys.stderr,
+        )
+        return 2
     print(f"Running fixer command: {fix_command}")
 
     before_head = git_text("rev-parse", "HEAD")

@@ -158,9 +158,6 @@ bindkey "\ef" forward-word       # Option+f
 # ============================================================================
 # Completion is initialized by Prezto's completion module. Custom fpath entries
 # are added before Prezto above so compinit runs once, not twice.
-if [[ -o interactive ]] && (( $+functions[compdef] )) && [[ -r "${ZDOTDIR:-$HOME/.config/zsh}/completion/_pi" ]]; then
-    autoload -Uz _pi
-fi
 
 # ============================================================================
 # 12. FZF

@@ -24,7 +24,6 @@
         .config/zsh/work-config.zsh \
         .config/zsh/personal-config.zsh \
         .config/zsh/lib/lazy-load.zsh \
-        .config/zsh/completion/_pi \
         .config/zsh/completion/git-ignore-completion; do
         [[ -f "$repository_root/home/$path" ]]
     done
@@ -39,7 +38,6 @@
         work-config.zsh \
         personal-config.zsh \
         lib/lazy-load.zsh \
-        completion/_pi \
         completion/git-ignore-completion; do
         [[ ! -e "$repository_root/zsh/$path" ]]
     done
@@ -117,14 +115,6 @@
 
     ! grep -q '/Users/' "$plist_path"
     grep -q '__HOME__' "$plist_path"
-}
-
-@test "Claude candidate paths are unignored" {
-    local repository_root
-    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
-
-    grep -Fxq '!.claude/_candidates/' "$repository_root/.gitignore"
-    grep -Fxq '!.claude/_candidates/**' "$repository_root/.gitignore"
 }
 
 @test "legacy Darwin launch-agent source path is retired" {

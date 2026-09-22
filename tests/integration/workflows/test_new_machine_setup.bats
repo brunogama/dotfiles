@@ -274,7 +274,7 @@ teardown() {
     dotfiles_root="$(get_dotfiles_root)"
 
     cd "$dotfiles_root"
-    run jj --no-pager status
+    run git status --porcelain
     assert_success
 }
 
