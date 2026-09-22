@@ -265,7 +265,7 @@ record_github_only_stages() {
 	record_skip 'CI (Linux)' 'depot-ubuntu-latest / Python 3.11' mutation-testing "$note"
 	record_skip 'CI (Linux)' depot-ubuntu-latest test-integration-linux "$note"
 	record_skip 'CI (Linux)' depot-ubuntu-latest documentation "$note"
-	record_skip 'Agent repository QA' 'depot-ubuntu-latest / setup-uv@v6' \
+	record_skip 'Agent repository QA' 'depot-ubuntu-latest / setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e' \
 		deterministic-qa "$note"
 }
 

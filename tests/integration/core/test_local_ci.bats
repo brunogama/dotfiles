@@ -100,7 +100,7 @@ record_github_only_stages
 ! grep -Eq '\<(act|docker)\>' "$local_ci"
 [[ "$(awk -F '\t' '$4 == "skip" { count += 1 } END { print count }' "$results")" == 6 ]]
 grep -Fq $'CI (Linux)\tdepot-ubuntu-latest / Python 3.11\ttest-linux\tskip' "$results"
-grep -Fq $'Agent repository QA\tdepot-ubuntu-latest / setup-uv@v6\tdeterministic-qa\tskip' "$results"
+grep -Fq $'Agent repository QA\tdepot-ubuntu-latest / setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e\tdeterministic-qa\tskip' "$results"
 EOF
 
     assert_success

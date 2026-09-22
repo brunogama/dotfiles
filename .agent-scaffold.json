@@ -12,7 +12,7 @@
     ".claude/commands/qa.md": "6512164bfe3f395fbe48a6c96e6cc45744e5a498ad856a6e16876332c61e609b",
     ".codex/prompts/peer-review.md": "24fefb68ddc339891727e08ddd373b93ac1687ef3d659e9a9de281404cdb7514",
     ".codex/prompts/qa.md": "6512164bfe3f395fbe48a6c96e6cc45744e5a498ad856a6e16876332c61e609b",
-    ".depot/workflows/qa.yml": "b3254d77aa00420641c296beaf9fffc39625dba7293a48c50ebe8b975dd40eba",
+    ".depot/workflows/qa.yml": "64b475af7aff43b46ae32c83ab738913e22f81d54bc394d9a035f9a13d9897a9",
     ".editorconfig": "fbb87bedc2547f38f12c655e34a4b44f568aa0e5e40d77b14d75bb5a1079a347",
     ".github/PULL_REQUEST_TEMPLATE.md": "2d2e028ee5cb396ffef53f4a025303c150426a9b6b5279e4b92a3646edad9dc5",
     ".gitignore": "1a4e15376ef2eac88e646e36c1f3d368c31360e20ea0a9124fbae191a27f52ff",
@@ -29,7 +29,7 @@
     "learnings/CORRECTIONS.md": "e26c9159532e42b97c932aa4c78a97aa897f35e3cec3d443a244ece05233e6a7",
     "qa/QA_AGENT.md": "f7c4a893726f6d3a327c296dd12ae8c9b0db683fde63fd4990acde37d8416436",
     "qa/RUBRIC.md": "b978eac520988631dd81f7b84fd3d1af0e0b1bf77318d4ac8a0202ffbeb78f73",
-    "scripts/qa_repository.py": "9112ac2b05a1369eff6afe7ffc8c87014eeff501a2746363c8351a8583f6b41c",
+    "scripts/qa_repository.py": "756bea348950d7a5305e859669e4bdae6e7a899cfbd02c1e6da3d16ecc4176a1",
     "templates/sop-template.md": "6a3ad2390aceef97706e800deb7aae634ef2941dde55f74a7afc1ec6cba5adbe"
   },
   "generator": "scaffold-agent-repository",

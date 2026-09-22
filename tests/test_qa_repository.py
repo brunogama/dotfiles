@@ -47,6 +47,28 @@ class RepositoryQaTest(unittest.TestCase):
 
         self.assertIn("required: missing .agents/agents/qa.md", failures)
 
+    def test_rejects_workflow_credential_contexts(self) -> None:
+        expressions = [
+            "secrets.NAME",
+            "secrets['NAME']",
+            "github.token",
+            "github['token']",
+        ]
+        for expression in expressions:
+            with self.subTest(expression=expression):
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    repository_root = Path(temporary_directory)
+                    self._write_required_files(repository_root)
+                    workflow = repository_root / ".depot/workflows/qa.yml"
+                    workflow.write_text(
+                        f"run: uv run scripts/qa_repository.py .\n"
+                        f"env: ${{{{ {expression} }}}}\n",
+                        encoding="utf-8",
+                    )
+                    failures = validate_repository(repository_root)
+
+                self.assertIn("workflow: QA must not require secrets", failures)
+
     def _write_required_files(
         self, repository_root: Path, harnesses: list[str] | None = None
     ) -> None:
