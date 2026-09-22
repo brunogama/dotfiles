@@ -85,6 +85,8 @@ run_agent_wrapper() {
     link_agent_wrapper "$agent"
 
     run env \
+        -u OPENAI_API_KEY \
+        -u ANTHROPIC_API_KEY \
         "DOTFILES_CREDENTIALS_BIN=$CREDENTIALS_BIN" \
         "$override_name=$upstream" \
         "$@" \
@@ -109,6 +111,8 @@ run_agent_wrapper_default() {
     cp "$upstream" "$default_bin"
 
     run env \
+        -u OPENAI_API_KEY \
+        -u ANTHROPIC_API_KEY \
         -u DOTFILES_CLAUDE_BIN \
         -u DOTFILES_CODEX_BIN \
         -u DOTFILES_NPM_BIN \

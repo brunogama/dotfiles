@@ -21,6 +21,7 @@ export UV_NATIVE_TLS=1
 # Keep inherited Nix profile paths ahead of Homebrew and /usr/local fallbacks.
 path=(
     $HOME/local/bin(N)
+    $HOME/.local/bin(N)
     $HOME/.claude/local(N)
     $HOME/.cache/lm-studio/bin(N)
     $path
@@ -93,10 +94,10 @@ alias gitconfig='code ~/.gitconfig'
 # Git shortcuts
 alias mkdir="mkdir -p"
 alias commit="git commit"
-alias ppulls="git pull || true; git submodule foreach 'git pull || true'"
-alias ppush="git push || true; git submodule foreach 'git push || true'"
-alias reset-hard="git reset --hard || true"
-alias reset-hard-all="reset-hard; git submodule foreach 'git reset --hard'"
+alias ppulls="git pull && git submodule foreach 'git pull'"
+alias ppush="git push && git submodule foreach 'git push'"
+alias reset-hard="git reset --hard"
+alias reset-hard-all="reset-hard && git submodule foreach 'git reset --hard'"
 alias gs-all="git status; git submodule foreach 'git status'"
 
 # Advanced git
@@ -171,10 +172,14 @@ bindkey "\ef" forward-word       # Option+f
 
 
 set-default-shell() {
-	brew install zsh
-	echo "/opt/homebrew/bin/zsh" | sudo tee -a /etc/shells
-	chsh -s $(which zsh)
-	echo "Default shell set to $(which zsh)"
+	local zsh_path
+	brew install zsh || return
+	zsh_path="$(brew --prefix)/bin/zsh" || return
+	if ! grep -Fqx -- "$zsh_path" /etc/shells; then
+		printf '%s\n' "$zsh_path" | sudo tee -a /etc/shells >/dev/null || return
+	fi
+	chsh -s "$zsh_path" || return
+	printf 'Default shell set to %s\n' "$zsh_path"
 }
 
 # rbenv initialization handled by lazy-load.zsh
