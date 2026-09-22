@@ -99,6 +99,7 @@ rsync_repository() {
 
 	rsync -a --delete \
 		--exclude '.git' \
+		--exclude '.jj' \
 		--exclude '.local-ci' \
 		--exclude '.venv' \
 		--exclude 'packages/npm/node_modules' \
@@ -245,7 +246,7 @@ macos_test() (
 	cd "$workspace"
 	./install --dry-run
 	uv run bin/core/link-dotfiles.py --dry-run
-	printf '%s\n' 'Skipping script help-message probe outside the GitHub runner.'
+	printf '%s\n' 'Skipping the GitHub CLI help probe outside the GitHub runner.'
 )
 
 macos_integration() (

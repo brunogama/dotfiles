@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -42,13 +43,14 @@ SUCCESS_RESULTS = {
 }
 PR_FIELDS = (
     "number,title,url,headRefName,"
-    "headRefOid,reviewDecision,statusCheckRollup"
+    "headRefOid,headRepository,reviewDecision,statusCheckRollup"
 )
 REVIEW_THREADS_QUERY = """
-query($owner: String!, $name: String!, $number: Int!) {
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
-      reviewThreads(first: 100) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
         nodes {
           isResolved
           path
@@ -269,8 +271,10 @@ def fetch_pr_info(number: int) -> dict[str, Any]:
 
 def fetch_review_threads(owner: str, repo: str, number: int) -> list[dict[str, Any]]:
     """Fetch unresolved and resolved review threads for the PR."""
-    data = run_json(
-        [
+    threads: list[dict[str, Any]] = []
+    cursor: str | None = None
+    while True:
+        argv = [
             "gh",
             "api",
             "graphql",
@@ -283,9 +287,18 @@ def fetch_review_threads(owner: str, repo: str, number: int) -> list[dict[str, A
             "-F",
             f"number={number}",
         ]
-    )
-    pull_request = data["data"]["repository"]["pullRequest"]
-    return pull_request["reviewThreads"]["nodes"] or []
+        if cursor is not None:
+            argv.extend(["-f", f"cursor={cursor}"])
+        data = run_json(argv)
+        connection = data["data"]["repository"]["pullRequest"]["reviewThreads"]
+        threads.extend(connection["nodes"] or [])
+        page = connection["pageInfo"]
+        if not page["hasNextPage"]:
+            return threads
+        next_cursor = page["endCursor"]
+        if not next_cursor or next_cursor == cursor:
+            raise RuntimeError("review thread pagination did not advance")
+        cursor = next_cursor
 
 
 def git_text(*args: str) -> str:
@@ -311,6 +324,34 @@ def write_prompt_file(pr_number: int, cycle: int, prompt: str) -> Path:
 def working_tree_dirty() -> bool:
     """Return true when the working tree has uncommitted changes."""
     return bool(git_text("status", "--porcelain"))
+
+
+def verify_pr_target(pr_info: dict[str, Any], owner: str, repo: str) -> None:
+    """Require the current branch and push URL to target this PR head."""
+    expected_repo = f"{owner}/{repo}"
+    head_repo = (pr_info.get("headRepository") or {}).get("nameWithOwner")
+    if head_repo != expected_repo:
+        raise RuntimeError("fork PRs are not supported by this push command")
+    remote = git_text("remote", "get-url", "--push", "origin")
+    match = re.fullmatch(
+        r"(?:git@github\.com:|https://github\.com/|ssh://git@github\.com/)"
+        r"([^/]+/[^/]+?)(?:\.git)?/?",
+        remote,
+        flags=re.IGNORECASE,
+    )
+    if not match or match.group(1).lower() != expected_repo.lower():
+        raise RuntimeError("origin does not match the PR head repository")
+    if git_text("branch", "--show-current") != pr_info.get("headRefName"):
+        raise RuntimeError("local branch does not match the PR head branch")
+
+
+def verify_pr_checkout(pr_info: dict[str, Any], owner: str, repo: str) -> None:
+    """Require a clean local checkout at this repository's PR head."""
+    verify_pr_target(pr_info, owner, repo)
+    if git_text("rev-parse", "HEAD") != pr_info.get("headRefOid"):
+        raise RuntimeError("local HEAD does not match the current PR head")
+    if working_tree_dirty():
+        raise RuntimeError("working tree is dirty before the fixer runs")
 
 
 def run_shell_command(command: str, prompt: str | None, env: dict[str, str]) -> int:
@@ -418,7 +459,7 @@ def run_cycle(args: argparse.Namespace, pr_number: int, cycle: int) -> int | Non
         owner, repo = repository_owner_name()
         pr_info = fetch_pr_info(pr_number)
         threads = fetch_review_threads(owner, repo, pr_number)
-    except subprocess.CalledProcessError as error:
+    except (RuntimeError, subprocess.CalledProcessError) as error:
         print(f"Unable to fetch PR state: {error}", file=sys.stderr)
         return 3 if args.once else None
     blockers = classify_pull_request(pr_info, threads)
@@ -449,7 +490,12 @@ def run_cycle(args: argparse.Namespace, pr_number: int, cycle: int) -> int | Non
             file=sys.stderr,
         )
         return 2
-    print(f"Running fixer command: {fix_command}")
+    try:
+        verify_pr_checkout(pr_info, owner, repo)
+    except (RuntimeError, subprocess.CalledProcessError) as error:
+        print(f"Cannot run fixer: {error}", file=sys.stderr)
+        return 2
+    print("Running fixer command.")
 
     before_head = git_text("rev-parse", "HEAD")
     status = run_fix_command(fix_command, prompt_path, pr_number, prompt)
@@ -465,6 +511,10 @@ def run_cycle(args: argparse.Namespace, pr_number: int, cycle: int) -> int | Non
 
     branch = str(pr_info.get("headRefName") or git_text("branch", "--show-current"))
     try:
+        latest = fetch_pr_info(pr_number)
+        if latest.get("headRefOid") != before_head:
+            raise RuntimeError("PR head changed while the fixer was running")
+        verify_pr_target(pr_info, owner, repo)
         push_if_commit_created(branch, before_head)
     except (RuntimeError, subprocess.CalledProcessError) as error:
         print(f"Unable to push fixer output: {error}", file=sys.stderr)

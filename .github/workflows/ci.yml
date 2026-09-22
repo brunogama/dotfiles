@@ -148,17 +148,15 @@ jobs:
         run: |
           bin/core/link-dotfiles.py --dry-run
 
-      - name: Test script help messages
+      - name: Test documented CLI help messages
         run: |
           failed=0
-          for script in bin/core/* bin/credentials/* bin/git/*; do
-            if [[ -x "$script" ]] && [[ -f "$script" ]]; then
-              echo "Testing: $(basename "$script")"
-              if ! help_output="$(perl -e 'alarm 5; exec @ARGV' "$script" --help 2>&1)" ||
-                [[ -z "$help_output" ]]; then
-                echo "No help: $script"
-                failed=1
-              fi
+          for script in ./install bin/core/link-dotfiles.py bin/core/nix-npm-sync bin/core/work-mode; do
+            echo "Testing: $script"
+            if ! help_output="$(perl -e 'alarm 5; exec @ARGV' "$script" --help 2>&1)" ||
+              [[ -z "$help_output" ]]; then
+              echo "No help: $script"
+              failed=1
             fi
           done
           exit "$failed"

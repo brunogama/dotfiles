@@ -170,6 +170,59 @@ class PrAutofixLoopTest(unittest.TestCase):
         ):
             self.assertIsNone(self.module.run_cycle(args, 78, 1))
 
+    def test_fetches_review_threads_after_first_page(self) -> None:
+        pages = [
+            {"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"path": "first"}],
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+            }}}}},
+            {"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"path": "second"}],
+                "pageInfo": {"hasNextPage": False, "endCursor": "cursor-2"},
+            }}}}},
+        ]
+        with patch.object(self.module, "run_json", side_effect=pages) as fetch:
+            threads = self.module.fetch_review_threads("owner", "repo", 78)
+
+        self.assertEqual(["first", "second"], [t["path"] for t in threads])
+        self.assertIn("cursor=cursor-1", fetch.call_args_list[1].args[0])
+
+    def test_rejects_unrelated_or_dirty_checkout(self) -> None:
+        pr = {
+            "headRepository": {"nameWithOwner": "owner/repo"},
+            "headRefName": "topic",
+            "headRefOid": "abc123",
+        }
+        git_values = {
+            ("remote", "get-url", "--push", "origin"): "git@github.com:owner/repo.git",
+            ("branch", "--show-current"): "topic",
+            ("rev-parse", "HEAD"): "abc123",
+        }
+        with patch.object(self.module, "git_text", side_effect=lambda *a: git_values[a]):
+            with patch.object(self.module, "working_tree_dirty", return_value=False):
+                self.module.verify_pr_checkout(pr, "owner", "repo")
+            with patch.object(self.module, "working_tree_dirty", return_value=True):
+                with self.assertRaisesRegex(RuntimeError, "dirty"):
+                    self.module.verify_pr_checkout(pr, "owner", "repo")
+
+        pr["headRefOid"] = "other"
+        with patch.object(self.module, "git_text", side_effect=lambda *a: git_values[a]):
+            with self.assertRaisesRegex(RuntimeError, "HEAD"):
+                self.module.verify_pr_checkout(pr, "owner", "repo")
+
+    def test_rejects_fork_and_wrong_origin(self) -> None:
+        pr = {
+            "headRepository": {"nameWithOwner": "fork/repo"},
+            "headRefName": "topic",
+            "headRefOid": "abc123",
+        }
+        with self.assertRaisesRegex(RuntimeError, "fork"):
+            self.module.verify_pr_checkout(pr, "owner", "repo")
+        pr["headRepository"]["nameWithOwner"] = "owner/repo"
+        with patch.object(self.module, "git_text", return_value="git@github.com:other/repo.git"):
+            with self.assertRaisesRegex(RuntimeError, "origin"):
+                self.module.verify_pr_checkout(pr, "owner", "repo")
+
     def test_default_fixer_requires_explicit_command(self) -> None:
         command = self.module.resolve_fix_command({})
 

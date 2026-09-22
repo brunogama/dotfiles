@@ -108,6 +108,10 @@ in
         return 0
       fi
 
+      if [[ "$(readlink "$target")" == /nix/store/* ]]; then
+        return 0
+      fi
+
       if [[ -e "$backup" || -L "$backup" ]]; then
         rm -- "$target"
       else

@@ -43,10 +43,9 @@ load_agent_config() {
 	done <"$AGENT_CONFIG"
 }
 
-# Override git commit authorship from the configured identity.
-# No-op when no identity is configured, so the environment is left untouched.
+# Set Git author and committer identity only with a complete configuration.
 apply_agent_identity() {
-	[[ -n "${AGENT_NAME:-}" ]] || return 0
+	[[ -n "${AGENT_NAME:-}" && -n "${AGENT_EMAIL:-}" ]] || return 0
 
 	export GIT_AUTHOR_NAME="$AGENT_NAME"
 	export GIT_AUTHOR_EMAIL="${AGENT_EMAIL:-}"
@@ -80,7 +79,7 @@ mint_agent_github_token() {
 		fi
 	fi
 
-	# Fall back to a GitHub App installation token when no gh login exists.
+	# Use an App token unless an explicit token or an opted-in gh token worked.
 	[[ -n "${GITHUB_APP_ID:-}" ]] || return 0
 
 	script_base="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

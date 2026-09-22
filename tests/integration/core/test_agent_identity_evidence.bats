@@ -166,7 +166,18 @@ EOF
         "$TEST_BIN/codex" --model test-model 'test prompt'
 
     assert_success
-    run grep -E '^(GIT_AUTHOR_NAME|GIT_COMMITTER_NAME)=' "$WRAPPER_ENV_OUTPUT"
+    run grep -E '^GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL)=' "$WRAPPER_ENV_OUTPUT"
+    assert_failure
+}
+
+@test "wrapper leaves identity untouched when configured email is missing" {
+    local upstream config
+    upstream="$(create_fake_upstream codex)"
+    config="$(write_agent_config 'agent-account' '')"
+    run_wrapper codex "$upstream" "$config"
+
+    assert_success
+    run grep -E '^GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL)=' "$WRAPPER_ENV_OUTPUT"
     assert_failure
 }
 
