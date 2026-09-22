@@ -16,6 +16,7 @@ EOF
 include_destructive=0
 keep_workspace=0
 failed=0
+last_stage_passed=0
 
 while (($#)); do
 	case "$1" in
@@ -79,12 +80,14 @@ run_stage() {
 
 	if ((status == 0)); then
 		record "$workflow" "$cell" "$stage" pass ''
+		last_stage_passed=1
 		return 0
 	fi
 
 	record "$workflow" "$cell" "$stage" fail "exit $status"
 	failed=1
-	return "$status"
+	last_stage_passed=0
+	return 0
 }
 
 stage_slug() {
@@ -171,16 +174,18 @@ prepare_workspace() {
 macos_available() {
 	[[ "$(uname -s)" == Darwin ]] &&
 		command -v python3.11 >/dev/null 2>&1 &&
+		command -v uv >/dev/null 2>&1 &&
 		command -v shellcheck >/dev/null 2>&1 &&
 		command -v jq >/dev/null 2>&1 &&
+		command -v parallel >/dev/null 2>&1 &&
 		command -v bats >/dev/null 2>&1
 }
 
 macos_validate() (
 	cd "$workspace"
 	local_ci_python="$HOME/.local-ci-venv/bin/python"
-	python3.11 -m venv "$HOME/.local-ci-venv"
-	"$local_ci_python" -m pip install --upgrade pip uv pre-commit
+	uv venv --python python3.11 "$HOME/.local-ci-venv"
+	uv pip install --python "$local_ci_python" pre-commit
 	SKIP=trailing-whitespace,end-of-file-fixer \
 		"$local_ci_python" -m pre_commit run --all-files
 	bin/git/hooks/check-lowercase-dirs
@@ -237,19 +242,16 @@ macos_install_nix() (
 
 macos_test() (
 	cd "$workspace"
-	local_ci_python="$HOME/.local-ci-venv/bin/python"
-	local_ci_uv="$HOME/.local-ci-venv/bin/uv"
-	python3.11 -m venv "$HOME/.local-ci-venv"
-	"$local_ci_python" -m pip install --upgrade pip uv
 	./install --dry-run
-	"$local_ci_uv" run bin/core/link-dotfiles.py --dry-run
+	uv run bin/core/link-dotfiles.py --dry-run
 	printf '%s\n' 'Skipping script help-message probe outside the GitHub runner.'
 )
 
 macos_integration() (
 	cd "$workspace"
-	bats --tap tests/integration/core/test_install.bats
-	bats --tap tests/integration/core/test_work_mode.bats
+	bats --tap --jobs "${BATS_JOBS:-2}" \
+		tests/integration/core/test_install.bats \
+		tests/integration/core/test_work_mode.bats
 )
 
 record_github_only_stages() {
@@ -269,7 +271,8 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
 	mac_validation_passed=0
 	if macos_available; then
-		if run_macos_stage CI 'macos-latest / Python 3.11' validate macos_validate; then
+		run_macos_stage CI 'macos-latest / Python 3.11' validate macos_validate
+		if ((last_stage_passed)); then
 			mac_validation_passed=1
 		fi
 	else
@@ -280,15 +283,15 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 
 	if ((mac_validation_passed)); then
 		if command -v nix >/dev/null 2>&1; then
-			run_macos_stage CI macos-latest validate-nix macos_validate_nix || true
+			run_macos_stage CI macos-latest validate-nix macos_validate_nix
 		else
 			record_skip CI macos-latest validate-nix 'Nix is not installed'
 		fi
-		run_macos_stage CI 'macos-latest / Python 3.11' test-macos macos_test || true
-		run_macos_stage CI macos-latest test-integration-macos macos_integration || true
+		run_macos_stage CI 'macos-latest / Python 3.11' test-macos macos_test
+		run_macos_stage CI macos-latest test-integration-macos macos_integration
 		if command -v nix >/dev/null 2>&1; then
 			if ((include_destructive)); then
-				run_macos_stage CI macos-latest install-nix-macos macos_install_nix || true
+				run_macos_stage CI macos-latest install-nix-macos macos_install_nix
 			else
 				record_skip CI macos-latest install-nix-macos \
 					'requires --include-destructive in a disposable macOS VM'
