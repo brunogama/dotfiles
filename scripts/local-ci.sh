@@ -188,6 +188,7 @@ macos_validate() (
 	uv pip install --python "$local_ci_python" pre-commit
 	SKIP=trailing-whitespace,end-of-file-fixer \
 		"$local_ci_python" -m pre_commit run --all-files
+	python3.11 tests/test_ci_workflow.py
 	bin/git/hooks/check-lowercase-dirs
 	git ls-files | while IFS= read -r file; do
 		if [[ -f "$file" && "$file" =~ \.(md|sh|zsh|bash|txt)$ ]]; then
@@ -249,20 +250,21 @@ macos_test() (
 
 macos_integration() (
 	cd "$workspace"
+	mkdir -p test-results
 	bats --tap --jobs "${BATS_JOBS:-2}" \
 		tests/integration/core/test_install.bats \
-		tests/integration/core/test_work_mode.bats
+		tests/integration/core/test_work_mode.bats | tee test-results/integration.tap
 )
 
 record_github_only_stages() {
-	local note='requires a GitHub Actions Linux runner'
+	local note='requires a Depot Linux runner'
 
-	record_skip CI 'ubuntu-latest / Python 3.11' test-linux "$note"
-	record_skip CI 'ubuntu-latest / Python 3.11' test-python "$note"
-	record_skip CI 'ubuntu-latest / Python 3.11' mutation-testing "$note"
-	record_skip CI ubuntu-latest test-integration-linux "$note"
-	record_skip CI ubuntu-latest documentation "$note"
-	record_skip 'Agent repository QA' 'ubuntu-latest / setup-uv@v6' \
+	record_skip 'CI (Linux)' 'depot-ubuntu-latest / Python 3.11' test-linux "$note"
+	record_skip 'CI (Linux)' 'depot-ubuntu-latest / Python 3.11' test-python "$note"
+	record_skip 'CI (Linux)' 'depot-ubuntu-latest / Python 3.11' mutation-testing "$note"
+	record_skip 'CI (Linux)' depot-ubuntu-latest test-integration-linux "$note"
+	record_skip 'CI (Linux)' depot-ubuntu-latest documentation "$note"
+	record_skip 'Agent repository QA' 'depot-ubuntu-latest / setup-uv@v6' \
 		deterministic-qa "$note"
 }
 

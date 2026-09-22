@@ -150,13 +150,18 @@ jobs:
 
       - name: Test script help messages
         run: |
+          failed=0
           for script in bin/core/* bin/credentials/* bin/git/*; do
             if [[ -x "$script" ]] && [[ -f "$script" ]]; then
               echo "Testing: $(basename "$script")"
-              perl -e 'alarm 5; exec @ARGV' "$script" --help &>/dev/null ||
+              if ! help_output="$(perl -e 'alarm 5; exec @ARGV' "$script" --help 2>&1)" ||
+                [[ -z "$help_output" ]]; then
                 echo "No help: $script"
+                failed=1
+              fi
             fi
           done
+          exit "$failed"
 
   test-integration-macos:
     name: Integration Tests (macOS)
@@ -177,9 +182,10 @@ jobs:
 
       - name: Run maintained integration tests
         run: |
+          mkdir -p test-results
           bats --tap --jobs "${BATS_JOBS:-2}" \
             tests/integration/core/test_install.bats \
-            tests/integration/core/test_work_mode.bats
+            tests/integration/core/test_work_mode.bats | tee test-results/integration.tap
 
       - name: Upload test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
