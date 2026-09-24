@@ -107,6 +107,7 @@ EOF
 @test "linked toolchain command finds the repository manifest" {
     ln -s "$DOTFILES_TEST_ROOT/bin/core/mise-toolchain-sync" \
         "$BATS_TEST_TMPDIR/bin/mise-toolchain-sync"
+    cd "$BATS_TEST_TMPDIR"
     run "$BATS_TEST_TMPDIR/bin/mise-toolchain-sync" --dry-run
     [ "$status" -eq 0 ]
     [[ "$output" == *"$DOTFILES_TEST_ROOT/packages/npm/package.json"* ]]

@@ -13,6 +13,11 @@ for arg in "$@"; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
         exec "$repo_root/bin/core/nix-update" --switch "$@"
     fi
+done
+
+"$repo_root/bin/core/nix-update" --dry-run --switch "$@" >/dev/null
+
+for arg in "$@"; do
     if [[ "$arg" == "--dry-run" ]]; then
         printf '+ git -C %q pull --ff-only\n' "$repo_root"
         exec "$repo_root/bin/core/nix-update" --switch "$@"

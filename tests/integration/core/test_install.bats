@@ -430,6 +430,12 @@ teardown() {
     cp "$(get_dotfiles_root)/bin/core/update-dotfiles" "$DOTFILES_ROOT/bin/core/update-dotfiles"
     cat > "$DOTFILES_ROOT/bin/core/nix-update" <<'EOF'
 #!/usr/bin/env bash
+if [[ " $* " == *" --bogus "* ]]; then
+    exit 2
+fi
+if [[ " $* " == *" --dry-run "* ]]; then
+    exit 0
+fi
 printf 'nix-update %s\n' "$*" >> "$UPDATE_CALLS"
 EOF
     cat > "$TEST_TEMP_DIR/mock-bin/git" <<'EOF'
@@ -446,6 +452,11 @@ EOF
     assert_success
     [ "$(sed -n '1p' "$UPDATE_CALLS")" = "git -C $(cd -P "$DOTFILES_ROOT" && pwd) pull --ff-only" ]
     [ "$(sed -n '2p' "$UPDATE_CALLS")" = "nix-update --switch" ]
+
+    run env PATH="$TEST_TEMP_DIR/mock-bin:$PATH" \
+        "$TEST_TEMP_DIR/mock-bin/update-dotfiles" --bogus
+    assert_failure 2
+    [ "$(wc -l < "$UPDATE_CALLS")" -eq 2 ]
 }
 
 @test "linked dependency command prints the installer path from another directory" {
