@@ -228,9 +228,11 @@ macos_install_nix() (
 		"$HOME/.zshenv" \
 		"$HOME/.config/zsh/.zshrc" \
 		"$HOME/.config/starship.toml" \
-		"$HOME/.codex/AGENTS.md" \
-		"$HOME/.claude/CLAUDE.md"; do
-		test -L "$path"
+		"$HOME/.config/mise/conf.d/dotfiles.toml"; do
+		if [[ ! -L "$path" ]]; then
+			printf 'Missing managed symlink: %s\n' "$path" >&2
+			exit 1
+		fi
 	done
 	test -f "$HOME/.config/zsh/.zshrc.zwc"
 	ZDOTDIR="$HOME/.config/zsh" zsh -lic \
