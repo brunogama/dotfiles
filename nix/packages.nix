@@ -4,32 +4,58 @@ with pkgs;
   actionlint
   bat
   bats
+  coreutils
   curl
+  delta
+  difftastic
+  dust
   eza
+  fd
   ffmpeg
   fzf
+  gdu
   gh
   git
   git-lfs
+  gitleaks
+  htop
   httpie
+  hyperfine
   jq
-  nodejs_24
+  just
+  lsd
+  mise
+  ncdu
+  neovim
   pandoc
   perl
   poppler-utils
   pre-commit
-  python313
+  procs
   repomix
   ripgrep
   rtk
-  ruby_3_4
+  sd
   shellcheck
+  shfmt
   starship
   tmux
+  tokei
   tree
   uv
+  wget
   yq-go
   zoxide
   zsh-prezto
 ]
-++ lib.optionals stdenv.isDarwin [ tuist ]
+++ lib.optionals stdenv.isDarwin [
+  cocoapods
+  fastlane
+  ios-deploy
+  swift-format
+  swiftformat
+  swiftlint
+  tuist
+  xcbeautify
+  xcodegen
+]

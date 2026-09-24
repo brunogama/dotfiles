@@ -187,40 +187,6 @@ install_nix() {
     }
 }
 
-install_homebrew() {
-    if command -v brew >/dev/null 2>&1; then
-        return 0
-    fi
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "Would install Homebrew for the retained sourcekitten and Fork packages"
-        return 0
-    fi
-
-    confirm "Install Homebrew for retained macOS-only packages?" || {
-        echo "Homebrew is required by the configured nix-darwin Homebrew module." >&2
-        exit 2
-    }
-
-    local installer
-    installer="$(mktemp)"
-    TEMP_FILES+=("$installer")
-    curl --proto '=https' --tlsv1.2 -fsSL \
-        https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$installer"
-    if [[ "$YES" == "true" ]]; then
-        NONINTERACTIVE=1 /bin/bash "$installer"
-    else
-        /bin/bash "$installer"
-    fi
-    rm -f "$installer"
-
-    if [[ -x /opt/homebrew/bin/brew ]]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [[ -x /usr/local/bin/brew ]]; then
-        eval "$(/usr/local/bin/brew shellenv)"
-    fi
-}
-
 home_manager_profile_exists() {
     local home_manager_profile="$HOME/.local/state/nix/profiles/home-manager"
     [[ -e "$home_manager_profile" || -L "$home_manager_profile" ]]
@@ -252,7 +218,6 @@ if [[ "$NIX_DISTRIBUTION" == "upstream" ]]; then
 fi
 
 if [[ "$SYSTEM_MODE" == "true" ]]; then
-    install_homebrew
     activation_script="$SCRIPT_DIR/nix-rebuild"
 else
     activation_script="$SCRIPT_DIR/nix-activate"

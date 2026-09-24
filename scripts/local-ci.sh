@@ -280,9 +280,9 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 			mac_validation_passed=1
 		fi
 	else
-		warn 'macOS jobs require native macOS, Homebrew, and python3.11.'
+		warn 'macOS jobs require native macOS and the listed test commands.'
 		record_skip CI 'macos-latest / Python 3.11' validate \
-			'requires native macOS, Homebrew, and python3.11'
+			'requires native macOS, Python 3.11, uv, shellcheck, jq, parallel, and bats'
 	fi
 
 	if ((mac_validation_passed)); then

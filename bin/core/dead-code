@@ -1,15 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 if ! command -v periphery &> /dev/null; then
-    echo -e "${RED}Periphery not found. Please install it with 'brew install periphery'${NC}"
-    read -p "Would you like to install Periphery now? (y/n) " -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        brew install periphery
-    else
-        exit 1
-    fi
-    exit 1
+    echo "Periphery is missing from this machine." >&2
+    exit 2
 fi
 
 folder_name="$(basename "$(pwd)")"

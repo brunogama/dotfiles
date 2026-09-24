@@ -96,7 +96,7 @@ validate_json() {
 cd "$DOTFILES_ROOT"
 
 bash -n install
-for script in bin/core/nix-activate bin/core/nix-bootstrap bin/core/nix-npm-sync \
+for script in bin/core/nix-activate bin/core/nix-bootstrap bin/core/nix-npm-sync bin/core/mise-toolchain-sync \
     bin/core/nix-rebuild bin/core/nix-rollback bin/core/nix-update \
     bin/core/nix-validate; do
     bash -n "$script"
@@ -109,7 +109,7 @@ validate_json packages/npm/package-lock.json
 git --no-pager diff --check
 
 if command -v shellcheck >/dev/null 2>&1; then
-    shellcheck bin/core/nix-activate bin/core/nix-bootstrap bin/core/nix-npm-sync \
+    shellcheck bin/core/nix-activate bin/core/nix-bootstrap bin/core/nix-npm-sync bin/core/mise-toolchain-sync \
         bin/core/nix-rebuild bin/core/nix-rollback bin/core/nix-update \
         bin/core/nix-validate
 else

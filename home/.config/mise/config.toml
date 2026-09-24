@@ -1,2 +1,4 @@
 [tools]
-tuist = "latest"
+node = "26.10.0"
+python = "3.14.7"
+ruby = "4.0.7"

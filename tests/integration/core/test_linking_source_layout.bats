@@ -75,16 +75,21 @@
     done
 }
 
-@test "Darwin Git and Homebrew files live in the platform home source tree" {
+@test "Darwin Git file lives in the platform home source tree" {
     local repository_root
     repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
 
     local path
-    for path in \
-        .config/git/ios.gitattributes \
-        Brewfile; do
+    for path in .config/git/ios.gitattributes; do
         [[ -f "$repository_root/home-darwin/$path" ]]
     done
+}
+
+@test "Homebrew bundle is not part of installation sources" {
+    local repository_root
+    repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
+
+    [[ ! -e "$repository_root/home-darwin/Brewfile" ]]
 }
 
 @test "legacy Darwin Git and Homebrew source paths are retired" {

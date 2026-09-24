@@ -167,17 +167,5 @@ in
     };
   };
 
-  homebrew = {
-    enable = true;
-    enableZshIntegration = false;
-    brews = [ "sourcekitten" ];
-    casks = [ "fork" ];
-    onActivation = {
-      autoUpdate = false;
-      cleanup = "none";
-      upgrade = false;
-    };
-  };
-
   environment.systemPackages = [ pkgs.zsh ];
 }

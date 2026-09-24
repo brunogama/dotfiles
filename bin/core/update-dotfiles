@@ -1,22 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source prints
-
-pwarning "Updating dotfiles..."
-pushd "${HOME}/.config" || exit
-git pull origin master
-pushd zsh/.zprezto || exit
-pwarning "Updating prezto"
-git submodule init
-git submodule update --init --recursive
-popd || exit
-popd || exit
-psuccess "Updated of dotfiles finished."
-
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/dotfiles}"
-cd "$DOTFILES_ROOT"
-
-brew bundle --file=Brewfile
-
-exit 0
+exec nix-update --switch "$@"

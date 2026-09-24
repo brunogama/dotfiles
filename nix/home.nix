@@ -6,7 +6,15 @@
   ...
 }:
 let
-  npmBin = "${config.xdg.dataHome}/dotfiles/npm/current/node_modules/.bin";
+  miseShims = "${config.xdg.dataHome}/mise/shims";
+  miseCompat = pkgs.runCommand "dotfiles-mise-compat" { } ''
+    mkdir -p "$out/bin/lib"
+    install -m 755 ${../bin/core/nvm} "$out/bin/nvm"
+    install -m 755 ${../bin/core/pyenv} "$out/bin/pyenv"
+    install -m 755 ${../bin/core/rbenv} "$out/bin/rbenv"
+    install -m 755 ${../bin/core/sdk} "$out/bin/sdk"
+    install -m 755 ${../bin/core/lib/mise-compat.sh} "$out/bin/lib/mise-compat.sh"
+  '';
   legacyLinks = [
     {
       target = ".zshenv";
@@ -80,16 +88,17 @@ in
     username = host.username;
     homeDirectory = "/Users/${host.username}";
     stateVersion = "26.05";
-    packages = import ./packages.nix { inherit pkgs; };
+    packages = (import ./packages.nix { inherit pkgs; }) ++ [ miseCompat ];
 
     sessionPath = [
+      miseShims
+      "${miseCompat}/bin"
       "${config.home.homeDirectory}/local/bin"
       "${config.home.homeDirectory}/.local/bin"
-      npmBin
     ];
 
     sessionVariables = {
-      DOTFILES_NPM_BIN = npmBin;
+      DOTFILES_MISE_COMPAT_BIN = "${miseCompat}/bin";
       UV_NATIVE_TLS = "1";
       ZPREZTODIR = "${pkgs.zsh-prezto}/share/zsh-prezto";
     };
@@ -148,8 +157,7 @@ in
   };
 
   home.file = {
-    ".codex/AGENTS.md".source = ../docs/agents/AGENTS.md;
-    ".claude/CLAUDE.md".source = ../docs/agents/AGENTS.md;
+    ".config/mise/conf.d/dotfiles.toml".source = ../home/.config/mise/config.toml;
 
     ".gitignore_global".source = ../home/.gitignore_global;
     ".config/git/github-flow-aliases.gitconfig".source = ../home/.config/git/github-flow-aliases.gitconfig;

@@ -1,3 +1,0 @@
-# Homebrew is retained only for packages that are not practical in Nixpkgs.
-brew "sourcekitten"
-cask "fork"

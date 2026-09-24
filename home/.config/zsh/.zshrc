@@ -7,38 +7,22 @@
 # 1. EARLY PATH, FPATH, AND ENVIRONMENT
 # ============================================================================
 # Keep these before Prezto so its completion module sees custom fpath entries and
-# tools installed by Homebrew are available in login and non-login shells.
+# mise shims are available in login and non-login shells.
 typeset -gU path fpath
 
 export EDITOR="code"
 export VISUAL="code"
-export PYENV_ROOT="$HOME/.pyenv"
-export RBENV_ROOT="$HOME/.rbenv"
-export NVM_DIR="$HOME/.nvm"
-export SDKMAN_DIR="$HOME/.sdkman"
 export UV_NATIVE_TLS=1
 
-# Keep inherited Nix profile paths ahead of Homebrew and /usr/local fallbacks.
 path=(
+    $HOME/.local/share/mise/shims(N)
+    ${DOTFILES_MISE_COMPAT_BIN:-}(N)
     $HOME/local/bin(N)
     $HOME/.local/bin(N)
     $HOME/.claude/local(N)
     $HOME/.cache/lm-studio/bin(N)
     $path
-    /opt/{homebrew,local}/{,s}bin(N)
-    /usr/local/{,s}bin(N)
 )
-
-# Legacy version managers remain available as an explicit migration fallback.
-if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]]; then
-    path=(
-        $PYENV_ROOT/shims(N)
-        $PYENV_ROOT/bin(N)
-        $RBENV_ROOT/bin(N)
-        $SDKMAN_DIR/bin(N)
-        $path
-    )
-fi
 
 fpath=(
     ~/.docker/completions(N)
@@ -121,14 +105,17 @@ mkcd() {
 }
 
 # ============================================================================
-# 7. LAZY LOADING (Defer expensive tools until first use)
+# 7. RUNTIME ACTIVATION AND FZF KEY BINDINGS
 # ============================================================================
-# Optional nvm path helper, if present, must run after NVM_DIR is set above.
-if [[ -f ~/.config/zsh/lib/nvm-path.zsh ]]; then
-    source ~/.config/zsh/lib/nvm-path.zsh
+# Mise selects project runtimes when the directory changes.
+if [[ -o interactive ]] && command -v mise &>/dev/null; then
+    eval "$(mise activate zsh)"
+fi
+if [[ -f ~/.config/zsh/lib/mise-compat.zsh ]]; then
+    source ~/.config/zsh/lib/mise-compat.zsh
 fi
 
-# Lazy loading for nvm, pyenv, rbenv, mise, SDKMAN, and fzf key bindings.
+# Fzf key bindings are loaded on demand.
 if [[ -f ~/.config/zsh/lib/lazy-load.zsh ]]; then
     source ~/.config/zsh/lib/lazy-load.zsh
 fi
@@ -167,22 +154,18 @@ bindkey "\ef" forward-word       # Option+f
 
 # ============================================================================
 # END OF OPTIMIZED .zshrc
-# Observed startup time: ~50ms warm in zsh -i/-l tests
 # ============================================================================
 
 
 set-default-shell() {
 	local zsh_path
-	brew install zsh || return
-	zsh_path="$(brew --prefix)/bin/zsh" || return
+	zsh_path="$(command -v zsh)" || return
 	if ! grep -Fqx -- "$zsh_path" /etc/shells; then
 		printf '%s\n' "$zsh_path" | sudo tee -a /etc/shells >/dev/null || return
 	fi
 	chsh -s "$zsh_path" || return
 	printf 'Default shell set to %s\n' "$zsh_path"
 }
-
-# rbenv initialization handled by lazy-load.zsh
 
 
 # Primary Agent Launcher

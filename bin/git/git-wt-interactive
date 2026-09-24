@@ -94,18 +94,18 @@ print_dependency_help() {
     case "${dep}" in
         fzf)
             echo "install fzf:"
-            echo "  brew install fzf          # macOS"
+            echo "  ./install  # provides fzf through Nix          # macOS"
             echo "  apt-get install fzf       # Debian/Ubuntu"
             echo "  https://github.com/junegunn/fzf"
             ;;
         tmux)
             echo "install tmux:"
-            echo "  brew install tmux         # macOS"
+            echo "  ./install  # provides tmux through Nix         # macOS"
             echo "  apt-get install tmux      # Debian/Ubuntu"
             ;;
         jq)
             echo "install jq:"
-            echo "  brew install jq           # macOS"
+            echo "  ./install  # provides jq through Nix           # macOS"
             echo "  apt-get install jq        # Debian/Ubuntu"
             echo "  https://stedolan.github.io/jq/"
             ;;

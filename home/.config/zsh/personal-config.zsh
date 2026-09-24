@@ -57,11 +57,9 @@ alias sync-start="home-sync-service start"
 alias sync-stop="home-sync-service stop"
 
 # ============================================================================
-# HOMEBREW MANAGEMENT
+# NIX MANAGEMENT
 # ============================================================================
-alias brew-install="brew-sync install"
-alias brew-update="brew-sync update"
-alias brew-full-sync="brew-sync sync"
+alias tools-update="nix-update --switch"
 
 # ============================================================================
 # ENVIRONMENT VARIABLES
@@ -91,5 +89,4 @@ alias edit-dotfiles="open-dotfiles-config repo"
 # ============================================================================
 # PRODUCTIVITY ALIASES
 # ============================================================================
-alias cleanup="brew cleanup && brew autoremove"
-alias update-all="brew update && brew upgrade && home-sync-up"
+alias update-all="nix-update --switch && home-sync-up"

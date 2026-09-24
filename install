@@ -36,7 +36,6 @@ NIX_DISTRIBUTION_EXPLICIT=false
 ALLOW_MIXED_BACKENDS=false
 
 # Legacy installer flags
-SKIP_BREW=false
 SKIP_PACKAGES=false
 SKIP_LINKS=false
 
@@ -108,7 +107,6 @@ OPTIONS:
                        Permit legacy mode on a Home Manager-managed macOS setup
     --dry-run          Preview the selected backend without changing the system
     --yes              Non-interactive mode (assume installer confirmations)
-    --skip-brew        Skip Homebrew installation/bundle (legacy only)
     --skip-packages    Skip package installation (legacy only)
     --skip-links       Skip symlink creation (legacy only)
     --scripts-only     Only link public commands to ~/.local/bin
@@ -214,9 +212,6 @@ parse_args() {
             --yes)
                 YES=true
                 ;;
-            --skip-brew)
-                SKIP_BREW=true
-                ;;
             --skip-packages)
                 SKIP_PACKAGES=true
                 ;;
@@ -282,9 +277,9 @@ run_remote_bash_installer() {
     rm -f "$installer"
 }
 
-# Phase 1: Pre-flight checks
+# Pre-flight checks
 phase_preflight() {
-    log_phase "Phase 1: Pre-flight Checks"
+    log_phase "Pre-flight Checks"
 
     if [[ ! -d "$DOTFILES_ROOT/.git" ]] && [[ ! -f "$DOTFILES_ROOT/.git" ]]; then
         log_error "Not in a git repository"
@@ -301,50 +296,6 @@ phase_preflight() {
 
     log_info "Platform: $PLATFORM"
     log_info "Dotfiles root: $DOTFILES_ROOT"
-}
-
-# Phase 2: Homebrew setup (macOS)
-phase_homebrew() {
-    if [[ "$PLATFORM" != "darwin" ]]; then
-        log_info "Skipping Homebrew (not on macOS)"
-        return 0
-    fi
-
-    if [[ "$SKIP_BREW" == "true" ]]; then
-        log_info "Skipping Homebrew (--skip-brew flag)"
-        return 0
-    fi
-
-    log_phase "Phase 2: Homebrew Setup"
-
-    if command_exists brew; then
-        log_success "Homebrew is already installed"
-        local brew_version
-        brew_version="$(brew --version)"
-        brew_version="${brew_version%%$'\n'*}"
-        log_info "$brew_version"
-    else
-        log_warning "Homebrew is not installed"
-
-        if [[ "$DRY_RUN" == "true" ]]; then
-            log_info "Would install Homebrew"
-            return 0
-        fi
-
-        if confirm "Install Homebrew now?"; then
-            log_info "Installing Homebrew..."
-            if [[ "$YES" == "true" ]]; then
-                NONINTERACTIVE=1 run_remote_bash_installer \
-                    "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
-            else
-                run_remote_bash_installer \
-                    "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
-            fi
-            log_success "Homebrew installed"
-        else
-            log_warning "Skipped Homebrew installation"
-        fi
-    fi
 }
 
 # Install minimal Linux prerequisites through a supported native package manager.
@@ -401,25 +352,17 @@ install_linux_dependencies() {
     fi
 }
 
-# Phase 3: Dependencies
+# Dependencies
 phase_dependencies() {
     local missing_linux_dependencies=()
 
-    log_phase "Phase 3: Dependencies"
+    log_phase "Dependencies"
 
     if command_exists jq; then
         log_success "jq is already installed ($(jq --version))"
     elif [[ "$PLATFORM" == "darwin" ]]; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            log_info "Would install jq via Homebrew"
-        elif command_exists brew; then
-            log_info "Installing jq via Homebrew..."
-            brew install jq
-            log_success "jq installed"
-        else
-            log_error "Cannot install jq: Homebrew not available"
-            exit 2
-        fi
+        log_error "jq is missing; use the Nix backend to install managed tools"
+        exit 2
     else
         missing_linux_dependencies+=(jq)
     fi
@@ -433,481 +376,39 @@ phase_dependencies() {
     fi
 }
 
-# Phase 4: Homebrew bundle
-phase_bundle() {
-    if [[ "$PLATFORM" != "darwin" ]]; then
-        log_info "Skipping Homebrew bundle (not on macOS)"
-        return 0
-    fi
-
-    if [[ "$SKIP_BREW" == "true" ]] || [[ "$SKIP_PACKAGES" == "true" ]]; then
-        log_info "Skipping Homebrew bundle (--skip-* flag)"
-        return 0
-    fi
-
-    log_phase "Phase 4: Homebrew Bundle"
-
-    local brewfile="$DOTFILES_ROOT/home-darwin/Brewfile"
-
-    if [[ ! -f "$brewfile" ]]; then
-        log_warning "Brewfile not found at: $brewfile"
-        return 0
-    fi
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would run: brew bundle install --file=$brewfile"
-        return 0
-    fi
-
-    if ! command_exists brew; then
-        log_warning "Homebrew not installed, skipping bundle"
-        return 0
-    fi
-
-    log_info "Installing packages from Brewfile..."
-    if brew bundle install --file="$brewfile"; then
-        log_success "Homebrew bundle completed"
-    else
-        log_warning "Some packages may have failed to install"
-    fi
-}
-
-# Phase 5: Version Manager Setup (pyenv, rbenv, nvm, mise)
-phase_version_managers() {
-    log_phase "Phase 5: Version Manager Setup"
-
-    # First, migrate away from Homebrew-managed runtimes
-    phase_migrate_from_homebrew
-
-    # Then install version managers
-    phase_mise
-    phase_pyenv
-    phase_rbenv
-    phase_nvm
-}
-
-# Phase 5-pre: Migrate from Homebrew-managed language runtimes
-phase_migrate_from_homebrew() {
-    log_info "Checking for Homebrew-managed language runtimes..."
-
-    if ! command_exists brew; then
-        log_info "Homebrew not installed, skipping migration check"
-        return 0
-    fi
-
-    local brew_packages_to_remove=()
-    local has_conflicts=false
-
-    # Check for Homebrew Python
-    if brew list python &>/dev/null || brew list python@3.11 &>/dev/null || brew list python@3.12 &>/dev/null; then
-        brew_packages_to_remove+=("python" "python@3.11" "python@3.12" "python@3.10" "python@3.9")
-        has_conflicts=true
-        log_warning "Found Homebrew Python (conflicts with pyenv)"
-    fi
-
-    # Check for Homebrew Node
-    if brew list node &>/dev/null || brew list node@20 &>/dev/null || brew list node@18 &>/dev/null; then
-        brew_packages_to_remove+=("node" "node@20" "node@18" "node@16")
-        has_conflicts=true
-        log_warning "Found Homebrew Node.js (conflicts with nvm)"
-    fi
-
-    # Check for Homebrew Ruby
-    if brew list ruby &>/dev/null || brew list ruby@3.1 &>/dev/null; then
-        brew_packages_to_remove+=("ruby" "ruby@3.1" "ruby@3.0")
-        has_conflicts=true
-        log_warning "Found Homebrew Ruby (conflicts with rbenv)"
-    fi
-
-    # Check for Homebrew-installed version managers (we want git-cloned versions)
-    if brew list pyenv &>/dev/null; then
-        brew_packages_to_remove+=("pyenv" "pyenv-virtualenv")
-        has_conflicts=true
-        log_warning "Found Homebrew pyenv (will replace with git clone)"
-    fi
-
-    if brew list rbenv &>/dev/null; then
-        brew_packages_to_remove+=("rbenv" "ruby-build")
-        has_conflicts=true
-        log_warning "Found Homebrew rbenv (will replace with git clone)"
-    fi
-
-    if brew list nvm &>/dev/null; then
-        brew_packages_to_remove+=("nvm")
-        has_conflicts=true
-        log_warning "Found Homebrew nvm (will replace with official installer)"
-    fi
-
-    if [[ "$has_conflicts" != "true" ]]; then
-        log_success "No Homebrew language runtimes found - clean slate"
-        return 0
-    fi
-
-    echo ""
-    log_warning "Homebrew-managed language runtimes can conflict with version managers."
-    log_info "Recommended: Uninstall them and use pyenv/rbenv/nvm instead."
-    echo ""
-    echo "Packages to remove:"
-    for pkg in "${brew_packages_to_remove[@]}"; do
-        echo "  - $pkg"
-    done
-    echo ""
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would uninstall: ${brew_packages_to_remove[*]}"
-        return 0
-    fi
-
-    if ! confirm "Uninstall these Homebrew packages to avoid conflicts?"; then
-        log_warning "Skipped Homebrew cleanup - you may experience conflicts"
-        log_info "To manually clean up later: brew uninstall --ignore-dependencies <package>"
-        return 0
-    fi
-
-    log_info "Uninstalling Homebrew language runtimes..."
-
-    for pkg in "${brew_packages_to_remove[@]}"; do
-        if brew list "$pkg" &>/dev/null; then
-            log_info "Uninstalling $pkg..."
-            if brew uninstall --ignore-dependencies "$pkg" 2>/dev/null; then
-                log_success "Uninstalled $pkg"
-            else
-                log_warning "Could not uninstall $pkg (may not be installed)"
-            fi
-        fi
-    done
-
-    # Clean up any leftover node_modules from global npm
-    if [[ -d "/usr/local/lib/node_modules" ]]; then
-        log_info "Cleaning up global node_modules..."
-        sudo rm -rf /usr/local/lib/node_modules 2>/dev/null || true
-    fi
-
-    # Remove Homebrew's shims from PATH for this session
-    # This prevents conflicts during version manager installation
-    local cleaned_path
-    cleaned_path=$(echo "$PATH" | tr ':' '\n' | grep -v '/usr/local/opt/python' | grep -v '/usr/local/opt/node' | grep -v '/usr/local/opt/ruby' | tr '\n' ':' | sed 's/:$//')
-    export PATH="$cleaned_path"
-
-    log_success "Homebrew language runtimes removed"
-    log_info "Version managers will be installed next"
-}
-
-# Phase 5a: mise (polyglot version manager - optional)
+# Install the single runtime manager after the managed mise config is linked.
 phase_mise() {
-    log_info "Setting up mise (polyglot version manager)..."
+    log_phase "Mise Runtime Setup"
 
-    # Check if mise is already installed
-    if command_exists mise; then
-        log_success "mise is already installed ($(mise --version))"
-        return 0
-    fi
-
-    # Check if user wants mise
-    log_info "mise can manage Python, Node, Ruby, and 100+ other tools"
-    log_info "It's optional - you can use pyenv/rbenv/nvm individually instead"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would install mise via official installer"
-        return 0
-    fi
-
-    if ! confirm "Install mise (optional polyglot version manager)?"; then
-        log_info "Skipped mise - will use individual version managers"
-        return 0
-    fi
-
-    log_info "Installing mise..."
-    if curl https://mise.run | sh; then
-        log_success "mise installed"
-
-        # Add mise to PATH for this session
-        export PATH="$HOME/.local/bin:$PATH"
-
-        # Verify installation
-        if command_exists mise; then
-            log_info "Verified: mise $(mise --version)"
-            log_info "mise will be lazy-loaded in your shell"
-        fi
-    else
-        log_warning "Failed to install mise (non-critical)"
-    fi
-}
-
-# Phase 5b: pyenv (Python version manager)
-phase_pyenv() {
-    log_info "Setting up pyenv (Python version manager)..."
-
-    local pyenv_root="$HOME/.pyenv"
-
-    # Check if pyenv is properly installed (has libexec directory with pyenv executable)
-    if [[ -d "$pyenv_root" ]] && [[ -f "$pyenv_root/libexec/pyenv" ]]; then
-        log_success "pyenv is already installed"
-
-        # Add to PATH and initialize for this session
-        export PYENV_ROOT="$pyenv_root"
-        export PATH="$PYENV_ROOT/bin:$PATH"
-        eval "$(pyenv init -)"
-
-        # Check if any Python version is installed
-        if pyenv versions --bare 2>/dev/null | grep -q .; then
-            local current_python
-            current_python=$(pyenv version 2>/dev/null | cut -d' ' -f1)
-            log_info "Python versions: $(pyenv versions --bare | tr '\n' ' ')"
-            log_success "Current global Python: $current_python"
+    if ! command_exists mise; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "Would install mise"
         else
-            log_warning "No Python versions installed via pyenv"
-            if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest Python version?"; then
-                local latest_python
-                latest_python=$(pyenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
-                if [[ -n "$latest_python" ]]; then
-                    log_info "Installing Python $latest_python..."
-                    if pyenv install "$latest_python" && pyenv global "$latest_python"; then
-                        log_success "Python $latest_python installed and set as default"
-                    fi
-                fi
-            fi
+            confirm "Install mise for Node, Python, and Ruby?" || {
+                log_error "Mise is required for managed runtimes"
+                exit 3
+            }
+            run_remote_bash_installer "https://mise.run"
+            export PATH="$HOME/.local/bin:$PATH"
         fi
-        return 0
     fi
-
-    # Remove incomplete installation if it exists
-    if [[ -d "$pyenv_root" ]]; then
-        log_warning "Found incomplete pyenv installation, removing..."
-        rm -rf "$pyenv_root"
-    fi
-
-    log_warning "pyenv is not installed"
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would install pyenv from GitHub (git clone)"
-        log_info "Would install latest stable Python version"
+        log_info "Would install Node, Python, and Ruby from ~/.config/mise/config.toml"
         return 0
     fi
 
-    if ! confirm "Install pyenv (Python version manager)?"; then
-        log_warning "Skipped pyenv installation"
-        return 0
-    fi
-
-    log_info "Installing pyenv via git clone..."
-    if git clone https://github.com/pyenv/pyenv.git "$pyenv_root"; then
-        log_success "pyenv cloned to $pyenv_root"
-    else
-        log_error "Failed to clone pyenv"
-        return 1
-    fi
-
-    # Add pyenv to PATH for this session
-    export PYENV_ROOT="$pyenv_root"
-    export PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init -)"
-
-    log_info "Installing latest stable Python version..."
-    local latest_python
-    latest_python=$(pyenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
-
-    if [[ -z "$latest_python" ]]; then
-        log_warning "Could not determine latest Python version"
-        return 0
-    fi
-
-    log_info "Installing Python $latest_python (this may take a few minutes)..."
-    if pyenv install "$latest_python" && pyenv global "$latest_python"; then
-        log_success "Python $latest_python installed and set as global default"
-        pyenv rehash
-        log_info "Verified: $(pyenv version)"
-    else
-        log_warning "Failed to install Python version"
-    fi
+    command_exists mise || { log_error "mise installer did not provide mise"; exit 2; }
+    [[ -f "$HOME/.config/mise/config.toml" ]] || {
+        log_error "Managed mise config is missing"
+        exit 2
+    }
+    mise install --yes
 }
 
-# Phase 5c: rbenv (Ruby version manager)
-phase_rbenv() {
-    log_info "Setting up rbenv (Ruby version manager)..."
-
-    local rbenv_root="$HOME/.rbenv"
-
-    # Check if rbenv is properly installed (has libexec directory with rbenv executable)
-    if [[ -d "$rbenv_root" ]] && [[ -f "$rbenv_root/libexec/rbenv" ]]; then
-        log_success "rbenv is already installed"
-
-        # Add to PATH and initialize for this session
-        export PATH="$rbenv_root/bin:$PATH"
-        eval "$(rbenv init - bash)"
-
-        # Check if any Ruby version is installed
-        if rbenv versions --bare 2>/dev/null | grep -q .; then
-            local current_ruby
-            current_ruby=$(rbenv version 2>/dev/null | cut -d' ' -f1)
-            log_info "Ruby versions: $(rbenv versions --bare | tr '\n' ' ')"
-            log_success "Current global Ruby: $current_ruby"
-        else
-            log_warning "No Ruby versions installed via rbenv"
-            if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest Ruby version?"; then
-                # Ensure ruby-build plugin exists
-                if [[ ! -d "$rbenv_root/plugins/ruby-build" ]]; then
-                    log_info "Installing ruby-build plugin..."
-                    git clone https://github.com/rbenv/ruby-build.git "$rbenv_root/plugins/ruby-build"
-                fi
-
-                local latest_ruby
-                latest_ruby=$(rbenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
-                if [[ -n "$latest_ruby" ]]; then
-                    log_info "Installing Ruby $latest_ruby..."
-                    if rbenv install "$latest_ruby" && rbenv global "$latest_ruby"; then
-                        log_success "Ruby $latest_ruby installed and set as default"
-                        gem install bundler && rbenv rehash
-                    fi
-                fi
-            fi
-        fi
-        return 0
-    fi
-
-    # Remove incomplete installation if it exists
-    if [[ -d "$rbenv_root" ]]; then
-        log_warning "Found incomplete rbenv installation, removing..."
-        rm -rf "$rbenv_root"
-    fi
-
-    log_warning "rbenv is not installed"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would install rbenv from GitHub (git clone)"
-        log_info "Would install ruby-build plugin"
-        log_info "Would install latest stable Ruby version"
-        return 0
-    fi
-
-    if ! confirm "Install rbenv (Ruby version manager)?"; then
-        log_warning "Skipped rbenv installation"
-        return 0
-    fi
-
-    log_info "Installing rbenv via git clone..."
-    if git clone https://github.com/rbenv/rbenv.git "$rbenv_root"; then
-        log_success "rbenv cloned to $rbenv_root"
-    else
-        log_error "Failed to clone rbenv"
-        return 1
-    fi
-
-    log_info "Installing ruby-build plugin for rbenv..."
-    if git clone https://github.com/rbenv/ruby-build.git "$rbenv_root/plugins/ruby-build"; then
-        log_success "ruby-build plugin installed"
-    else
-        log_warning "Failed to install ruby-build plugin (non-fatal)"
-    fi
-
-    # Add rbenv to PATH for this session
-    export PATH="$rbenv_root/bin:$PATH"
-    eval "$(rbenv init - bash)"
-
-    log_info "Installing latest stable Ruby version..."
-    local latest_ruby
-    latest_ruby=$(rbenv install --list 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+\.[0-9]+$' | tail -1 | tr -d ' ')
-
-    if [[ -z "$latest_ruby" ]]; then
-        log_warning "Could not determine latest Ruby version"
-        return 0
-    fi
-
-    log_info "Installing Ruby $latest_ruby (this may take a few minutes)..."
-    if rbenv install "$latest_ruby" && rbenv global "$latest_ruby"; then
-        log_success "Ruby $latest_ruby installed and set as global default"
-
-        log_info "Installing bundler gem..."
-        gem install bundler && rbenv rehash
-        log_success "bundler installed"
-
-        log_info "Verified: $(rbenv version)"
-    else
-        log_warning "Failed to install Ruby version"
-    fi
-}
-
-# Phase 5d: nvm (Node.js version manager)
-phase_nvm() {
-    log_info "Setting up nvm (Node.js version manager)..."
-
-    local nvm_dir="$HOME/.nvm"
-
-    # Check if nvm is properly installed (has nvm.sh script)
-    if [[ -d "$nvm_dir" ]] && [[ -f "$nvm_dir/nvm.sh" ]]; then
-        log_success "nvm is already installed"
-
-        # Source nvm for this session
-        export NVM_DIR="$nvm_dir"
-        # shellcheck disable=SC1091
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-        # Check if any Node version is installed
-        if nvm ls 2>/dev/null | grep -q 'v[0-9]'; then
-            local current_version
-            current_version=$(nvm current 2>/dev/null || echo "none")
-            log_info "Node.js versions installed"
-            log_success "Current global Node: $current_version"
-        else
-            log_warning "No Node.js versions installed via nvm"
-            if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest LTS Node.js?"; then
-                log_info "Installing latest LTS Node.js..."
-                if nvm install --lts && nvm alias default 'lts/*'; then
-                    log_success "Node.js $(nvm current) installed and set as default"
-                fi
-            fi
-        fi
-        return 0
-    fi
-
-    # Remove incomplete installation if it exists
-    if [[ -d "$nvm_dir" ]]; then
-        log_warning "Found incomplete nvm installation, removing..."
-        rm -rf "$nvm_dir"
-    fi
-
-    log_warning "nvm is not installed"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would install nvm from official installer"
-        log_info "Would install latest LTS Node.js version"
-        return 0
-    fi
-
-    if ! confirm "Install nvm (Node.js version manager)?"; then
-        log_warning "Skipped nvm installation"
-        return 0
-    fi
-
-    log_info "Installing nvm via official installer..."
-    if run_remote_bash_installer \
-        "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh"; then
-        log_success "nvm installed to $nvm_dir"
-    else
-        log_error "Failed to install nvm"
-        return 1
-    fi
-
-    # Source nvm for this session
-    export NVM_DIR="$nvm_dir"
-    # shellcheck disable=SC1091
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-    log_info "Installing latest LTS Node.js version..."
-    if nvm install --lts && nvm alias default 'lts/*'; then
-        local node_version
-        node_version=$(nvm current)
-        log_success "Node.js $node_version installed and set as default"
-        node --version 2>/dev/null && log_info "Verified: node $(node --version)"
-        npm --version 2>/dev/null && log_info "Verified: npm $(npm --version)"
-    else
-        log_warning "Failed to install Node.js LTS version"
-    fi
-}
-
-# Phase 6: Prezto and Starship setup
+# Prezto and Starship setup
 phase_prezto() {
-    log_phase "Phase 6: Prezto & Starship Setup"
+    log_phase "Prezto & Starship Setup"
 
     local prezto_dir="$HOME/.zprezto"
 
@@ -939,19 +440,7 @@ phase_prezto() {
     else
         log_warning "Starship is not installed"
 
-        if [[ "$DRY_RUN" == "true" ]]; then
-            log_info "Would install Starship with Homebrew"
-        elif confirm "Install Starship prompt?"; then
-            log_info "Installing Starship..."
-            if brew install starship; then
-                log_success "Starship installed"
-            else
-                log_error "Failed to install Starship"
-                exit 1
-            fi
-        else
-            log_warning "Skipped Starship installation - no custom prompt will load"
-        fi
+        log_warning "Starship is not installed; the Nix backend provides the managed prompt"
     fi
 
     # Create Prezto runcom symlinks (for files not managed by our dotfiles)
@@ -1000,14 +489,14 @@ run_linker() {
     python3 "$linker" "${link_args[@]}"
 }
 
-# Phase 7: Symlink creation
+# Symlink creation
 phase_symlinks() {
     if [[ "$SKIP_LINKS" == "true" ]]; then
         log_info "Skipping symlink creation (--skip-links flag)"
         return 0
     fi
 
-    log_phase "Phase 7: Symlink Creation"
+    log_phase "Symlink Creation"
 
     local linker_status
 
@@ -1027,11 +516,11 @@ phase_symlinks() {
     exit 1
 }
 
-# Phase 7-alt: Public command linking
+# Public command linking
 phase_scripts_only() {
     local linker_status
 
-    log_phase "Phase 7: Public Command Linking (~/.local/bin only)"
+    log_phase "Public Command Linking (~/.local/bin only)"
     log_info "Running link-dotfiles for public commands..."
     if run_linker true; then
         return 0
@@ -1047,9 +536,9 @@ phase_scripts_only() {
     return "$linker_status"
 }
 
-# Phase 8: Shell configuration
+# Shell configuration
 phase_shell() {
-    log_phase "Phase 8: Shell Configuration"
+    log_phase "Shell Configuration"
 
     local current_shell="${SHELL##*/}"
     log_info "Current shell: $current_shell"
@@ -1095,7 +584,7 @@ phase_shell() {
     esac
 }
 
-# Phase 9: Performance optimization (zsh)
+# Performance optimization (zsh)
 phase_performance() {
     local current_shell="${SHELL##*/}"
 
@@ -1104,7 +593,7 @@ phase_performance() {
         return 0
     fi
 
-    log_phase "Phase 9: Performance Optimization"
+    log_phase "Performance Optimization"
 
     local compile_script="$DOTFILES_ROOT/bin/core/zsh-compile"
 
@@ -1134,8 +623,7 @@ phase_performance() {
     # Show performance info
     echo ""
     log_info "Performance features enabled:"
-    echo "  - Lazy loading via Prezto: nvm (node module with --no-use)"
-    echo "  - Lazy loading via lazy-load.zsh: pyenv, rbenv, mise, sdkman"
+    echo "  - Mise selects Node, Python, and Ruby versions"
     echo "  - Compiled bytecode configs (.zwc files)"
     echo "  - Smart completion caching (24-hour refresh)"
     echo "  - Optimized history (10k entries)"
@@ -1158,18 +646,15 @@ show_summary() {
     echo "  3. Verify git config: git config --list"
     echo ""
 
-    # Show version manager verification commands
-    echo "Verify Version Managers:"
-    echo "  - pyenv: pyenv versions"
-    echo "  - rbenv: rbenv versions"
-    echo "  - nvm: nvm list"
-    echo "  - mise: mise list (if installed)"
+    # Show runtime verification commands
+    echo "Verify Runtimes:"
+    echo "  - mise ls"
     echo ""
 
     echo "Verify Paths (after shell restart):"
-    echo "  - which python  # Should point to ~/.pyenv/shims/python"
-    echo "  - which ruby    # Should point to ~/.rbenv/shims/ruby"
-    echo "  - which node    # Should point to ~/.nvm/versions/node/..."
+    echo "  - which python  # Should point to mise shims"
+    echo "  - which ruby    # Should point to mise shims"
+    echo "  - which node    # Should point to mise shims"
     echo ""
 
     # Zsh-specific tips
@@ -1181,10 +666,7 @@ show_summary() {
         echo "  - Trim history: zsh-trim-history"
         echo "  - Target: < 500ms startup time"
         echo ""
-        echo "Lazy Loading Info:"
-        echo "  - Version managers load on first use (pyenv, rbenv, nvm, mise)"
-        echo "  - First 'python', 'ruby', 'node' command may have ~100ms delay"
-        echo "  - Subsequent commands are instant"
+        echo "Mise selects the configured runtime on directory changes."
     fi
 
     echo ""
@@ -1224,7 +706,7 @@ validate_install_options() {
         if [[ -n "$BACKEND_SELECTOR" || "$SYSTEM_MODE" == "true" || -n "$CONFIGURATION" || \
             -n "$USERNAME_VALUE" || -n "$MACHINE_NAME" || "$SKIP_NPM" == "true" || \
             "$NIX_DISTRIBUTION_EXPLICIT" == "true" || "$ALLOW_MIXED_BACKENDS" == "true" || \
-            "$SKIP_BREW" == "true" || "$SKIP_PACKAGES" == "true" || "$SKIP_LINKS" == "true" ]]; then
+            "$SKIP_PACKAGES" == "true" || "$SKIP_LINKS" == "true" ]]; then
             log_error "--scripts-only cannot be combined with backend or package options"
             exit 2
         fi
@@ -1234,7 +716,7 @@ validate_install_options() {
     case "$selected_backend" in
         nix)
             [[ "$PLATFORM" == "darwin" ]] || { log_error "Nix backend is supported only on macOS"; exit 2; }
-            if [[ "$SKIP_BREW" == "true" || "$SKIP_PACKAGES" == "true" || "$SKIP_LINKS" == "true" || \
+            if [[ "$SKIP_PACKAGES" == "true" || "$SKIP_LINKS" == "true" || \
                 "$ALLOW_MIXED_BACKENDS" == "true" ]]; then
                 log_error "Legacy options cannot be used with the Nix backend"
                 exit 2
@@ -1317,12 +799,12 @@ run_nix_backend() {
 # Run the retained imperative installer after router validation.
 run_legacy_backend() {
     phase_preflight
-    phase_homebrew
-    phase_dependencies
-    phase_bundle
-    phase_version_managers
+    if [[ "$SKIP_PACKAGES" != "true" ]]; then
+        phase_dependencies
+    fi
     phase_prezto
     phase_symlinks
+    phase_mise
     phase_shell
     phase_performance
     show_summary

@@ -1,0 +1,331 @@
+kind	homebrew_name	homebrew_version	requested	decision	nix_attribute	nix_locked_version
+formula	abseil	20260817.0	false	dependency	-	-
+formula	act	0.2.89	true	not selected	-	-
+formula	actionlint	1.7.12	true	migrate	actionlint	1.7.12
+formula	ada-url	4.0.0	false	dependency	-	-
+formula	age	1.3.2	true	not selected	-	-
+formula	aom	3.15.1	false	dependency	-	-
+formula	arp-scan	1.10.0	true	not selected	-	-
+formula	asc	5.4.0	true	not selected	-	-
+formula	ast-grep	0.45.3	true	not selected	-	-
+formula	autoconf	2.73	false	dependency	-	-
+formula	bat	0.26.1	true	migrate	bat	0.26.1
+formula	bats-core	1.14.0	true	migrate	bats	1.12.0
+formula	binwalk	3.1.0	true	not selected	-	-
+formula	boost	1.92.0	false	dependency	-	-
+formula	brotli	1.2.0	false	dependency	-	-
+formula	c-ares	1.34.8	false	dependency	-	-
+formula	ca-certificates	2026-08-13	false	dependency	-	-
+formula	cairo	1.18.6	false	dependency	-	-
+formula	carthage	0.40.0	true	not selected	-	-
+formula	certifi	2026.7.22	false	dependency	-	-
+formula	cffi	2.1.1	false	dependency	-	-
+formula	clang-format	23.1.2	true	not selected	-	-
+formula	cocoapods	1.17.0	true	migrate	cocoapods	1.16.2
+formula	coreutils	9.12	true	migrate	coreutils	9.11
+formula	curl	8.22.0	true	migrate	curl	8.22.0
+formula	dav1d	1.5.4	false	dependency	-	-
+formula	deno	2.9.7	false	dependency	-	-
+formula	depot	2.102.2	true	not selected	-	-
+formula	detect-secrets	1.5.0_9	true	not selected	-	-
+formula	difftastic	0.71.0	true	migrate	difftastic	0.69.0
+formula	docker	29.8.1	true	not selected	-	-
+formula	double-conversion	3.4.0	false	dependency	-	-
+formula	dpkg	1.23.11	true	not selected	-	-
+formula	dprint	0.57.4	true	not selected	-	-
+formula	dua-cli	2.45.0	true	not selected	-	-
+formula	dust	1.2.6	true	migrate	dust	1.2.4
+formula	edencommon	2026.09.21.00	false	dependency	-	-
+formula	eza	0.23.5	true	migrate	eza	0.23.4
+formula	fastlane	2.240.1	true	migrate	fastlane	2.232.2
+formula	fb303	2026.09.21.00	false	dependency	-	-
+formula	fbthrift	2026.09.21.00	false	dependency	-	-
+formula	fd	10.5.0	true	migrate	fd	10.4.2
+formula	ffmpeg	9.0.2	true	migrate	ffmpeg	8.1.2
+formula	fizz	2026.09.21.00	false	dependency	-	-
+formula	fmt	12.2.0	false	dependency	-	-
+formula	folly	2026.09.21.00	false	dependency	-	-
+formula	fontconfig	2.18.3	false	dependency	-	-
+formula	freetype	2.14.3	false	dependency	-	-
+formula	fribidi	1.0.17	false	dependency	-	-
+formula	fzf	0.74.4	true	migrate	fzf	0.72.0
+formula	gd	2.3.3_6	false	dependency	-	-
+formula	gdbm	1.26	false	dependency	-	-
+formula	gdk-pixbuf	2.44.8	false	dependency	-	-
+formula	gdu	5.37.0	true	migrate	gdu	5.36.1
+formula	gettext	1.0	false	dependency	-	-
+formula	gflags	2.3.1	false	dependency	-	-
+formula	ggml	0.25.1	false	dependency	-	-
+formula	gh	2.101.0	true	migrate	gh	2.101.0
+formula	giflib	6.1.3	false	dependency	-	-
+formula	git	2.55.0	true	migrate	git	2.54.0
+formula	git-branchless	0.11.1	true	not selected	-	-
+formula	git-delta	0.19.2	true	migrate	delta	0.19.2
+formula	git-extras	7.5.0	true	not selected	-	-
+formula	git-filter-repo	2.47.0	true	not selected	-	-
+formula	git-flow	0.4.1_1	true	not selected	-	-
+formula	git-ignore	1.4.0	true	not selected	-	-
+formula	git-imerge	1.2.0_1	true	not selected	-	-
+formula	git-lfs	3.8.0	true	migrate	git-lfs	3.7.1
+formula	git-quick-stats	2.11.0	true	not selected	-	-
+formula	git-secrets	1.3.0	true	not selected	-	-
+formula	git-standup	2.3.2	true	not selected	-	-
+formula	gitleaks	8.30.1	true	migrate	gitleaks	8.30.1
+formula	glab	1.119.0	true	not selected	-	-
+formula	glib	2.90.0	false	dependency	-	-
+formula	glog	0.7.1	false	dependency	-	-
+formula	gmp	6.3.0	false	dependency	-	-
+formula	gnu-tar	1.35_1	false	dependency	-	-
+formula	gnupg	2.5.24	true	not selected	-	-
+formula	gnutls	3.8.13_2	false	dependency	-	-
+formula	go	1.27.1	true	not selected	-	-
+formula	gpatch	2.8	false	dependency	-	-
+formula	gpgme	2.2.0	false	dependency	-	-
+formula	gpgmepp	2.2.0	false	dependency	-	-
+formula	gradle	9.7.1_1	true	not selected	-	-
+formula	gradle-completion	9.7.1	false	dependency	-	-
+formula	graphite2	1.3.15	false	dependency	-	-
+formula	graphviz	16.1.0	true	not selected	-	-
+formula	grex	1.4.6	true	not selected	-	-
+formula	gts	0.7.6_3	false	dependency	-	-
+formula	harfbuzz	14.5.0	false	dependency	-	-
+formula	hdrhistogram_c	0.11.10	false	dependency	-	-
+formula	herdr	0.9.1	true	not selected	-	-
+formula	highway	1.4.0	false	dependency	-	-
+formula	htop	3.5.3	true	migrate	htop	3.5.1
+formula	httpie	3.2.4_11	true	migrate	httpie	3.2.4
+formula	hyperfine	1.20.0	true	migrate	hyperfine	1.20.0
+formula	icu4c@78	78.3	false	dependency	-	-
+formula	ios-deploy	1.12.2	true	migrate	ios-deploy	1.12.2
+formula	jansson	2.15.1	false	dependency	-	-
+formula	jasper	4.2.9	false	dependency	-	-
+formula	jemalloc	5.4.0	false	dependency	-	-
+formula	jj	0.45.1	true	not selected	-	-
+formula	jpeg-turbo	3.2.0	false	dependency	-	-
+formula	jq	1.8.2	true	migrate	jq	1.8.2
+formula	json-c	0.19	false	dependency	-	-
+formula	just	1.58.0	true	migrate	just	1.51.0
+formula	kotlin	2.4.20	true	not selected	-	-
+formula	lame	4.0	false	dependency	-	-
+formula	lazygit	0.65.1	true	not selected	-	-
+formula	lefthook	2.1.14	true	not selected	-	-
+formula	libassuan	3.0.2	false	dependency	-	-
+formula	libavif	1.4.2	false	dependency	-	-
+formula	libdatrie	0.2.14	false	dependency	-	-
+formula	libevent	2.1.13	false	dependency	-	-
+formula	libffi	3.8.0	true	not selected	-	-
+formula	libgcrypt	1.12.4	false	dependency	-	-
+formula	libgit2	1.9.7	false	dependency	-	-
+formula	libgpg-error	1.61	false	dependency	-	-
+formula	libidn2	2.3.8	false	dependency	-	-
+formula	libksba	1.8.1	false	dependency	-	-
+formula	liblinear	2.50	false	dependency	-	-
+formula	libmd	1.2.0	false	dependency	-	-
+formula	libnghttp2	1.70.0	false	dependency	-	-
+formula	libnghttp3	1.18.0	false	dependency	-	-
+formula	libngtcp2	1.25.0	false	dependency	-	-
+formula	libomp	23.1.2	false	dependency	-	-
+formula	libpng	1.6.58	false	dependency	-	-
+formula	libpsl	0.23.3	false	dependency	-	-
+formula	librsvg	2.63.2	false	dependency	-	-
+formula	libsodium	1.0.22	false	dependency	-	-
+formula	libssh2	1.11.1_5	false	dependency	-	-
+formula	libtasn1	4.21.0	false	dependency	-	-
+formula	libthai	0.1.30	false	dependency	-	-
+formula	libtiff	4.7.2	false	dependency	-	-
+formula	libtool	2.6.2	false	dependency	-	-
+formula	libunistring	1.4.2	false	dependency	-	-
+formula	libusb	1.0.30	false	dependency	-	-
+formula	libuv	1.52.1	false	dependency	-	-
+formula	libvmaf	3.2.1	false	dependency	-	-
+formula	libvpx	1.17.0	false	dependency	-	-
+formula	libx11	1.8.13	false	dependency	-	-
+formula	libxau	1.0.12	false	dependency	-	-
+formula	libxcb	1.17.0	false	dependency	-	-
+formula	libxdmcp	1.1.5	false	dependency	-	-
+formula	libxext	1.3.7	false	dependency	-	-
+formula	libxrender	0.9.12	false	dependency	-	-
+formula	libyaml	0.2.5	false	dependency	-	-
+formula	libzip	1.11.4_1	false	dependency	-	-
+formula	little-cms2	2.19.1	false	dependency	-	-
+formula	llama.cpp	0.4.1	false	dependency	-	-
+formula	llhttp	9.4.3	false	dependency	-	-
+formula	llmfit	1.1.16	true	not selected	-	-
+formula	llvm	23.1.1_1	false	dependency	-	-
+formula	llvm@22	22.1.8	false	dependency	-	-
+formula	lpeg	1.1.0_2	false	dependency	-	-
+formula	lsd	1.2.0	true	migrate	lsd	1.2.0
+formula	lua	5.5.1	false	dependency	-	-
+formula	luajit	2.1.1788856981	false	dependency	-	-
+formula	luv	1.52.1-0	false	dependency	-	-
+formula	lz4	1.10.0	false	dependency	-	-
+formula	lzo	2.10	false	dependency	-	-
+formula	m4	1.4.21	false	dependency	-	-
+formula	mas	7.0.0	true	not selected	-	-
+formula	merve	1.2.2_3	false	dependency	-	-
+formula	mise	2026.9.12	true	migrate	mise	2026.5.12
+formula	mole	1.55.0	true	not selected	-	-
+formula	mpdecimal	4.0.1	false	dependency	-	-
+formula	mpg123	1.33.7	false	dependency	-	-
+formula	mtr	0.96	true	not selected	-	-
+formula	nbytes	0.1.4	false	dependency	-	-
+formula	ncdu	2.9.2	true	migrate	ncdu	2.9.2
+formula	ncurses	6.6	false	dependency	-	-
+formula	neovim	0.12.5_1	true	migrate	neovim	0.12.4
+formula	netpbm	11.02.30	false	dependency	-	-
+formula	nettle	4.0	false	dependency	-	-
+formula	nmap	7.991	true	not selected	-	-
+formula	node	26.9.0	true	not selected	-	-
+formula	npth	1.8	false	dependency	-	-
+formula	nspr	4.40	false	dependency	-	-
+formula	nss	3.130	false	dependency	-	-
+formula	oniguruma	6.9.10	false	dependency	-	-
+formula	openjdk	27	false	dependency	-	-
+formula	openjdk@17	17.0.20.1	true	not selected	-	-
+formula	openjdk@25	25.0.4.1	false	dependency	-	-
+formula	openjpeg	2.5.4	false	dependency	-	-
+formula	openssl@3	3.6.4	false	dependency	-	-
+formula	openssl@4	4.0.2	false	dependency	-	-
+formula	opus	1.6.1	false	dependency	-	-
+formula	p11-kit	0.26.5	false	dependency	-	-
+formula	pandoc	3.11	true	migrate	pandoc	3.7.0.2
+formula	pango	1.58.2	false	dependency	-	-
+formula	parallel	20260822	true	not selected	-	-
+formula	pcre2	10.48	false	dependency	-	-
+formula	peekaboo	4.2.2	true	not selected	-	-
+formula	periphery	3.8.0	true	not selected	-	-
+formula	perl	5.44.0	false	dependency	-	-
+formula	pinentry	1.3.3	false	dependency	-	-
+formula	pipx	1.17.5	true	not selected	-	-
+formula	pixman	0.46.4	false	dependency	-	-
+formula	pkgconf	3.0.7	false	dependency	-	-
+formula	plantuml	1.2026.8	true	not selected	-	-
+formula	poppler	26.09.0	true	migrate	poppler-utils	26.06.0
+formula	popt	1.19	false	dependency	-	-
+formula	pre-commit	4.6.2	true	migrate	pre-commit	4.5.1
+formula	prek	0.5.3	true	not selected	-	-
+formula	prettier	3.9.8	true	not selected	-	-
+formula	procs	0.14.12	true	migrate	procs	0.14.11
+formula	proctools	0.4pre1	true	not selected	-	-
+formula	pycparser	3.0	false	dependency	-	-
+formula	pyenv	2.8.6	true	not selected	-	-
+formula	python@3.11	3.11.16	true	not selected	-	-
+formula	python@3.13	3.13.15	true	not selected	-	-
+formula	python@3.14	3.14.7	false	dependency	-	-
+formula	python@3.9	3.9.25	true	not selected	-	-
+formula	rbenv	1.3.2	true	not selected	-	-
+formula	rbenv-default-gems	1.0.0_1	true	not selected	-	-
+formula	rclone	1.75.1	true	not selected	-	-
+formula	rcm	1.3.6	true	not selected	-	-
+formula	readline	8.3.6	false	dependency	-	-
+formula	repomix	1.18.1	true	migrate	repomix	1.15.0
+formula	ripgrep	15.2.0	true	migrate	ripgrep	15.1.0
+formula	rsync	3.5.1	true	not selected	-	-
+formula	rtk	0.49.0	true	migrate	rtk	0.41.0
+formula	ruby	4.0.7	false	dependency	-	-
+formula	ruby-build	20260917	true	not selected	-	-
+formula	rust	1.98.1	true	not selected	-	-
+formula	sapling	0.2.20260811-150444	true	not selected	-	-
+formula	sd	1.1.0	true	migrate	sd	1.1.0
+formula	sdl2-compat	2.32.72	false	dependency	-	-
+formula	sdl3	3.4.16	false	dependency	-	-
+formula	sevenzip	26.03	false	dependency	-	-
+formula	shellcheck	0.11.0	true	migrate	shellcheck	0.11.0
+formula	shfmt	3.14.1	true	migrate	shfmt	3.13.1
+formula	simdjson	4.6.11	false	dependency	-	-
+formula	simdutf	9.2.0	false	dependency	-	-
+formula	snappy	1.3.1	false	dependency	-	-
+formula	sourcekitten	0.38.0_1	true	not selected	-	-
+formula	sourcery	2.3.0_1	true	not selected	-	-
+formula	sqlite	3.53.4	false	dependency	-	-
+formula	stow	2.4.1	true	not selected	-	-
+formula	svt-av1	4.2.0	false	dependency	-	-
+formula	swift-format	604.0.0	true	migrate	swift-format	5.10.1
+formula	swiftformat	0.63.0	true	migrate	swiftformat	0.61.1
+formula	swiftlint	0.65.1	true	migrate	swiftlint	0.63.2
+formula	terminal-notifier	3.1.0	true	not selected	-	-
+formula	the_silver_searcher	2.2.0	true	not selected	-	-
+formula	tldr	1.6.1	true	not selected	-	-
+formula	tmux	3.7c	true	migrate	tmux	3.6a
+formula	tokei	15.0.0	true	migrate	tokei	14.0.0
+formula	tree	2.3.2	true	migrate	tree	2.3.2
+formula	tree-sitter	0.27.0	false	dependency	-	-
+formula	unibilium	2.1.4	false	dependency	-	-
+formula	unxip	3.3	true	not selected	-	-
+formula	unzip	6.0_8	true	not selected	-	-
+formula	usage	6.11.1	false	dependency	-	-
+formula	utf8proc	2.11.3	true	not selected	-	-
+formula	uvwasi	0.0.23	false	dependency	-	-
+formula	velero	1.18.3	true	not selected	-	-
+formula	wangle	2026.09.21.00	false	dependency	-	-
+formula	watchman	2026.09.21.00	true	not selected	-	-
+formula	webp	1.6.0	false	dependency	-	-
+formula	wget	1.25.0_2	true	migrate	wget	1.25.0
+formula	whisper.cpp	1.9.4	true	not selected	-	-
+formula	x264	r3222	false	dependency	-	-
+formula	x265	4.3	false	dependency	-	-
+formula	xcbeautify	3.2.1	true	migrate	xcbeautify	3.2.1
+formula	xcinfo	1.0.3	true	not selected	-	-
+formula	xcode-build-server	1.3.0	true	not selected	-	-
+formula	xcodegen	2.46.0	true	migrate	xcodegen	2.44.1
+formula	xcodes	2.1.0	true	not selected	-	-
+formula	xcv	1.0.1	true	not selected	-	-
+formula	xorgproto	2025.1	false	dependency	-	-
+formula	xxhash	0.8.4	false	dependency	-	-
+formula	xz	5.8.4	false	dependency	-	-
+formula	yarn	1.22.22	true	not selected	-	-
+formula	yq	4.53.6	true	migrate	yq-go	4.53.2
+formula	yt-dlp	2026.8.19_1	true	not selected	-	-
+formula	z3	5.1.0	false	dependency	-	-
+formula	zip	3.0_1	true	not selected	-	-
+formula	zoxide	0.10.0	true	migrate	zoxide	0.9.9
+formula	zsh	5.9.2	true	not selected	-	-
+formula	zsh-autosuggestions	0.7.1	true	not selected	-	-
+formula	zsh-completions	0.36.0	true	not selected	-	-
+formula	zsh-syntax-highlighting	0.8.0	true	not selected	-	-
+formula	zstd	1.5.7_1	false	dependency	-	-
+cask	anaconda	2026.07-1	true	GUI outside CLI installation	-	-
+cask	appcleaner	3.6.8	true	GUI outside CLI installation	-	-
+cask	baby-menu	0.1.24	true	GUI outside CLI installation	-	-
+cask	brave-browser	1.94.121.0	true	GUI outside CLI installation	-	-
+cask	caskhub	0.8.3	true	GUI outside CLI installation	-	-
+cask	codexbar	0.49.0	true	GUI outside CLI installation	-	-
+cask	doppler-app	3.76.5	true	GUI outside CLI installation	-	-
+cask	font-ia-writer-mono	latest	true	GUI outside CLI installation	-	-
+cask	font-jetbrains-mono	2.304	true	GUI outside CLI installation	-	-
+cask	font-jetbrains-mono-nerd-font	3.5.1	true	GUI outside CLI installation	-	-
+cask	fork	2.66.7	true	GUI outside CLI installation	-	-
+cask	git-credential-manager	2.9.1	true	GUI outside CLI installation	-	-
+cask	github	3.6.6-8b85519e	true	GUI outside CLI installation	-	-
+cask	github-copilot-for-xcode	0.51.0	true	GUI outside CLI installation	-	-
+cask	google-chrome@canary	156.0.8070.0	true	GUI outside CLI installation	-	-
+cask	homebrew-app	0.4.4	true	GUI outside CLI installation	-	-
+cask	iina	1.4.4	true	GUI outside CLI installation	-	-
+cask	imageoptim	1.9.3	true	GUI outside CLI installation	-	-
+cask	ios-app-signer	1.14	true	GUI outside CLI installation	-	-
+cask	jayjay	0.3.13,47	true	GUI outside CLI installation	-	-
+cask	muxy	1.3.0	true	GUI outside CLI installation	-	-
+cask	neohtop	1.2.0	true	GUI outside CLI installation	-	-
+cask	netnewswire	7.1.4	true	GUI outside CLI installation	-	-
+cask	opensuperwhisper	0.1.0	true	GUI outside CLI installation	-	-
+cask	postman	12.29.2	true	GUI outside CLI installation	-	-
+cask	protonvpn	6.5.1	true	GUI outside CLI installation	-	-
+cask	proxyman	6.16.0,61600	true	GUI outside CLI installation	-	-
+cask	qlab	5.6.3	true	GUI outside CLI installation	-	-
+cask	qladdict	1.3.0	true	GUI outside CLI installation	-	-
+cask	qlc+	5.2.2	true	GUI outside CLI installation	-	-
+cask	qlcolorcode	4.1.0	true	GUI outside CLI installation	-	-
+cask	qlcommonmark	1.1	true	GUI outside CLI installation	-	-
+cask	qldds	1.33	true	GUI outside CLI installation	-	-
+cask	qlprettypatch	1.0	true	GUI outside CLI installation	-	-
+cask	qlstephen	1.5.1	true	GUI outside CLI installation	-	-
+cask	qlswift	0.0.2	true	GUI outside CLI installation	-	-
+cask	qlzipinfo	1.2.7	true	GUI outside CLI installation	-	-
+cask	quicklook-video	3.12	true	GUI outside CLI installation	-	-
+cask	rectangle	1.100	true	GUI outside CLI installation	-	-
+cask	syntax-highlight	2.1.32	true	GUI outside CLI installation	-	-
+cask	visual-studio-code	1.139.0	true	GUI outside CLI installation	-	-
+cask	visual-studio-code@insiders	1.140.0-insider,1790140111422,9cc2a44bf20ac6f4badef53bc9f33dfdb5803378	true	GUI outside CLI installation	-	-
+cask	warp	0.2026.07.15.08.55.stable_01	true	GUI outside CLI installation	-	-
+cask	xcodes-app	4.1.1b41	true	GUI outside CLI installation	-	-
+cask	zed	1.12.0	true	GUI outside CLI installation	-	-

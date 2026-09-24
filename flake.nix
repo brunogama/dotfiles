@@ -86,9 +86,16 @@
           default = pkgs.mkShell {
             packages = (import ./nix/packages.nix { inherit pkgs; }) ++ [
               pkgs.deadnix
+              pkgs.gmp
+              pkgs.libyaml
               pkgs.nixfmt-tree
+              pkgs.openssl
+              pkgs.pkg-config
               pkgs.statix
             ];
+            shellHook = ''
+              export RUBY_CONFIGURE_OPTS="--with-openssl-dir=${pkgs.openssl.dev} --with-libyaml-dir=${pkgs.libyaml.dev} --with-gmp-dir=${pkgs.gmp.dev}"
+            '';
           };
         }
       );

@@ -148,7 +148,7 @@ else
         echo "  ${BOLD}Recommended actions:${NC}"
         echo "    1. Run 'zsh-benchmark --detailed' for analysis"
         echo "    2. Check for heavy tools loading on startup"
-        echo "    3. Consider lazy loading (mise, rbenv, nvm)"
+        echo "    3. Mise activates only in interactive shells"
         echo "    4. Run 'zsh-compile' to compile config files"
     fi
 

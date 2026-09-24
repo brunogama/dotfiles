@@ -48,23 +48,13 @@ typeset -gU cdpath fpath mailpath path
 # )
 
 # Set the list of directories that Zsh searches for programs.
-export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
-# Keep inherited Nix profile paths ahead of Homebrew and /usr/local fallbacks.
+# Put mise-managed runtimes ahead of system language runtimes.
 path=(
+  $HOME/.local/share/mise/shims(N)
+  ${DOTFILES_MISE_COMPAT_BIN:-}(N)
   $HOME/{,s}bin(N)
   $path
-  /opt/{homebrew,local}/{,s}bin(N)
-  /usr/local/{,s}bin(N)
 )
-
-# Legacy version managers remain available as an explicit migration fallback.
-if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]]; then
-  path=(
-    $PYENV_ROOT/shims(N)
-    $PYENV_ROOT/bin(N)
-    $path
-  )
-fi
 
 #
 # Less
