@@ -180,6 +180,7 @@ jobs:
 
       - name: Run maintained integration tests
         run: |
+          set -o pipefail
           mkdir -p test-results
           bats --tap --jobs "${BATS_JOBS:-2}" \
             tests/integration/core/test_install.bats \

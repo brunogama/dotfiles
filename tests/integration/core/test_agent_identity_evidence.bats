@@ -256,6 +256,23 @@ EOF
     assert_success
 }
 
+@test "wrapper does not pass inherited GitHub tokens without an explicit choice" {
+    local upstream config
+    upstream="$(create_fake_upstream codex)"
+    config="$(write_agent_config 'agent-account' 'agent@example.com')"
+    link_agent_wrapper codex
+    run env \
+        GH_TOKEN=inherited-gh-token \
+        GITHUB_TOKEN=inherited-github-token \
+        "DOTFILES_AGENT_CONFIG=$config" \
+        "DOTFILES_CODEX_BIN=$upstream" \
+        "$TEST_BIN/codex" --model test-model 'test prompt'
+
+    assert_success
+    run grep -E '^(GH_TOKEN|GITHUB_TOKEN)=' "$WRAPPER_ENV_OUTPUT"
+    assert_failure
+}
+
 @test "wrapper mints and exports a GitHub App token when the App is configured" {
     local upstream config
     upstream="$(create_fake_upstream codex)"
@@ -276,6 +293,8 @@ EOF
     upstream="$(create_fake_upstream codex)"
     config="$(write_agent_config 'agent-account' 'agent@example.com' '12345')"
     create_fake_credfile unavailable
+    export GH_TOKEN=inherited-gh-token
+    export GITHUB_TOKEN=inherited-github-token
     run_wrapper codex "$upstream" "$config"
 
     assert_success

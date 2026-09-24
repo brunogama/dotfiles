@@ -187,6 +187,12 @@ class PrAutofixLoopTest(unittest.TestCase):
         self.assertEqual(["first", "second"], [t["path"] for t in threads])
         self.assertIn("cursor=cursor-1", fetch.call_args_list[1].args[0])
 
+    def test_missing_pull_request_is_a_controlled_fetch_failure(self) -> None:
+        response = {"data": {"repository": {"pullRequest": None}}}
+        with patch.object(self.module, "run_json", return_value=response):
+            with self.assertRaisesRegex(RuntimeError, "pull request"):
+                self.module.fetch_review_threads("owner", "repo", 78)
+
     def test_rejects_unrelated_or_dirty_checkout(self) -> None:
         pr = {
             "headRepository": {"nameWithOwner": "owner/repo"},
@@ -194,7 +200,7 @@ class PrAutofixLoopTest(unittest.TestCase):
             "headRefOid": "abc123",
         }
         git_values = {
-            ("remote", "get-url", "--push", "origin"): "git@github.com:owner/repo.git",
+            ("remote", "get-url", "--push", "--all", "origin"): "git@github.com:owner/repo.git",
             ("branch", "--show-current"): "topic",
             ("rev-parse", "HEAD"): "abc123",
         }
@@ -222,6 +228,19 @@ class PrAutofixLoopTest(unittest.TestCase):
         with patch.object(self.module, "git_text", return_value="git@github.com:other/repo.git"):
             with self.assertRaisesRegex(RuntimeError, "origin"):
                 self.module.verify_pr_checkout(pr, "owner", "repo")
+
+    def test_rejects_multiple_push_destinations(self) -> None:
+        pr = {
+            "headRepository": {"nameWithOwner": "owner/repo"},
+            "headRefName": "topic",
+        }
+        push_urls = (
+            "git@github.com:owner/repo.git\n"
+            "git@github.com:other/repo.git"
+        )
+        with patch.object(self.module, "git_text", return_value=push_urls):
+            with self.assertRaisesRegex(RuntimeError, "origin"):
+                self.module.verify_pr_target(pr, "owner", "repo")
 
     def test_default_fixer_requires_explicit_command(self) -> None:
         command = self.module.resolve_fix_command({})

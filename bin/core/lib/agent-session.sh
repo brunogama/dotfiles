@@ -80,6 +80,7 @@ mint_agent_github_token() {
 	fi
 
 	# Use an App token unless an explicit token or an opted-in gh token worked.
+	unset GH_TOKEN GITHUB_TOKEN
 	[[ -n "${GITHUB_APP_ID:-}" ]] || return 0
 
 	script_base="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

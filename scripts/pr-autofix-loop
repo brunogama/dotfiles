@@ -290,7 +290,10 @@ def fetch_review_threads(owner: str, repo: str, number: int) -> list[dict[str, A
         if cursor is not None:
             argv.extend(["-f", f"cursor={cursor}"])
         data = run_json(argv)
-        connection = data["data"]["repository"]["pullRequest"]["reviewThreads"]
+        pull_request = (data["data"]["repository"] or {}).get("pullRequest")
+        if pull_request is None:
+            raise RuntimeError("pull request not found while fetching review threads")
+        connection = pull_request["reviewThreads"]
         threads.extend(connection["nodes"] or [])
         page = connection["pageInfo"]
         if not page["hasNextPage"]:
@@ -332,7 +335,10 @@ def verify_pr_target(pr_info: dict[str, Any], owner: str, repo: str) -> None:
     head_repo = (pr_info.get("headRepository") or {}).get("nameWithOwner")
     if head_repo != expected_repo:
         raise RuntimeError("fork PRs are not supported by this push command")
-    remote = git_text("remote", "get-url", "--push", "origin")
+    push_urls = git_text("remote", "get-url", "--push", "--all", "origin").splitlines()
+    if len(push_urls) != 1:
+        raise RuntimeError("origin must have exactly one push destination")
+    remote = push_urls[0]
     match = re.fullmatch(
         r"(?:git@github\.com:|https://github\.com/|ssh://git@github\.com/)"
         r"([^/]+/[^/]+?)(?:\.git)?/?",

@@ -251,6 +251,7 @@ macos_test() (
 
 macos_integration() (
 	cd "$workspace"
+	set -o pipefail
 	mkdir -p test-results
 	bats --tap --jobs "${BATS_JOBS:-2}" \
 		tests/integration/core/test_install.bats \
