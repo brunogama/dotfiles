@@ -821,7 +821,7 @@ EOF
         assert_output --partial "Starship is already installed"
     else
         assert_output --partial "Starship is not installed"
-        assert_output --partial "Would install Starship with Homebrew"
+        assert_output --partial "the Nix backend provides the managed prompt"
     fi
 }
 
