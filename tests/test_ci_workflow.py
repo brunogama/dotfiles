@@ -80,6 +80,12 @@ class SerialPipelineTest(unittest.TestCase):
                 self.assertNotIn("dorny/paths-filter", workflow)
                 self.assertNotIn("needs.changes", workflow)
 
+    def test_token_bearing_install_runs_only_on_trusted_events(self) -> None:
+        workflow = self._workflow(".github/workflows/ci.yml")
+        install_body = _job_body(workflow, "install-nix-macos") or ""
+        self.assertIn("if: github.event_name != 'pull_request'", install_body)
+        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", install_body)
+
 
 if __name__ == "__main__":
     unittest.main()
