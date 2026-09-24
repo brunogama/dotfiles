@@ -34,7 +34,7 @@ Validate and activate the standalone Home Manager configuration without sudo.
 Options:
   --configuration NAME    Select a homeConfigurations output (default: default)
   --skip-check            Skip pre-activation Nix evaluation
-  --skip-npm              Do not synchronize pinned npm tools
+  --skip-npm              Do not synchronize nvm global npm tools
   --dry-run               Print commands without changing the user environment
   -h, --help              Show this help message
 EOF
@@ -121,10 +121,9 @@ else
 fi
 
 if [[ "$SKIP_NPM" != "true" ]]; then
-    npm_command=(nix --extra-experimental-features "nix-command flakes" develop \
-        "$DOTFILES_ROOT" --command "$SCRIPT_DIR/nix-npm-sync")
+    npm_command=("$SCRIPT_DIR/nvm-npm-sync")
     if [[ "$DRY_RUN" == "true" ]]; then
-        print_command "${npm_command[@]}"
+        print_command "${npm_command[@]}" --dry-run
     else
         "${npm_command[@]}"
     fi

@@ -14,11 +14,12 @@ setup() {
 
     # Create mock dotfiles structure
     export DOTFILES_ROOT="$TEST_REPO_DIR"
+    export NVM_DIR="$HOME/.nvm"
     cd "$DOTFILES_ROOT"
 
     # Create necessary directories
     mkdir -p bin/core
-    mkdir -p home-darwin
+    mkdir -p home-darwin packages/npm
 
     # Create mock scripts
     cat > bin/core/link-dotfiles.py << 'EOF'
@@ -43,6 +44,10 @@ printf ' %s' "$@"
 printf '\n'
 EOF
     chmod +x bin/core/nix-bootstrap
+
+    cp "$(get_dotfiles_root)/bin/core/nvm-npm-sync" bin/core/nvm-npm-sync
+    cp "$(get_dotfiles_root)/packages/npm/package.json" packages/npm/package.json
+    chmod +x bin/core/nvm-npm-sync
 
     # Create mock Brewfile
     cat > home-darwin/Brewfile << 'EOF'
@@ -343,12 +348,14 @@ teardown() {
     local real_dotfiles_root
     real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
     run /bin/bash "$real_dotfiles_root/bin/core/nix-activate" \
-        --dry-run --skip-check --skip-npm
+        --dry-run --skip-check
 
     assert_success
     assert_output --partial "$real_dotfiles_root#home-manager"
+    assert_output --partial "$real_dotfiles_root/bin/core/nvm-npm-sync --dry-run"
     refute_output --partial "sudo"
     refute_output --partial "darwin-rebuild"
+    refute_output --partial "nix develop"
 }
 
 @test "nix-bootstrap: defaults to user activation" {
@@ -682,12 +689,8 @@ EOF
 @test "install: checks for nvm" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
-
-    if [[ -d "$HOME/.nvm" ]]; then
-        assert_output --partial "nvm is already installed"
-    else
-        assert_output --partial "nvm is not installed"
-    fi
+    assert_output --partial "Would install nvm"
+    assert_output --partial "Would run: nvm install node"
 }
 
 # Symlink Phase Tests

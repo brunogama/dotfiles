@@ -2,7 +2,7 @@
   "name": "dotfiles-global-tools",
   "version": "1.0.0",
   "private": true,
-  "description": "Pinned npm tools that are not available or practical in Nixpkgs",
+  "description": "Exact direct pins for dotfiles-managed nvm global npm tools",
   "engines": {
     "node": ">=24"
   },

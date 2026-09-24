@@ -12,7 +12,7 @@
 # Saves ~100-200ms on shell startup compared to sourcing nvm.sh eagerly.
 # After first use, .nvmrc auto-switching is enabled via chpwd hook.
 
-if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" && -s "$NVM_DIR/nvm.sh" ]]; then
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
     # Internal function to initialize nvm and set up .nvmrc auto-switching
     _lazy_load_nvm() {
         unfunction nvm node npm npx 2>/dev/null

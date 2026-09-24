@@ -151,7 +151,7 @@ jobs:
       - name: Test documented CLI help messages
         run: |
           failed=0
-          for script in ./install bin/core/link-dotfiles.py bin/core/nix-npm-sync bin/core/work-mode; do
+          for script in ./install bin/core/link-dotfiles.py bin/core/nvm-npm-sync bin/core/work-mode; do
             echo "Testing: $script"
             if ! help_output="$(perl -e 'alarm 5; exec @ARGV' "$script" --help 2>&1)" ||
               [[ -z "$help_output" ]]; then
@@ -184,6 +184,7 @@ jobs:
           mkdir -p test-results
           bats --tap --jobs "${BATS_JOBS:-2}" \
             tests/integration/core/test_install.bats \
+            tests/integration/core/test_nvm_npm_sync.bats \
             tests/integration/core/test_work_mode.bats | tee test-results/integration.tap
 
       - name: Upload test results
@@ -245,4 +246,8 @@ jobs:
           for command in git home-manager jq rg shellcheck starship zsh; do
             command -v "$command" >/dev/null
           done
+          test -x "$HOME/.nvm/current/bin/node"
+          test -x "$HOME/.nvm/current/bin/npm"
+          test -x "$HOME/.nvm/current/bin/playwright-cli"
+          bin/core/nvm-npm-sync --check
           home-manager generations

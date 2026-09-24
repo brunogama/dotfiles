@@ -18,8 +18,15 @@ export NVM_DIR="$HOME/.nvm"
 export SDKMAN_DIR="$HOME/.sdkman"
 export UV_NATIVE_TLS=1
 
-# Keep inherited Nix profile paths ahead of Homebrew and /usr/local fallbacks.
+# Remove the retired XDG npm toolchain from inherited shells. Home Manager no
+# longer exports it, but `exec zsh` retains the parent process environment.
+path=("${(@)path:#${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/npm/current/node_modules/.bin}")
+unset DOTFILES_NPM_BIN
+
+# The stable nvm current link exposes Node and its global tools without eagerly
+# sourcing nvm.sh. Keep it ahead of local fallbacks that may contain old shims.
 path=(
+    $NVM_DIR/current/bin(N)
     $HOME/local/bin(N)
     $HOME/.local/bin(N)
     $HOME/.claude/local(N)
@@ -29,7 +36,7 @@ path=(
     /usr/local/{,s}bin(N)
 )
 
-# Legacy version managers remain available as an explicit migration fallback.
+# Other legacy version managers remain available as a migration fallback.
 if [[ "${DOTFILES_ENABLE_LEGACY_VERSION_MANAGERS:-0}" == "1" ]]; then
     path=(
         $PYENV_ROOT/shims(N)
@@ -123,11 +130,6 @@ mkcd() {
 # ============================================================================
 # 7. LAZY LOADING (Defer expensive tools until first use)
 # ============================================================================
-# Optional nvm path helper, if present, must run after NVM_DIR is set above.
-if [[ -f ~/.config/zsh/lib/nvm-path.zsh ]]; then
-    source ~/.config/zsh/lib/nvm-path.zsh
-fi
-
 # Lazy loading for nvm, pyenv, rbenv, mise, SDKMAN, and fzf key bindings.
 if [[ -f ~/.config/zsh/lib/lazy-load.zsh ]]; then
     source ~/.config/zsh/lib/lazy-load.zsh

@@ -54,7 +54,7 @@ Options:
   --username NAME         Set the macOS account short name
   --machine-name NAME     Set the Mac display name and normalized host names
   --nix-distribution MODE Declare upstream or determinate Nix ownership
-  --skip-npm              Do not synchronize pinned npm tools
+  --skip-npm              Do not synchronize nvm global npm tools
   --dry-run               Print planned actions without changing the system
   --yes                   Confirm prerequisite installations non-interactively
   -h, --help              Show this help message

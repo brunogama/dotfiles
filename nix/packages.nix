@@ -13,7 +13,6 @@ with pkgs;
   git-lfs
   httpie
   jq
-  nodejs_24
   pandoc
   perl
   poppler-utils

@@ -87,6 +87,7 @@
             packages = (import ./nix/packages.nix { inherit pkgs; }) ++ [
               pkgs.deadnix
               pkgs.nixfmt-tree
+              pkgs.nodejs_24
               pkgs.statix
             ];
           };

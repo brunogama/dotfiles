@@ -6,7 +6,6 @@
   ...
 }:
 let
-  npmBin = "${config.xdg.dataHome}/dotfiles/npm/current/node_modules/.bin";
   legacyLinks = [
     {
       target = ".zshenv";
@@ -83,13 +82,12 @@ in
     packages = import ./packages.nix { inherit pkgs; };
 
     sessionPath = [
+      "${config.home.homeDirectory}/.nvm/current/bin"
       "${config.home.homeDirectory}/local/bin"
       "${config.home.homeDirectory}/.local/bin"
-      npmBin
     ];
 
     sessionVariables = {
-      DOTFILES_NPM_BIN = npmBin;
       UV_NATIVE_TLS = "1";
       ZPREZTODIR = "${pkgs.zsh-prezto}/share/zsh-prezto";
     };

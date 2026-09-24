@@ -103,7 +103,7 @@ OPTIONS:
                        Set the Mac and normalized host names (Nix only)
     --nix-distribution MODE
                        Declare upstream or determinate Nix ownership (Nix only)
-    --skip-npm         Do not synchronize pinned npm tools (Nix only)
+    --skip-npm         Do not synchronize nvm global npm tools (Nix only)
     --allow-mixed-backends
                        Permit legacy mode on a Home Manager-managed macOS setup
     --dry-run          Preview the selected backend without changing the system
@@ -577,12 +577,6 @@ phase_migrate_from_homebrew() {
         fi
     done
 
-    # Clean up any leftover node_modules from global npm
-    if [[ -d "/usr/local/lib/node_modules" ]]; then
-        log_info "Cleaning up global node_modules..."
-        sudo rm -rf /usr/local/lib/node_modules 2>/dev/null || true
-    fi
-
     # Remove Homebrew's shims from PATH for this session
     # This prevents conflicts during version manager installation
     local cleaned_path
@@ -831,78 +825,17 @@ phase_rbenv() {
 phase_nvm() {
     log_info "Setting up nvm (Node.js version manager)..."
 
-    local nvm_dir="$HOME/.nvm"
+    local sync_script="$DOTFILES_ROOT/bin/core/nvm-npm-sync"
+    local sync_args=()
 
-    # Check if nvm is properly installed (has nvm.sh script)
-    if [[ -d "$nvm_dir" ]] && [[ -f "$nvm_dir/nvm.sh" ]]; then
-        log_success "nvm is already installed"
-
-        # Source nvm for this session
-        export NVM_DIR="$nvm_dir"
-        # shellcheck disable=SC1091
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-        # Check if any Node version is installed
-        if nvm ls 2>/dev/null | grep -q 'v[0-9]'; then
-            local current_version
-            current_version=$(nvm current 2>/dev/null || echo "none")
-            log_info "Node.js versions installed"
-            log_success "Current global Node: $current_version"
-        else
-            log_warning "No Node.js versions installed via nvm"
-            if [[ "$DRY_RUN" != "true" ]] && confirm "Install latest LTS Node.js?"; then
-                log_info "Installing latest LTS Node.js..."
-                if nvm install --lts && nvm alias default 'lts/*'; then
-                    log_success "Node.js $(nvm current) installed and set as default"
-                fi
-            fi
-        fi
-        return 0
-    fi
-
-    # Remove incomplete installation if it exists
-    if [[ -d "$nvm_dir" ]]; then
-        log_warning "Found incomplete nvm installation, removing..."
-        rm -rf "$nvm_dir"
-    fi
-
-    log_warning "nvm is not installed"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "Would install nvm from official installer"
-        log_info "Would install latest LTS Node.js version"
-        return 0
-    fi
-
-    if ! confirm "Install nvm (Node.js version manager)?"; then
-        log_warning "Skipped nvm installation"
-        return 0
-    fi
-
-    log_info "Installing nvm via official installer..."
-    if run_remote_bash_installer \
-        "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh"; then
-        log_success "nvm installed to $nvm_dir"
-    else
-        log_error "Failed to install nvm"
+    [[ -x "$sync_script" ]] || {
+        log_error "nvm npm synchronizer not found: $sync_script"
         return 1
-    fi
+    }
+    [[ "$DRY_RUN" == "true" ]] && sync_args+=(--dry-run)
 
-    # Source nvm for this session
-    export NVM_DIR="$nvm_dir"
-    # shellcheck disable=SC1091
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-    log_info "Installing latest LTS Node.js version..."
-    if nvm install --lts && nvm alias default 'lts/*'; then
-        local node_version
-        node_version=$(nvm current)
-        log_success "Node.js $node_version installed and set as default"
-        node --version 2>/dev/null && log_info "Verified: node $(node --version)"
-        npm --version 2>/dev/null && log_info "Verified: npm $(npm --version)"
-    else
-        log_warning "Failed to install Node.js LTS version"
-    fi
+    "$sync_script" "${sync_args[@]}"
+    log_success "nvm, Node.js, and managed global npm tools are ready"
 }
 
 # Phase 6: Prezto and Starship setup
@@ -1134,8 +1067,7 @@ phase_performance() {
     # Show performance info
     echo ""
     log_info "Performance features enabled:"
-    echo "  - Lazy loading via Prezto: nvm (node module with --no-use)"
-    echo "  - Lazy loading via lazy-load.zsh: pyenv, rbenv, mise, sdkman"
+    echo "  - Lazy loading via lazy-load.zsh: nvm, pyenv, rbenv, mise, sdkman"
     echo "  - Compiled bytecode configs (.zwc files)"
     echo "  - Smart completion caching (24-hour refresh)"
     echo "  - Optimized history (10k entries)"

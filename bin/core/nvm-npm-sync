@@ -1,0 +1,412 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly DOTFILES_ROOT
+
+DRY_RUN=false
+CHECK_ONLY=false
+MANIFEST_DIR="$DOTFILES_ROOT/packages/npm"
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+readonly NVM_RELEASE="v0.40.3"
+readonly MANAGED_STATE_NAME=".dotfiles-managed-npm-packages"
+TEMP_DIRS=()
+
+cleanup() {
+    local temp_dir
+
+    for temp_dir in "${TEMP_DIRS[@]-}"; do
+        if [[ -n "$temp_dir" && -d "$temp_dir" ]]; then
+            rm -rf -- "$temp_dir"
+        fi
+    done
+}
+trap cleanup EXIT
+
+usage() {
+    cat <<'EOF'
+Usage: nvm-npm-sync [OPTIONS]
+
+Install the latest Node.js release with nvm and reconcile the repository's
+exact direct npm dependencies in that Node release's global package directory.
+
+Options:
+  --check                  Verify nvm, the default Node release, and managed tools
+  --dry-run                Print the requested actions without changing files
+  --manifest-dir PATH      Use a different package.json directory
+  -h, --help               Show this help message
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --check)
+            CHECK_ONLY=true
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        --manifest-dir)
+            [[ $# -ge 2 ]] || {
+                echo "nvm-npm-sync: --manifest-dir requires a path" >&2
+                exit 2
+            }
+            MANIFEST_DIR="$2"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "nvm-npm-sync: unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+if [[ "$CHECK_ONLY" == "true" && "$DRY_RUN" == "true" ]]; then
+    echo "nvm-npm-sync: --check and --dry-run cannot be combined" >&2
+    exit 2
+fi
+
+readonly PACKAGE_JSON="$MANIFEST_DIR/package.json"
+readonly NVM_DIR
+export NVM_DIR
+
+[[ -f "$PACKAGE_JSON" ]] || {
+    echo "nvm-npm-sync: missing $PACKAGE_JSON" >&2
+    exit 2
+}
+
+install_nvm() {
+    local install_dir installer
+
+    install_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nvm-install.XXXXXX")"
+    TEMP_DIRS+=("$install_dir")
+    installer="$install_dir/install.sh"
+
+    command -v curl >/dev/null 2>&1 || {
+        echo "nvm-npm-sync: curl is required to install nvm" >&2
+        exit 2
+    }
+
+    echo "Installing nvm $NVM_RELEASE into $NVM_DIR"
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_RELEASE/install.sh" \
+        -o "$installer"
+    PROFILE=/dev/null /bin/bash "$installer"
+
+    [[ -s "$NVM_DIR/nvm.sh" ]] || {
+        echo "nvm-npm-sync: nvm installation did not create $NVM_DIR/nvm.sh" >&2
+        exit 1
+    }
+}
+
+ensure_nvm() {
+    if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+        return 0
+    fi
+
+    if [[ -e "$NVM_DIR" || -L "$NVM_DIR" ]]; then
+        echo "nvm-npm-sync: incomplete nvm directory preserved at $NVM_DIR" >&2
+        echo "Repair or remove it manually, then rerun the installer." >&2
+        exit 1
+    fi
+
+    if [[ "$CHECK_ONLY" == "true" ]]; then
+        echo "nvm-npm-sync: nvm is not installed at $NVM_DIR" >&2
+        exit 1
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Would install nvm $NVM_RELEASE into $NVM_DIR"
+        return 0
+    fi
+
+    install_nvm
+}
+
+run_nvm() {
+    NVM_SYMLINK_CURRENT=true /bin/bash -c '
+        set -e
+        source "$NVM_DIR/nvm.sh" --no-use
+        nvm "$@"
+    ' nvm "$@"
+}
+
+run_npm() {
+    PATH="$NODE_PREFIX/bin:$PATH" "$NPM_BIN" "$@"
+}
+
+canonical_directory() {
+    cd -P "$1" 2>/dev/null && pwd
+}
+
+is_node_version() {
+    [[ "$1" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+}
+
+resolve_runtime() {
+    local requested_version="$1"
+    local actual_prefix current_prefix resolved_version
+
+    resolved_version="$(run_nvm version "$requested_version")"
+    if ! is_node_version "$resolved_version"; then
+        echo "nvm-npm-sync: $requested_version does not resolve to an installed Node release" >&2
+        exit 1
+    fi
+
+    NODE_VERSION="$resolved_version"
+    NODE_PREFIX="$(canonical_directory "$NVM_DIR/versions/node/$NODE_VERSION")" || {
+        echo "nvm-npm-sync: missing nvm Node prefix for $NODE_VERSION" >&2
+        exit 1
+    }
+    NODE_BIN="$NODE_PREFIX/bin/node"
+    NPM_BIN="$NODE_PREFIX/bin/npm"
+    MANAGED_STATE="$NODE_PREFIX/$MANAGED_STATE_NAME"
+
+    [[ -x "$NODE_BIN" && -x "$NPM_BIN" ]] || {
+        echo "nvm-npm-sync: Node or npm is missing from $NODE_PREFIX/bin" >&2
+        exit 1
+    }
+
+    if [[ ! -L "$NVM_DIR/current" ]]; then
+        echo "nvm-npm-sync: stable nvm current link is missing" >&2
+        exit 1
+    fi
+    current_prefix="$(canonical_directory "$NVM_DIR/current")" || {
+        echo "nvm-npm-sync: stable nvm current link is dangling" >&2
+        exit 1
+    }
+    if [[ "$current_prefix" != "$NODE_PREFIX" ]]; then
+        echo "nvm-npm-sync: nvm current points to $current_prefix, expected $NODE_PREFIX" >&2
+        exit 1
+    fi
+
+    actual_prefix="$(run_npm --prefix "$NODE_PREFIX" prefix --global)"
+    if [[ "$actual_prefix" != "$NODE_PREFIX" ]]; then
+        echo "nvm-npm-sync: npm global prefix is $actual_prefix, expected $NODE_PREFIX" >&2
+        exit 1
+    fi
+}
+
+read_manifest() {
+    local manifest_output spec
+
+    manifest_output="$("$NODE_BIN" - "$PACKAGE_JSON" <<'NODE'
+const fs = require("fs");
+
+const manifestPath = process.argv[2];
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const dependencies = manifest.dependencies || {};
+const exactVersion = /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const packageName = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
+
+if (typeof dependencies !== "object" || Array.isArray(dependencies)) {
+    throw new Error("package.json dependencies must be an object");
+}
+
+const specs = Object.keys(dependencies).sort().map((name) => {
+    const version = dependencies[name];
+    if (!packageName.test(name)) {
+        throw new Error(`unsupported npm package name: ${name}`);
+    }
+    if (typeof version !== "string" || !exactVersion.test(version)) {
+        throw new Error(`${name} must use an exact semantic version, found: ${version}`);
+    }
+    return `${name}@${version}`;
+});
+
+process.stdout.write(specs.join("\n"));
+NODE
+)" || {
+        echo "nvm-npm-sync: could not read exact dependencies from $PACKAGE_JSON" >&2
+        exit 1
+    }
+
+    DESIRED_SPECS=()
+    DESIRED_NAMES=()
+    while IFS= read -r spec; do
+        [[ -n "$spec" ]] || continue
+        DESIRED_SPECS+=("$spec")
+        DESIRED_NAMES+=("${spec%@*}")
+    done <<< "$manifest_output"
+}
+
+is_valid_package_name() {
+    local package_name="$1"
+
+    [[ "$package_name" =~ ^[a-z0-9][a-z0-9._~-]*$ ]] ||
+        [[ "$package_name" =~ ^@[a-z0-9][a-z0-9._~-]*/[a-z0-9][a-z0-9._~-]*$ ]]
+}
+
+load_managed_names() {
+    local package_name
+
+    MANAGED_NAMES=()
+    [[ -f "$MANAGED_STATE" ]] || return 0
+
+    while IFS= read -r package_name || [[ -n "$package_name" ]]; do
+        [[ -n "$package_name" ]] || continue
+        if ! is_valid_package_name "$package_name"; then
+            echo "nvm-npm-sync: invalid package name in $MANAGED_STATE: $package_name" >&2
+            exit 1
+        fi
+        MANAGED_NAMES+=("$package_name")
+    done < "$MANAGED_STATE"
+}
+
+contains_name() {
+    local expected="$1"
+    shift
+    local candidate
+
+    for candidate in "$@"; do
+        [[ "$candidate" == "$expected" ]] && return 0
+    done
+    return 1
+}
+
+installed_version() {
+    local package_name="$1"
+    local installed_manifest="$NODE_PREFIX/lib/node_modules/$package_name/package.json"
+
+    [[ -f "$installed_manifest" ]] || return 1
+    "$NODE_BIN" - "$installed_manifest" <<'NODE'
+const fs = require("fs");
+const manifest = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+if (typeof manifest.version !== "string") {
+    process.exit(1);
+}
+process.stdout.write(manifest.version);
+NODE
+}
+
+verify_packages() {
+    local installed package_name spec version
+
+    if [[ "${#MANAGED_NAMES[@]}" -ne "${#DESIRED_NAMES[@]}" ]]; then
+        echo "nvm-npm-sync: managed package state does not match package.json" >&2
+        return 1
+    fi
+
+    for package_name in "${DESIRED_NAMES[@]}"; do
+        if ! contains_name "$package_name" "${MANAGED_NAMES[@]}"; then
+            echo "nvm-npm-sync: $package_name is missing from managed package state" >&2
+            return 1
+        fi
+    done
+
+    for spec in "${DESIRED_SPECS[@]}"; do
+        package_name="${spec%@*}"
+        version="${spec##*@}"
+        installed="$(installed_version "$package_name" 2>/dev/null || true)"
+        if [[ "$installed" != "$version" ]]; then
+            echo "nvm-npm-sync: $package_name is $installed, expected $version" >&2
+            return 1
+        fi
+    done
+}
+
+write_managed_state() {
+    local state_temp
+
+    state_temp="$(mktemp "$NODE_PREFIX/$MANAGED_STATE_NAME.XXXXXX")"
+    if [[ "${#DESIRED_NAMES[@]}" -gt 0 ]]; then
+        printf '%s\n' "${DESIRED_NAMES[@]}" > "$state_temp"
+    else
+        : > "$state_temp"
+    fi
+
+    if [[ -f "$MANAGED_STATE" ]] && cmp -s "$state_temp" "$MANAGED_STATE"; then
+        rm -f -- "$state_temp"
+    else
+        mv -f -- "$state_temp" "$MANAGED_STATE"
+    fi
+}
+
+sync_packages() {
+    local installed package_name spec version
+
+    for package_name in "${MANAGED_NAMES[@]}"; do
+        if ! contains_name "$package_name" "${DESIRED_NAMES[@]}"; then
+            echo "Removing formerly managed npm package: $package_name"
+            run_npm --prefix "$NODE_PREFIX" uninstall --global \
+                --no-audit --no-fund "$package_name"
+        fi
+    done
+
+    for spec in "${DESIRED_SPECS[@]}"; do
+        package_name="${spec%@*}"
+        version="${spec##*@}"
+        installed="$(installed_version "$package_name" 2>/dev/null || true)"
+        if [[ "$installed" == "$version" ]]; then
+            echo "$spec is already installed in the nvm global prefix"
+            continue
+        fi
+
+        echo "Installing managed npm package: $spec"
+        run_npm --prefix "$NODE_PREFIX" install --global \
+            --no-audit --no-fund "$spec"
+    done
+
+    load_managed_names
+    MANAGED_NAMES=("${DESIRED_NAMES[@]}")
+    verify_packages
+    write_managed_state
+}
+
+ensure_nvm
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "Would run: nvm install node"
+    echo "Would set the installed Node release as the nvm default and current release"
+    echo "Would validate exact direct dependency pins in $PACKAGE_JSON"
+    echo "Would reconcile only repository-managed packages in the nvm global npm prefix"
+    exit 0
+fi
+
+if [[ "$CHECK_ONLY" == "true" ]]; then
+    resolve_runtime default
+    read_manifest
+    load_managed_names
+    verify_packages
+    echo "nvm global npm tools match $PACKAGE_JSON for $NODE_VERSION"
+    exit 0
+fi
+
+echo "Installing the latest Node.js release with nvm"
+run_nvm install node
+NODE_VERSION="$(run_nvm version node)"
+if ! is_node_version "$NODE_VERSION"; then
+    echo "nvm-npm-sync: nvm install node did not produce an installed release" >&2
+    exit 1
+fi
+run_nvm alias default "$NODE_VERSION"
+run_nvm use --silent "$NODE_VERSION"
+
+resolve_runtime "$NODE_VERSION"
+read_manifest
+load_managed_names
+sync_packages
+
+echo "Synchronized nvm global npm tools for $NODE_VERSION in $NODE_PREFIX"

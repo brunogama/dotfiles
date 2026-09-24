@@ -17,6 +17,12 @@ include_destructive=0
 keep_workspace=0
 failed=0
 last_stage_passed=0
+documented_cli_scripts=(
+	./install
+	bin/core/link-dotfiles.py
+	bin/core/nvm-npm-sync
+	bin/core/work-mode
+)
 
 while (($#)); do
 	case "$1" in
@@ -136,7 +142,8 @@ run_macos_stage() {
 	stage_workspace="$run_root/workspaces/$slug"
 	home="$run_root/homes/$slug"
 	materialize_macos_workspace "$stage_workspace" "$home"
-	workspace="$stage_workspace" HOME="$home" XDG_CONFIG_HOME="$home/.config" \
+	workspace="$stage_workspace" HOME="$home" NVM_DIR="$home/.nvm" \
+		XDG_CONFIG_HOME="$home/.config" \
 		XDG_CACHE_HOME="$home/.cache" XDG_STATE_HOME="$home/.local/state" \
 		TMPDIR="$home/tmp" GIT_CONFIG_NOSYSTEM=1 \
 		run_stage "$workflow" "$cell" "$stage" "$runner" "$@"
@@ -239,14 +246,27 @@ macos_install_nix() (
 	for command in git home-manager jq rg shellcheck starship zsh; do
 		command -v "$command" >/dev/null
 	done
+	test -x "$HOME/.nvm/current/bin/node"
+	test -x "$HOME/.nvm/current/bin/npm"
+	test -x "$HOME/.nvm/current/bin/playwright-cli"
+	bin/core/nvm-npm-sync --check
 	home-manager generations
 )
 
 macos_test() (
 	cd "$workspace"
+	local script
+	for script in "${documented_cli_scripts[@]}"; do
+		[[ -x "$script" ]] || {
+			printf 'Documented CLI is not executable: %s\n' "$script" >&2
+			return 1
+		}
+	done
 	./install --dry-run
 	uv run bin/core/link-dotfiles.py --dry-run
-	printf '%s\n' 'Skipping the GitHub CLI help probe outside the GitHub runner.'
+	printf 'Skipping the GitHub CLI help probe outside the GitHub runner for:'
+	printf ' %s' "${documented_cli_scripts[@]}"
+	printf '\n'
 )
 
 macos_integration() (
@@ -255,6 +275,7 @@ macos_integration() (
 	mkdir -p test-results
 	bats --tap --jobs "${BATS_JOBS:-2}" \
 		tests/integration/core/test_install.bats \
+		tests/integration/core/test_nvm_npm_sync.bats \
 		tests/integration/core/test_work_mode.bats | tee test-results/integration.tap
 )
 

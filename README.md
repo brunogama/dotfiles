@@ -163,6 +163,22 @@ zsh-trim-history
 
 ---
 
+## Global npm tools
+
+Both installer backends use [`bin/core/nvm-npm-sync`](bin/core/nvm-npm-sync). It installs the latest Node.js release with nvm, makes that exact release the nvm default, and installs the direct dependencies from [`packages/npm/package.json`](packages/npm/package.json) into that release's global npm prefix. New Zsh sessions use the stable `~/.nvm/current/bin` path.
+
+The manifest pins every direct dependency to an exact version. There is intentionally no package lock because `npm install --global` does not consume it as a lock for the global dependency tree; npm resolves transitive dependencies at install time. The synchronizer records only repository-managed package names in each nvm Node prefix, so it can remove a retired managed tool without deleting unrelated user globals.
+
+```bash
+# Verify the active nvm default, stable path, managed names, and exact versions
+nvm-npm-sync --check
+
+# Preview an update without changing nvm or installed packages
+nvm-npm-sync --dry-run
+```
+
+---
+
 ## Validate changes
 
 Run the checks appropriate to the surface you changed:
