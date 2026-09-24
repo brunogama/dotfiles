@@ -1,4 +1,6 @@
 #!/bin/bash
+INSTALL_SCRIPT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../.." && pwd)/install"
+INSTALL_COMMAND="$(printf '%q' "$INSTALL_SCRIPT")"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -46,7 +48,7 @@ install_gitattributes() {
 
     if ! command -v git-lfs &> /dev/null; then
         perror "Git LFS is not installed. Please install it with:"
-        pwarning "> $ ${BLUE}brew install git-lfs${YELLOW}"
+        pwarning "> $ ${BLUE}${INSTALL_COMMAND}  # provides git-lfs through Nix${YELLOW}"
         exit 1
     fi
 

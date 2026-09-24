@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source prints
+source_path="${BASH_SOURCE[0]}"
+while [[ -L "$source_path" ]]; do
+    source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+    source_path="$(readlink "$source_path")"
+    [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+done
+repo_root="$(cd -P "$(dirname "$source_path")/../.." && pwd)"
 
-pwarning "Updating dotfiles..."
-pushd "${HOME}/.config" || exit
-git pull origin master
-pushd zsh/.zprezto || exit
-pwarning "Updating prezto"
-git submodule init
-git submodule update --init --recursive
-popd || exit
-popd || exit
-psuccess "Updated of dotfiles finished."
+for arg in "$@"; do
+    if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+        exec "$repo_root/bin/core/nix-update" --switch "$@"
+    fi
+done
 
-DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/dotfiles}"
-cd "$DOTFILES_ROOT"
+"$repo_root/bin/core/nix-update" --dry-run --switch "$@" >/dev/null
 
-brew bundle --file=Brewfile
+for arg in "$@"; do
+    if [[ "$arg" == "--dry-run" ]]; then
+        printf '+ git -C %q pull --ff-only\n' "$repo_root"
+        exec "$repo_root/bin/core/nix-update" --switch "$@"
+    fi
+done
 
-exit 0
+git -C "$repo_root" pull --ff-only
+exec "$repo_root/bin/core/nix-update" --switch "$@"

@@ -95,17 +95,14 @@ zstyle ':prezto:module:terminal:window-title' format '%n@%m: %s'
 zstyle ':prezto:module:terminal:tab-title' format '%m: %s'
 
 #
-# Node (nvm)
+# Node (mise)
 #
-# Removed from pmodule list - Prezto's node module sources nvm.sh eagerly
-# (even with --no-use flag, adds ~100-200ms). True lazy loading handled
-# by lazy-load.zsh which only sources nvm.sh on first use of nvm/node/npm.
+# Mise owns Node selection.
 
 #
 # Version managers
 #
-# Python and Ruby Prezto modules are intentionally not loaded. pyenv/rbenv are
-# handled by ~/.config/zsh/lib/lazy-load.zsh on first use.
+# Python and Ruby Prezto modules are intentionally not loaded. Mise owns them.
 
 #
 # Utility

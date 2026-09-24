@@ -54,8 +54,8 @@ DEFAULT_LOOKBACK = 3
 DEFAULT_PRESET = "medium"
 DEFAULT_SAMPLE_RATE = 1
 DEFAULT_CHUNK_DURATION = 60.0
-FFMPEG_PATH = "/opt/homebrew/bin/ffmpeg"
-FFPROBE_PATH = "/opt/homebrew/bin/ffprobe"
+FFMPEG_PATH = "ffmpeg"
+FFPROBE_PATH = "ffprobe"
 
 def get_video_info(video_path: Path) -> dict:
     """Extract video information using ffprobe.

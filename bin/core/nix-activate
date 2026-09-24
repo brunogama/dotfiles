@@ -120,12 +120,11 @@ else
     "$home_manager_bin" switch --flake "$home_configuration_ref" -b pre-nix
 fi
 
-if [[ "$SKIP_NPM" != "true" ]]; then
-    npm_command=(nix --extra-experimental-features "nix-command flakes" develop \
-        "$DOTFILES_ROOT" --command "$SCRIPT_DIR/nix-npm-sync")
-    if [[ "$DRY_RUN" == "true" ]]; then
-        print_command "${npm_command[@]}"
-    else
-        "${npm_command[@]}"
-    fi
+toolchain_command=(nix --extra-experimental-features "nix-command flakes" develop \
+    "$DOTFILES_ROOT" --command "$SCRIPT_DIR/mise-toolchain-sync")
+[[ "$SKIP_NPM" == "true" ]] && toolchain_command+=(--skip-npm)
+if [[ "$DRY_RUN" == "true" ]]; then
+    print_command "${toolchain_command[@]}"
+else
+    "${toolchain_command[@]}"
 fi

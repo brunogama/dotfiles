@@ -81,11 +81,9 @@ alias edit-git="open-dotfiles-config git"
 alias edit-dotfiles="open-dotfiles-config repo"
 
 # ============================================================================
-# HOMEBREW MANAGEMENT
+# NIX MANAGEMENT
 # ============================================================================
-alias brew-install="brew-sync install"
-alias brew-update="brew-sync update"
-alias brew-full-sync="brew-sync sync"
+alias tools-update="nix-update --switch"
 
 # ============================================================================
 # MODERN SYNCENV ALIASES (Recommended)

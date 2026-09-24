@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+INSTALL_SCRIPT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../.." && pwd)/install"
+INSTALL_COMMAND="$(printf '%q' "$INSTALL_SCRIPT")"
+
 # Run integration tests for dotfiles repository
 # Usage: ./bin/test/run-tests [OPTIONS] [PATTERN]
 #
@@ -70,7 +73,7 @@ done
 # Check for bats
 if ! command -v bats &> /dev/null; then
     echo -e "${RED}Error: bats-core is not installed${NC}"
-    echo "Install with: brew install bats-core"
+    echo "Install with: ${INSTALL_COMMAND}  # provides bats through Nix"
     exit 1
 fi
 

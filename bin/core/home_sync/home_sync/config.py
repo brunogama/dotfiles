@@ -29,7 +29,6 @@ class Config:
     # Sync filters
     sync_dotfiles: bool = True
     sync_credentials: bool = True
-    sync_homebrew: bool = True
 
     # Notification and logging
     notifications_enabled: bool = True
@@ -208,7 +207,6 @@ log_level: {default_config.log_level.value}
 # Sync filters (what to sync)
 sync_dotfiles: {str(default_config.sync_dotfiles).lower()}
 sync_credentials: {str(default_config.sync_credentials).lower()}
-sync_homebrew: {str(default_config.sync_homebrew).lower()}
 
 # Machine-specific settings
 machine_profile: "{default_config.machine_profile}"  # default, work, personal, server

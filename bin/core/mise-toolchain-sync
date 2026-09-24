@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source_path="${BASH_SOURCE[0]}"
+while [[ -L "$source_path" ]]; do
+    source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+    source_path="$(readlink "$source_path")"
+    [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$source_path")" && pwd)"
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+MANIFEST="$DOTFILES_ROOT/packages/npm/package.json"
+DRY_RUN=false
+CHECK_ONLY=false
+SKIP_NPM=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=true ;;
+        --check) CHECK_ONLY=true ;;
+        --skip-npm) SKIP_NPM=true ;;
+        -h|--help)
+            echo "Usage: mise-toolchain-sync [--dry-run] [--check] [--skip-npm]"
+            exit 0
+            ;;
+        *) echo "mise-toolchain-sync: unknown option: $1" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+command -v mise >/dev/null 2>&1 || {
+    echo "mise-toolchain-sync: mise is required" >&2
+    exit 2
+}
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "Would install Node, Python, and Ruby from mise config"
+    [[ "$SKIP_NPM" == "true" ]] || echo "Would synchronize global npm packages from $MANIFEST"
+    exit 0
+fi
+
+if [[ "$CHECK_ONLY" == "true" ]]; then
+    for tool in node python ruby; do
+        mise where "$tool" >/dev/null || {
+            echo "mise-toolchain-sync: $tool is not installed" >&2
+            exit 1
+        }
+    done
+else
+    mise install --yes
+fi
+
+[[ "$SKIP_NPM" == "true" ]] && exit 0
+command -v jq >/dev/null 2>&1 || {
+    echo "mise-toolchain-sync: jq is required for the npm manifest" >&2
+    exit 2
+}
+[[ -f "$MANIFEST" ]] || {
+    echo "mise-toolchain-sync: missing $MANIFEST" >&2
+    exit 2
+}
+
+node_prefix="$(mise where node)"
+npm_prefix="$(mise exec -- npm prefix --global)"
+node_prefix="$(cd -P "$node_prefix" && pwd)"
+npm_prefix="$(cd -P "$npm_prefix" && pwd)"
+[[ "$npm_prefix" == "$node_prefix" ]] || {
+    echo "mise-toolchain-sync: npm global prefix is outside the managed Node installation" >&2
+    exit 2
+}
+
+packages=()
+while IFS= read -r package; do
+    packages+=("$package")
+done < <(jq -r '.dependencies | to_entries[] | "\(.key)@\(.value)"' "$MANIFEST")
+
+for package in "${packages[@]}"; do
+    name="${package%@*}"
+    version="${package##*@}"
+    npm_list="$(mise exec -- npm ls --global --depth=0 --json || true)"
+    installed="$(jq -r --arg name "$name" '.dependencies[$name].version // empty' <<< "$npm_list")"
+    if [[ "$installed" == "$version" ]]; then
+        echo "$package is already installed in mise Node"
+    elif [[ "$CHECK_ONLY" == "true" ]]; then
+        echo "mise-toolchain-sync: $package is not active" >&2
+        exit 1
+    else
+        mise exec -- npm install --global --no-audit --no-fund "$package"
+    fi
+done

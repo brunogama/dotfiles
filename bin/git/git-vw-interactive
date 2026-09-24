@@ -11,6 +11,9 @@
 #   git vw  (when aliased in .gitconfig)
 
 set -euo pipefail
+
+INSTALL_SCRIPT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../.." && pwd)/install"
+INSTALL_COMMAND="$(printf '%q' "$INSTALL_SCRIPT")"
 IFS=$'\n\t'
 
 # Color variables for output
@@ -93,13 +96,13 @@ print_dependency_help() {
     case "${dep}" in
         fzf)
             echo "install fzf:"
-            echo "  brew install fzf          # macOS"
+            echo "  ${INSTALL_COMMAND}  # provides fzf through Nix          # macOS"
             echo "  apt-get install fzf       # Debian/Ubuntu"
             echo "  https://github.com/junegunn/fzf"
             ;;
         tmux)
             echo "install tmux:"
-            echo "  brew install tmux         # macOS"
+            echo "  ${INSTALL_COMMAND}  # provides tmux through Nix         # macOS"
             echo "  apt-get install tmux      # Debian/Ubuntu"
             ;;
         git-virtual-worktree)

@@ -32,6 +32,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -217,8 +218,8 @@ class DependencyResolver:
         except FileNotFoundError:
             print(format_error("Error: UV not found. Please install UV first:"), file=sys.stderr)
             print("  curl -LsSf https://astral.sh/uv/install.sh | sh", file=sys.stderr)
-            print("\nOr via Homebrew:", file=sys.stderr)
-            print("  brew install uv", file=sys.stderr)
+            installer = Path(__file__).resolve().parents[2] / "install"
+            print(f"\nOr run {shlex.quote(str(installer))} for the managed Nix package", file=sys.stderr)
             raise
 
         if self.verbose:

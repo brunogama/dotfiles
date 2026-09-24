@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["jinja2>=3.1,<4"]
 # ///
-"""Regenerate the two project QA files and their scaffold hashes."""
+"""Regenerate project-owned scaffold files and their hashes."""
 
 from __future__ import annotations
 
@@ -19,6 +19,8 @@ SCAFFOLD_ROOT = Path(__file__).resolve().parent
 REPOSITORY_ROOT = SCAFFOLD_ROOT.parent
 MANAGED_PATHS = (
     ".depot/workflows/qa.yml",
+    "AGENTS.md",
+    "README.md",
     "scripts/qa_repository.py",
 )
 

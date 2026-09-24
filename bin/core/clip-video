@@ -52,9 +52,8 @@ except ImportError as e:
     sys.exit(1)
 
 
-# Default FFmpeg paths (macOS Homebrew)
-FFMPEG_PATH = "/opt/homebrew/bin/ffmpeg"
-FFPROBE_PATH = "/opt/homebrew/bin/ffprobe"
+FFMPEG_PATH = "ffmpeg"
+FFPROBE_PATH = "ffprobe"
 
 
 def parse_time(time_str: str) -> float:

@@ -44,12 +44,6 @@ printf '\n'
 EOF
     chmod +x bin/core/nix-bootstrap
 
-    # Create mock Brewfile
-    cat > home-darwin/Brewfile << 'EOF'
-# Test Brewfile
-brew "jq"
-EOF
-
     # Keep legacy phase tests deterministic; router behavior has dedicated tests below.
     cp "$(get_dotfiles_root)/install" "$DOTFILES_ROOT/install"
     sed 's/^BACKEND="auto"$/BACKEND="legacy"/' "$DOTFILES_ROOT/install" > "$DOTFILES_ROOT/install.fixture"
@@ -107,7 +101,7 @@ teardown() {
     run "$DOTFILES_ROOT/install" --nix --dry-run --yes
     assert_success
     assert_output --partial "Mock nix-bootstrap: --dry-run --yes"
-    refute_output --partial "Phase 1: Pre-flight Checks"
+    refute_output --partial "Pre-flight Checks"
 }
 
 @test "install: automatic macOS routing delegates to Nix" {
@@ -141,7 +135,7 @@ teardown() {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
     assert_output --partial "Selected backend: legacy (linux default)"
-    assert_output --partial "Phase 1: Pre-flight Checks"
+    assert_output --partial "Pre-flight Checks"
 }
 
 @test "install: rejects legacy flags with the Nix backend" {
@@ -431,17 +425,60 @@ teardown() {
     assert_output --partial "--system requires --switch"
 }
 
+@test "update-dotfiles pulls the linked checkout before updating Nix" {
+    mkdir -p "$DOTFILES_ROOT/bin/core" "$TEST_TEMP_DIR/mock-bin"
+    cp "$(get_dotfiles_root)/bin/core/update-dotfiles" "$DOTFILES_ROOT/bin/core/update-dotfiles"
+    cat > "$DOTFILES_ROOT/bin/core/nix-update" <<'EOF'
+#!/usr/bin/env bash
+if [[ " $* " == *" --bogus "* ]]; then
+    exit 2
+fi
+if [[ " $* " == *" --dry-run "* ]]; then
+    exit 0
+fi
+printf 'nix-update %s\n' "$*" >> "$UPDATE_CALLS"
+EOF
+    cat > "$TEST_TEMP_DIR/mock-bin/git" <<'EOF'
+#!/usr/bin/env bash
+printf 'git %s\n' "$*" >> "$UPDATE_CALLS"
+EOF
+    chmod +x "$DOTFILES_ROOT/bin/core/update-dotfiles" \
+        "$DOTFILES_ROOT/bin/core/nix-update" "$TEST_TEMP_DIR/mock-bin/git"
+    ln -s "$DOTFILES_ROOT/bin/core/update-dotfiles" "$TEST_TEMP_DIR/mock-bin/update-dotfiles"
+    export UPDATE_CALLS="$TEST_TEMP_DIR/update-calls"
+
+    run env PATH="$TEST_TEMP_DIR/mock-bin:$PATH" \
+        "$TEST_TEMP_DIR/mock-bin/update-dotfiles"
+    assert_success
+    [ "$(sed -n '1p' "$UPDATE_CALLS")" = "git -C $(cd -P "$DOTFILES_ROOT" && pwd) pull --ff-only" ]
+    [ "$(sed -n '2p' "$UPDATE_CALLS")" = "nix-update --switch" ]
+
+    run env PATH="$TEST_TEMP_DIR/mock-bin:$PATH" \
+        "$TEST_TEMP_DIR/mock-bin/update-dotfiles" --bogus
+    assert_failure 2
+    [ "$(wc -l < "$UPDATE_CALLS")" -eq 2 ]
+}
+
+@test "linked dependency command prints the installer path from another directory" {
+    mkdir -p "$TEST_TEMP_DIR/commands"
+    ln -s "$(get_dotfiles_root)/bin/core/check-dependency" \
+        "$TEST_TEMP_DIR/commands/check-dependency"
+    cd "$HOME"
+
+    run "$TEST_TEMP_DIR/commands/check-dependency" missing-test-command-123
+    assert_failure 1
+    assert_output --partial "$(cd -P "$(get_dotfiles_root)" && pwd)/install"
+}
+
 @test "install: --verbose enables verbose output" {
     run "$DOTFILES_ROOT/install" --dry-run --yes --verbose
     assert_success
 }
 
-@test "install: --skip-brew skips Homebrew" {
-    skip_on_linux "macOS-specific test"
-
+@test "install: removed --skip-brew option is rejected" {
     run "$DOTFILES_ROOT/install" --dry-run --yes --skip-brew
-    assert_success
-    assert_output --partial "Skipping Homebrew"
+    assert_failure 2
+    assert_output --partial "Unknown option: --skip-brew"
 }
 
 @test "install: --skip-packages skips package installation" {
@@ -453,6 +490,24 @@ teardown() {
     run "$DOTFILES_ROOT/install" --dry-run --yes --skip-links
     assert_success
     assert_output --partial "Skipping symlink creation"
+}
+
+@test "install: --skip-links uses the checkout mise config with an empty home" {
+    mkdir -p "$DOTFILES_ROOT/home/.config/mise" "$HOME/.zprezto" "$TEST_TEMP_DIR/mock-bin"
+    cp "$(get_dotfiles_root)/home/.config/mise/config.toml" \
+        "$DOTFILES_ROOT/home/.config/mise/config.toml"
+    cat > "$TEST_TEMP_DIR/mock-bin/mise" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "${MISE_GLOBAL_CONFIG_FILE:-}" > "$MISE_CONFIG_SEEN"
+[[ "$*" == "install --yes" ]]
+EOF
+    chmod +x "$TEST_TEMP_DIR/mock-bin/mise"
+    export MISE_CONFIG_SEEN="$TEST_TEMP_DIR/mise-config-seen"
+    run env PATH="$TEST_TEMP_DIR/mock-bin:$PATH" SHELL=/bin/bash \
+        "$DOTFILES_ROOT/install" --yes --skip-packages --skip-links
+    assert_success
+    assert_output --partial "Skipping symlink creation"
+    [ "$(cat "$MISE_CONFIG_SEEN")" = "$DOTFILES_ROOT/home/.config/mise/config.toml" ]
 }
 
 @test "install: --yes enables non-interactive mode" {
@@ -498,20 +553,14 @@ teardown() {
 
 # Dry-run Mode Tests
 
-@test "install: handles long Homebrew version output without SIGPIPE" {
-    skip_on_linux "macOS-specific Homebrew behavior"
-
+@test "install: never invokes Homebrew" {
     local mock_bin
-    mock_bin="$BATS_TEST_TMPDIR/homebrew-version-bin"
+    mock_bin="$BATS_TEST_TMPDIR/homebrew-bin"
     mkdir -p "$mock_bin"
     cat > "$mock_bin/brew" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${1-}" == "--version" ]]; then
-    printf 'Homebrew 4.0.0\n'
-    for _ in {1..200000}; do
-        printf 'additional version detail\n'
-    done
-fi
+echo "unexpected Homebrew invocation" >&2
+exit 99
 EOF
     chmod +x "$mock_bin/brew"
 
@@ -519,18 +568,13 @@ EOF
         --dry-run --yes --skip-packages --skip-links
 
     assert_success
-    assert_output --partial "Homebrew 4.0.0"
+    refute_output --partial "unexpected Homebrew invocation"
 }
 
-@test "install: dry-run reports would install Homebrew" {
-    skip_on_linux "macOS-specific test"
-
-    # Temporarily hide brew command
-    export PATH="/usr/bin:/bin"
-
+@test "install: dry-run omits Homebrew installation" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
-    assert_output --partial "Would install Homebrew"
+    refute_output --partial "Would install Homebrew"
 }
 
 @test "install: dry-run reports would install jq" {
@@ -542,22 +586,10 @@ EOF
     assert_output --regexp "(Would install jq|jq is already installed)"
 }
 
-@test "install: dry-run reports would install pyenv" {
+@test "install: dry-run reports mise runtime setup" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
-    assert_output --partial "Would install pyenv"
-}
-
-@test "install: dry-run reports would install rbenv" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes
-    assert_success
-    assert_output --partial "Would install rbenv"
-}
-
-@test "install: dry-run reports would install nvm" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes
-    assert_success
-    assert_output --partial "Would install nvm"
+    assert_output --partial "Would install Node, Python, and Ruby"
 }
 
 @test "install: dry-run reports would clone Prezto" {
@@ -597,15 +629,13 @@ EOF
     assert_success
 
     # Verify phase order in output
-    assert_output --partial "Phase 1: Pre-flight Checks"
-    assert_output --partial "Phase 2: Homebrew Setup"
-    assert_output --partial "Phase 3: Dependencies"
-    assert_output --partial "Phase 4: Homebrew Bundle"
-    assert_output --partial "Phase 5: Version Manager Setup"
-    assert_output --partial "Phase 6: Prezto & Starship Setup"
-    assert_output --partial "Phase 7: Symlink Creation"
-    assert_output --partial "Phase 8: Shell Configuration"
-    assert_output --partial "Phase 9: Performance Optimization"
+    assert_output --partial "Pre-flight Checks"
+    assert_output --partial "Dependencies"
+    assert_output --partial "Prezto & Starship Setup"
+    assert_output --partial "Symlink Creation"
+    assert_output --partial "Mise Runtime Setup"
+    assert_output --partial "Shell Configuration"
+    assert_output --partial "Performance Optimization"
 }
 
 @test "install: shows completion summary" {
@@ -615,31 +645,13 @@ EOF
     assert_output --partial "Next Steps:"
 }
 
-# Platform-specific Tests
-
-@test "install: skips Homebrew on Linux" {
-    skip_on_macos "Linux-specific test"
-
-    run "$DOTFILES_ROOT/install" --dry-run --yes
-    assert_success
-    assert_output --partial "Skipping Homebrew (not on macOS)"
-}
-
-@test "install: skips Homebrew bundle on Linux" {
-    skip_on_macos "Linux-specific test"
-
-    run "$DOTFILES_ROOT/install" --dry-run --yes
-    assert_success
-    assert_output --partial "Skipping Homebrew bundle (not on macOS)"
-}
-
 # Dependencies Tests
 
 @test "install: checks for jq" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
 
-    # Should either say jq is installed or would install it
+    # Dry-run reports whether jq is already available.
     if command -v jq &>/dev/null; then
         assert_output --partial "jq is already installed"
     else
@@ -655,39 +667,15 @@ EOF
     assert_output --partial "jq is already installed"
 }
 
-# Version Manager Tests
+# Runtime Manager Tests
 
-@test "install: checks for pyenv" {
+@test "install: sets up mise without invoking old managers" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
-
-    if [[ -d "$HOME/.pyenv" ]]; then
-        assert_output --partial "pyenv is already installed"
-    else
-        assert_output --partial "pyenv is not installed"
-    fi
-}
-
-@test "install: checks for rbenv" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes
-    assert_success
-
-    if [[ -d "$HOME/.rbenv" ]]; then
-        assert_output --partial "rbenv is already installed"
-    else
-        assert_output --partial "rbenv is not installed"
-    fi
-}
-
-@test "install: checks for nvm" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes
-    assert_success
-
-    if [[ -d "$HOME/.nvm" ]]; then
-        assert_output --partial "nvm is already installed"
-    else
-        assert_output --partial "nvm is not installed"
-    fi
+    assert_output --partial "Mise Runtime Setup"
+    refute_output --partial "Installing pyenv"
+    refute_output --partial "Installing rbenv"
+    refute_output --partial "Installing nvm"
 }
 
 # Symlink Phase Tests
@@ -813,34 +801,19 @@ EOF
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
 
-    # Check for ANSI color codes (even though they may not render in test)
-    # The script uses colors, so output should contain color codes
+    [[ "$output" == *$'\033['* ]]
 }
 
 @test "install: shows warning for missing optional components" {
-    # pyenv, rbenv, nvm are optional - should show warnings if not installed
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
 }
 
-# Brewfile Tests
-
-@test "install: finds Brewfile in correct location" {
+# No package bundle is required by the legacy path.
+@test "install: works without a Brewfile" {
     run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
-
-    # Should not warn about missing Brewfile since we created it in setup
-    refute_output --partial "Brewfile not found"
-}
-
-@test "install: handles missing Brewfile gracefully" {
-    skip_on_linux "Homebrew is only configured on macOS"
-
-    rm -f "$DOTFILES_ROOT/home-darwin/Brewfile"
-
-    run "$DOTFILES_ROOT/install" --dry-run --yes
-    assert_success
-    assert_output --partial "Brewfile not found"
+    refute_output --partial "Brewfile"
 }
 
 # Summary Tests
@@ -879,9 +852,8 @@ EOF
 # Flag Combination Tests
 
 @test "install: handles multiple skip flags" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes --skip-brew --skip-packages --skip-links
+    run "$DOTFILES_ROOT/install" --dry-run --yes --skip-packages --skip-links
     assert_success
-    assert_output --partial "Skipping Homebrew"
     assert_output --partial "Skipping symlink creation"
 }
 
@@ -912,7 +884,7 @@ EOF
         assert_output --partial "Starship is already installed"
     else
         assert_output --partial "Starship is not installed"
-        assert_output --partial "Would install Starship with Homebrew"
+        assert_output --partial "the Nix backend provides the managed prompt"
     fi
 }
 

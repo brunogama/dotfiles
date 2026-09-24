@@ -149,7 +149,7 @@ teardown() {
     assert_executable "$HOME/script.sh"
 
     # Check permissions (755 on most systems)
-    run stat -f "%OLp" "$HOME/script.sh" 2>/dev/null || stat -c "%a" "$HOME/script.sh"
+    run bash -c 'stat -f "%OLp" "$1" 2>/dev/null || stat -c "%a" "$1"' _ "$HOME/script.sh"
     assert_success
 }
 

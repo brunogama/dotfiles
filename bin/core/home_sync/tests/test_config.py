@@ -21,7 +21,6 @@ class TestConfig:
         assert config.auto_push_enabled is True
         assert config.sync_dotfiles is True
         assert config.sync_credentials is True
-        assert config.sync_homebrew is True
         assert config.notifications_enabled is True
         assert config.log_level == LogLevel.INFO
         assert config.machine_profile == "default"
