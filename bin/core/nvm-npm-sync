@@ -25,6 +25,8 @@ CHECK_ONLY=false
 MANIFEST_DIR="$DOTFILES_ROOT/packages/npm"
 NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 readonly NVM_RELEASE="v0.40.3"
+readonly NVM_INSTALLER_COMMIT="977563e97ddc66facf3a8e31c6cff01d236f09bd"
+readonly NVM_INSTALLER_SHA256="2d8359a64a3cb07c02389ad88ceecd43f2fa469c06104f92f98df5b6f315275f"
 readonly MANAGED_STATE_NAME=".dotfiles-managed-npm-packages"
 TEMP_DIRS=()
 
@@ -109,10 +111,22 @@ install_nvm() {
         exit 2
     }
 
+    command -v shasum >/dev/null 2>&1 || {
+        echo "nvm-npm-sync: shasum is required to verify the nvm installer" >&2
+        exit 2
+    }
+
     echo "Installing nvm $NVM_RELEASE into $NVM_DIR"
     curl --proto '=https' --tlsv1.2 -fsSL \
-        "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_RELEASE/install.sh" \
+        "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_INSTALLER_COMMIT/install.sh" \
         -o "$installer"
+    if ! printf '%s  %s\n' "$NVM_INSTALLER_SHA256" "$installer" |
+        shasum -a 256 -c - >/dev/null; then
+        echo "nvm-npm-sync: nvm installer checksum mismatch" >&2
+        exit 1
+    fi
+
+    mkdir -p -- "$NVM_DIR"
     PROFILE=/dev/null /bin/bash "$installer"
 
     [[ -s "$NVM_DIR/nvm.sh" ]] || {
@@ -309,14 +323,14 @@ verify_packages() {
         return 1
     fi
 
-    for package_name in "${DESIRED_NAMES[@]}"; do
-        if ! contains_name "$package_name" "${MANAGED_NAMES[@]}"; then
+    for package_name in "${DESIRED_NAMES[@]+"${DESIRED_NAMES[@]}"}"; do
+        if ! contains_name "$package_name" "${MANAGED_NAMES[@]+"${MANAGED_NAMES[@]}"}"; then
             echo "nvm-npm-sync: $package_name is missing from managed package state" >&2
             return 1
         fi
     done
 
-    for spec in "${DESIRED_SPECS[@]}"; do
+    for spec in "${DESIRED_SPECS[@]+"${DESIRED_SPECS[@]}"}"; do
         package_name="${spec%@*}"
         version="${spec##*@}"
         installed="$(installed_version "$package_name" 2>/dev/null || true)"
@@ -347,15 +361,15 @@ write_managed_state() {
 sync_packages() {
     local installed package_name spec version
 
-    for package_name in "${MANAGED_NAMES[@]}"; do
-        if ! contains_name "$package_name" "${DESIRED_NAMES[@]}"; then
+    for package_name in "${MANAGED_NAMES[@]+"${MANAGED_NAMES[@]}"}"; do
+        if ! contains_name "$package_name" "${DESIRED_NAMES[@]+"${DESIRED_NAMES[@]}"}"; then
             echo "Removing formerly managed npm package: $package_name"
             run_npm --prefix "$NODE_PREFIX" uninstall --global \
                 --no-audit --no-fund "$package_name"
         fi
     done
 
-    for spec in "${DESIRED_SPECS[@]}"; do
+    for spec in "${DESIRED_SPECS[@]+"${DESIRED_SPECS[@]}"}"; do
         package_name="${spec%@*}"
         version="${spec##*@}"
         installed="$(installed_version "$package_name" 2>/dev/null || true)"
@@ -370,7 +384,7 @@ sync_packages() {
     done
 
     load_managed_names
-    MANAGED_NAMES=("${DESIRED_NAMES[@]}")
+    MANAGED_NAMES=("${DESIRED_NAMES[@]+"${DESIRED_NAMES[@]}"}")
     verify_packages
     write_managed_state
 }

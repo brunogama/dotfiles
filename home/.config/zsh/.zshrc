@@ -20,6 +20,9 @@ export UV_NATIVE_TLS=1
 
 # Remove the retired XDG npm toolchain from inherited shells. Home Manager no
 # longer exports it, but `exec zsh` retains the parent process environment.
+if [[ -n "${DOTFILES_NPM_BIN:-}" ]]; then
+    path=("${(@)path:#$DOTFILES_NPM_BIN}")
+fi
 path=("${(@)path:#${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/npm/current/node_modules/.bin}")
 unset DOTFILES_NPM_BIN
 

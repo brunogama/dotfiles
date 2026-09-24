@@ -31,6 +31,7 @@ setup() {
     create_nvm_fixture
     create_installer_fixture
     create_curl_fixture
+    create_shasum_fixture
     create_competing_runtime_fixtures
     export PATH="$COMPETING_BIN:$PATH"
 }
@@ -192,7 +193,6 @@ create_installer_fixture() {
 set -euo pipefail
 
 printf 'install-nvm\n' >> "$NVM_TEST_LOG"
-mkdir -p "$NVM_DIR"
 cp "$NVM_TEST_NVM_SH_FIXTURE" "$NVM_DIR/nvm.sh"
 EOF
     chmod +x "$NVM_TEST_INSTALLER_FIXTURE"
@@ -222,6 +222,20 @@ EOF
     chmod +x "$MOCK_BIN/curl"
 }
 
+create_shasum_fixture() {
+    cat > "$MOCK_BIN/shasum" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "$*" == "-a 256 -c -" ]]
+read -r expected path
+[[ -n "$expected" && -f "$path" ]]
+printf 'verify-installer %s\n' "$path" >> "$NVM_TEST_LOG"
+[[ "${NVM_TEST_BAD_CHECKSUM:-0}" != "1" ]]
+EOF
+    chmod +x "$MOCK_BIN/shasum"
+}
+
 install_fake_nvm() {
     mkdir -p "$NVM_DIR"
     cp "$NVM_TEST_NVM_SH_FIXTURE" "$NVM_DIR/nvm.sh"
@@ -236,7 +250,7 @@ operation_line() {
 @test "nvm-npm-sync installs nvm before Node and uses the exact nvm global prefix" {
     write_manifest '{"managed-tool":"1.2.3"}'
 
-    run env PATH="$MOCK_BIN:$PATH" "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run env PATH="$MOCK_BIN:$PATH" /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
 
     assert_success
     local prefix
@@ -248,6 +262,7 @@ operation_line() {
     assert_file_contains "$prefix/$MANAGED_STATE_NAME" "managed-tool"
     assert_file_not_exists "$XDG_DATA_HOME/dotfiles/npm"
     assert_file_contains "$NVM_TEST_LOG" "npm-runtime-node $prefix/bin/node"
+    assert_file_contains "$NVM_TEST_LOG" "verify-installer"
     assert_file_contains "$NVM_TEST_LOG" "npm --prefix $prefix prefix --global"
     assert_file_contains "$NVM_TEST_LOG" "npm --prefix $prefix install --global --no-audit --no-fund managed-tool@1.2.3"
 
@@ -263,23 +278,37 @@ operation_line() {
     (( use_line < npm_install_line ))
 }
 
+@test "nvm-npm-sync rejects an unverified nvm installer" {
+    write_manifest '{"managed-tool":"1.2.3"}'
+
+    run env PATH="$MOCK_BIN:$PATH" NVM_TEST_BAD_CHECKSUM=1 \
+        /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+
+    assert_failure
+    assert_output --partial "nvm installer checksum mismatch"
+    assert_file_not_exists "$NVM_DIR"
+    if [[ -f "$NVM_TEST_LOG" ]]; then
+        refute grep -q 'install-nvm' "$NVM_TEST_LOG"
+    fi
+}
+
 @test "nvm-npm-sync is idempotent and check verifies the installed state" {
     write_manifest '{"managed-tool":"1.2.3"}'
     install_fake_nvm
 
-    run "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
     assert_success
     local install_count state_checksum
     install_count="$(grep -c 'npm .* install ' "$NVM_TEST_LOG")"
     state_checksum="$(cksum < "$NVM_DIR/versions/node/$NVM_TEST_VERSION/$MANAGED_STATE_NAME")"
 
-    run "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
     assert_success
     assert_output --partial "managed-tool@1.2.3 is already installed"
     assert_equal "$(grep -c 'npm .* install ' "$NVM_TEST_LOG")" "$install_count"
     assert_equal "$(cksum < "$NVM_DIR/versions/node/$NVM_TEST_VERSION/$MANAGED_STATE_NAME")" "$state_checksum"
 
-    run "$SYNC_SCRIPT" --check --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --check --manifest-dir "$TEST_MANIFEST_DIR"
     assert_success
     assert_output --partial "nvm global npm tools match"
 }
@@ -287,7 +316,7 @@ operation_line() {
 @test "nvm-npm-sync removes retired managed packages and preserves unmanaged globals" {
     write_manifest '{"managed-tool":"1.2.3","retired-tool":"4.5.6"}'
     install_fake_nvm
-    run "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
     assert_success
 
     local prefix="$NVM_DIR/versions/node/$NVM_TEST_VERSION"
@@ -296,7 +325,7 @@ operation_line() {
         > "$prefix/lib/node_modules/unmanaged-tool/package.json"
     write_manifest '{"managed-tool":"1.2.3"}'
 
-    run "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
 
     assert_success
     assert_output --partial "Removing formerly managed npm package: retired-tool"
@@ -308,10 +337,25 @@ operation_line() {
     fi
 }
 
+@test "nvm-npm-sync handles an empty manifest with the system Bash" {
+    write_manifest '{}'
+    install_fake_nvm
+
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+
+    assert_success
+    local prefix="$NVM_DIR/versions/node/$NVM_TEST_VERSION"
+    assert_file_exists "$prefix/$MANAGED_STATE_NAME"
+    assert_equal "$(wc -c < "$prefix/$MANAGED_STATE_NAME" | tr -d ' ')" "0"
+
+    run /bin/bash "$SYNC_SCRIPT" --check --manifest-dir "$TEST_MANIFEST_DIR"
+    assert_success
+}
+
 @test "nvm-npm-sync dry-run reports the plan without creating nvm or package state" {
     write_manifest '{"managed-tool":"1.2.3"}'
 
-    run env PATH="$MOCK_BIN:$PATH" "$SYNC_SCRIPT" --dry-run \
+    run env PATH="$MOCK_BIN:$PATH" /bin/bash "$SYNC_SCRIPT" --dry-run \
         --manifest-dir "$TEST_MANIFEST_DIR"
 
     assert_success
@@ -328,7 +372,7 @@ operation_line() {
     mkdir -p "$NVM_DIR"
     printf 'keep me\n' > "$NVM_DIR/recovery-note"
 
-    run env PATH="$MOCK_BIN:$PATH" "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run env PATH="$MOCK_BIN:$PATH" /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
 
     assert_failure
     assert_output --partial "incomplete nvm directory preserved"
@@ -339,13 +383,13 @@ operation_line() {
 @test "nvm-npm-sync check fails when an exact managed version drifts" {
     write_manifest '{"managed-tool":"1.2.3"}'
     install_fake_nvm
-    run "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
     assert_success
     local install_count
     install_count="$(grep -c 'npm .* install ' "$NVM_TEST_LOG")"
 
     write_manifest '{"managed-tool":"2.0.0"}'
-    run "$SYNC_SCRIPT" --check --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --check --manifest-dir "$TEST_MANIFEST_DIR"
 
     assert_failure
     assert_output --partial "managed-tool is 1.2.3, expected 2.0.0"
@@ -355,7 +399,7 @@ operation_line() {
 @test "nvm-npm-sync check does not auto-select or rewrite nvm current" {
     write_manifest '{"managed-tool":"1.2.3"}'
     install_fake_nvm
-    run "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
     assert_success
 
     local other_prefix="$NVM_DIR/versions/node/v23.0.0"
@@ -365,7 +409,7 @@ operation_line() {
     local current_before
     current_before="$(readlink "$NVM_DIR/current")"
 
-    run "$SYNC_SCRIPT" --check --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --check --manifest-dir "$TEST_MANIFEST_DIR"
 
     assert_failure
     assert_output --partial "nvm current points to"
@@ -376,7 +420,7 @@ operation_line() {
     write_manifest '{"managed-tool":"^1.2.3"}'
     install_fake_nvm
 
-    run "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    run /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
 
     assert_failure
     assert_output --partial "must use an exact semantic version"
@@ -388,9 +432,10 @@ operation_line() {
 @test "zsh prefers the stable nvm bin and removes the retired XDG npm path" {
     command -v zsh >/dev/null 2>&1 || skip "zsh is required"
     local current_bin="$NVM_DIR/current/bin"
-    local retired_bin="$XDG_DATA_HOME/dotfiles/npm/current/node_modules/.bin"
+    local retired_bin="$HOME/.local/share/dotfiles/npm/current/node_modules/.bin"
+    local fallback_bin="$XDG_DATA_HOME/dotfiles/npm/current/node_modules/.bin"
     local local_bin="$HOME/.local/bin"
-    mkdir -p "$current_bin" "$retired_bin" "$local_bin"
+    mkdir -p "$current_bin" "$retired_bin" "$fallback_bin" "$local_bin"
 
     printf '#!/usr/bin/env sh\nprintf "nvm-tool\\n"\n' > "$current_bin/managed-tool"
     printf '#!/usr/bin/env sh\nprintf "nvm-npm\\n"\n' > "$current_bin/npm"
@@ -400,7 +445,7 @@ operation_line() {
         "$retired_bin/managed-tool" "$local_bin/npm"
 
     run env HOME="$HOME" XDG_DATA_HOME="$XDG_DATA_HOME" \
-        DOTFILES_NPM_BIN="$retired_bin" PATH="$retired_bin:$local_bin:/usr/bin:/bin" \
+        DOTFILES_NPM_BIN="$retired_bin" PATH="$retired_bin:$fallback_bin:$local_bin:/usr/bin:/bin" \
         zsh -dfc 'source "$1"; command -v managed-tool; managed-tool; command -v npm; npm; print -r -- "${DOTFILES_NPM_BIN-unset}"; print -r -- "$PATH"' \
         _ "$REAL_DOTFILES_ROOT/home/.config/zsh/.zshrc"
 
@@ -411,4 +456,5 @@ operation_line() {
     assert_output --partial "nvm-npm"
     assert_output --partial "unset"
     refute_output --partial "$retired_bin"
+    refute_output --partial "$fallback_bin"
 }

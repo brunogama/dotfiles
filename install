@@ -834,7 +834,7 @@ phase_nvm() {
     }
     [[ "$DRY_RUN" == "true" ]] && sync_args+=(--dry-run)
 
-    "$sync_script" "${sync_args[@]}"
+    "$sync_script" "${sync_args[@]+"${sync_args[@]}"}"
     log_success "nvm, Node.js, and managed global npm tools are ready"
 }
 
