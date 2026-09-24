@@ -44,7 +44,8 @@ set -euo pipefail
 printf '%s\n' "$@" > "$WRAPPER_ARGS_OUTPUT"
 : > "$WRAPPER_ENV_OUTPUT"
 for var in GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME \
-    GIT_COMMITTER_EMAIL GH_TOKEN GITHUB_TOKEN; do
+    GIT_COMMITTER_EMAIL GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN \
+    GITHUB_ENTERPRISE_TOKEN; do
     if value="$(printenv "$var" 2>/dev/null)"; then
         printf '%s=%s\n' "$var" "$value" >> "$WRAPPER_ENV_OUTPUT"
     fi
@@ -61,7 +62,8 @@ create_failing_upstream() {
 set -euo pipefail
 : > "$WRAPPER_ENV_OUTPUT"
 for var in GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME \
-    GIT_COMMITTER_EMAIL GH_TOKEN GITHUB_TOKEN; do
+    GIT_COMMITTER_EMAIL GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN \
+    GITHUB_ENTERPRISE_TOKEN; do
     if value="$(printenv "$var" 2>/dev/null)"; then
         printf '%s=%s\n' "$var" "$value" >> "$WRAPPER_ENV_OUTPUT"
     fi
@@ -246,6 +248,8 @@ EOF
     link_agent_wrapper claude
     run env \
         "DOTFILES_AGENT_GH_TOKEN=tok-123" \
+        GH_ENTERPRISE_TOKEN=inherited-enterprise-gh-token \
+        GITHUB_ENTERPRISE_TOKEN=inherited-enterprise-github-token \
         "DOTFILES_CLAUDE_BIN=$upstream" \
         "$TEST_BIN/claude" --model test-model 'test prompt'
 
@@ -254,6 +258,8 @@ EOF
     assert_success
     run grep -Fx 'GITHUB_TOKEN=tok-123' "$WRAPPER_ENV_OUTPUT"
     assert_success
+    run grep -E '^(GH_ENTERPRISE_TOKEN|GITHUB_ENTERPRISE_TOKEN)=' "$WRAPPER_ENV_OUTPUT"
+    assert_failure
 }
 
 @test "wrapper does not pass inherited GitHub tokens without an explicit choice" {
@@ -264,12 +270,14 @@ EOF
     run env \
         GH_TOKEN=inherited-gh-token \
         GITHUB_TOKEN=inherited-github-token \
+        GH_ENTERPRISE_TOKEN=inherited-enterprise-gh-token \
+        GITHUB_ENTERPRISE_TOKEN=inherited-enterprise-github-token \
         "DOTFILES_AGENT_CONFIG=$config" \
         "DOTFILES_CODEX_BIN=$upstream" \
         "$TEST_BIN/codex" --model test-model 'test prompt'
 
     assert_success
-    run grep -E '^(GH_TOKEN|GITHUB_TOKEN)=' "$WRAPPER_ENV_OUTPUT"
+    run grep -E '^(GH_TOKEN|GITHUB_TOKEN|GH_ENTERPRISE_TOKEN|GITHUB_ENTERPRISE_TOKEN)=' "$WRAPPER_ENV_OUTPUT"
     assert_failure
 }
 

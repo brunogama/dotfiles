@@ -60,6 +60,7 @@ apply_agent_identity() {
 # App.
 mint_agent_github_token() {
 	local script_base credfile_bin helper_bin key token
+	unset GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN
 
 	if [[ -n "${DOTFILES_AGENT_GH_TOKEN:-}" ]]; then
 		export GH_TOKEN="$DOTFILES_AGENT_GH_TOKEN"
