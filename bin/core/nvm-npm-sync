@@ -100,7 +100,7 @@ export NVM_DIR
 }
 
 install_nvm() {
-    local install_dir installer
+    local install_dir installer nvm_parent nvm_stage
 
     install_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nvm-install.XXXXXX")"
     TEMP_DIRS+=("$install_dir")
@@ -126,13 +126,21 @@ install_nvm() {
         exit 1
     fi
 
-    mkdir -p -- "$NVM_DIR"
-    PROFILE=/dev/null /bin/bash "$installer"
+    nvm_parent="$(dirname "$NVM_DIR")"
+    mkdir -p -- "$nvm_parent"
+    nvm_stage="$(mktemp -d "$nvm_parent/.dotfiles-nvm-stage.XXXXXX")"
+    TEMP_DIRS+=("$nvm_stage")
+    env NVM_DIR="$nvm_stage" PROFILE=/dev/null /bin/bash "$installer"
 
-    [[ -s "$NVM_DIR/nvm.sh" ]] || {
-        echo "nvm-npm-sync: nvm installation did not create $NVM_DIR/nvm.sh" >&2
+    [[ -s "$nvm_stage/nvm.sh" ]] || {
+        echo "nvm-npm-sync: nvm installation did not create nvm.sh" >&2
         exit 1
     }
+    [[ ! -e "$NVM_DIR" && ! -L "$NVM_DIR" ]] || {
+        echo "nvm-npm-sync: destination appeared during installation: $NVM_DIR" >&2
+        exit 1
+    }
+    mv -- "$nvm_stage" "$NVM_DIR"
 }
 
 ensure_nvm() {

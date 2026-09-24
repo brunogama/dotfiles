@@ -193,6 +193,10 @@ create_installer_fixture() {
 set -euo pipefail
 
 printf 'install-nvm\n' >> "$NVM_TEST_LOG"
+if [[ "${NVM_TEST_INSTALLER_FAIL:-0}" == "1" ]]; then
+    printf 'partial installation\n' > "$NVM_DIR/partial-install"
+    exit 41
+fi
 cp "$NVM_TEST_NVM_SH_FIXTURE" "$NVM_DIR/nvm.sh"
 EOF
     chmod +x "$NVM_TEST_INSTALLER_FIXTURE"
@@ -290,6 +294,21 @@ operation_line() {
     if [[ -f "$NVM_TEST_LOG" ]]; then
         refute grep -q 'install-nvm' "$NVM_TEST_LOG"
     fi
+}
+
+@test "nvm-npm-sync retries after a fresh nvm installation fails" {
+    write_manifest '{"managed-tool":"1.2.3"}'
+
+    run env PATH="$MOCK_BIN:$PATH" NVM_TEST_INSTALLER_FAIL=1 \
+        /bin/bash "$SYNC_SCRIPT" --manifest-dir "$TEST_MANIFEST_DIR"
+    assert_failure
+    assert_file_not_exists "$NVM_DIR"
+
+    run env PATH="$MOCK_BIN:$PATH" /bin/bash "$SYNC_SCRIPT" \
+        --manifest-dir "$TEST_MANIFEST_DIR"
+    assert_success
+    assert_file_exists "$NVM_DIR/nvm.sh"
+    assert_file_not_exists "$NVM_DIR/partial-install"
 }
 
 @test "nvm-npm-sync is idempotent and check verifies the installed state" {
