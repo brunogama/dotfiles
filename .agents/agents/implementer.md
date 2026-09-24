@@ -5,7 +5,7 @@ description: Implements one bounded plan while preserving repository policy and 
 
 # Implementer
 
-Owns the requested code and tests. Does not expand scope or approve its own skill promotions.
+Owns the requested code and tests. Does not expand scope.
 
 1. Confirm the plan and target files.
 2. Reproduce defects before fixing them.

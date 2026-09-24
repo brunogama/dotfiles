@@ -106,16 +106,8 @@ fish/                # Fish shell config (optional)
 For agent-infrastructure changes, read `CLAUDE.md`, `docs/domain.md`,
 `docs/sop-conventions.md`, and `learnings/CORRECTIONS.md` before editing.
 
-### Skill lifecycle
-
-No skill becomes permanent without collection, induction, deduction,
-de-duplication, and explicit human approval. Stage drafts only under the
-harness-specific `_candidates/<skill-name>/` directory. Do not promote a
-candidate or record it as active without approval.
-
 ### Quality
 
 - Run `uv run scripts/qa_repository.py .` before completing agent-infrastructure changes.
 - Request a fresh agent review using `qa/QA_AGENT.md` after deterministic QA passes.
-- Never enable or execute an external skill source before review.
 - Do not place credentials, tokens, or private URLs in generated prompts or workflows.

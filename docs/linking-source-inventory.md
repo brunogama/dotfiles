@@ -12,7 +12,6 @@
 | `zsh/work-config.zsh` | `~/.config/zsh/work-config.zsh` | `home/.config/zsh/work-config.zsh` | Home Manager `legacyLinks` and `home.file` |
 | `zsh/personal-config.zsh` | `~/.config/zsh/personal-config.zsh` | `home/.config/zsh/personal-config.zsh` | Home Manager `legacyLinks` and `home.file` |
 | `zsh/lib/lazy-load.zsh` | `~/.config/zsh/lib/lazy-load.zsh` | `home/.config/zsh/lib/lazy-load.zsh` | Home Manager `legacyLinks` and recursive `home.file` |
-| `zsh/completion/_pi` | `~/.config/zsh/completion/_pi` | `home/.config/zsh/completion/_pi` | Home Manager `legacyLinks` and recursive `home.file` |
 | `zsh/completion/git-ignore-completion` | `~/.config/zsh/completion/git-ignore-completion` | `home/.config/zsh/completion/git-ignore-completion` | Home Manager `legacyLinks` and recursive `home.file` |
 | `git/.gitconfig` | `~/.gitconfig` | `home/.gitconfig` | Home Manager `legacyLinks`; Git settings also own generated configuration |
 | `git/.gitignore_global` | `~/.gitignore_global` | `home/.gitignore_global` | Home Manager `legacyLinks` and `home.file` |

@@ -16,6 +16,7 @@ EOF
 include_destructive=0
 keep_workspace=0
 failed=0
+last_stage_passed=0
 
 while (($#)); do
 	case "$1" in
@@ -35,12 +36,7 @@ while (($#)); do
 done
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if root="$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null)"; then
-	root_is_git_repository=1
-else
-	root="$(jj -R "$script_dir/.." root)"
-	root_is_git_repository=0
-fi
+root="$(git -C "$script_dir" rev-parse --show-toplevel)"
 run_root="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-local-ci.XXXXXX")"
 workspace="$run_root/workspace"
 results="$run_root/results.tsv"
@@ -84,16 +80,32 @@ run_stage() {
 
 	if ((status == 0)); then
 		record "$workflow" "$cell" "$stage" pass ''
+		last_stage_passed=1
 		return 0
 	fi
 
 	record "$workflow" "$cell" "$stage" fail "exit $status"
 	failed=1
-	return "$status"
+	last_stage_passed=0
+	return 0
 }
 
 stage_slug() {
 	printf '%s\n' "${1//[^[:alnum:]._-]/_}"
+}
+
+rsync_repository() {
+	local destination="$1"
+
+	rsync -a --delete \
+		--exclude '.git' \
+		--exclude '.jj' \
+		--exclude '.local-ci' \
+		--exclude '.venv' \
+		--exclude 'packages/npm/node_modules' \
+		--exclude '*/__pycache__/' \
+		--exclude '*/.ruff_cache/' \
+		"$root/" "$destination/"
 }
 
 materialize_macos_workspace() {
@@ -102,8 +114,7 @@ materialize_macos_workspace() {
 
 	mkdir -p "$destination" "$home/.config" "$home/.cache" \
 		"$home/.local/state" "$home/tmp"
-	rsync -a --delete --exclude '.git' --exclude '.jj' --exclude '.local-ci' \
-		"$root/" "$destination/"
+	rsync_repository "$destination"
 	git -C "$destination" init --quiet
 	git -C "$destination" add --all --force
 	git -C "$destination" -c user.name='Local CI' -c user.email='local-ci@example.invalid' \
@@ -136,7 +147,7 @@ render_report() {
 		printf '| Workflow | Cell | Stage | Status | Notes |\n'
 		printf '|---|---|---|---|---|\n'
 		awk -F '\t' \
-			'{ printf "| %s | %s | %s | %s | %s |\\n", $1, $2, $3, $4, $5 }' \
+			'{ printf "| %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5 }' \
 			"$results"
 	} >"$report"
 	cat "$report"
@@ -155,36 +166,30 @@ prepare_workspace() {
 	require_command python3
 	require_command rsync
 
-	if ((root_is_git_repository)); then
-		git clone --quiet --no-local "$root" "$workspace"
-	else
-		mkdir -p "$workspace"
-	fi
-	rsync -a --delete --exclude '.git' --exclude '.jj' --exclude '.local-ci' "$root/" "$workspace/"
-	if (( ! root_is_git_repository )); then
-		git -C "$workspace" init --quiet
-		git -C "$workspace" add --all
-		git -C "$workspace" -c user.name='local-ci' -c user.email='local-ci@example.invalid' \
-			commit --quiet -m 'local CI snapshot'
-	fi
+	git clone --quiet --no-local "$root" "$workspace"
+	rsync_repository "$workspace"
+	git -C "$workspace" add --all --force
 	: >"$results"
 }
 
 macos_available() {
 	[[ "$(uname -s)" == Darwin ]] &&
 		command -v python3.11 >/dev/null 2>&1 &&
+		command -v uv >/dev/null 2>&1 &&
 		command -v shellcheck >/dev/null 2>&1 &&
 		command -v jq >/dev/null 2>&1 &&
+		command -v parallel >/dev/null 2>&1 &&
 		command -v bats >/dev/null 2>&1
 }
 
 macos_validate() (
 	cd "$workspace"
 	local_ci_python="$HOME/.local-ci-venv/bin/python"
-	python3.11 -m venv "$HOME/.local-ci-venv"
-	"$local_ci_python" -m pip install --upgrade pip uv pre-commit
+	uv venv --python python3.11 "$HOME/.local-ci-venv"
+	uv pip install --python "$local_ci_python" pre-commit
 	SKIP=trailing-whitespace,end-of-file-fixer \
 		"$local_ci_python" -m pre_commit run --all-files
+	python3.11 tests/test_ci_workflow.py
 	bin/git/hooks/check-lowercase-dirs
 	git ls-files | while IFS= read -r file; do
 		if [[ -f "$file" && "$file" =~ \.(md|sh|zsh|bash|txt)$ ]]; then
@@ -223,7 +228,6 @@ macos_install_nix() (
 		"$HOME/.zshenv" \
 		"$HOME/.config/zsh/.zshrc" \
 		"$HOME/.config/starship.toml" \
-		"$HOME/.pi/agent/AGENTS.md" \
 		"$HOME/.codex/AGENTS.md" \
 		"$HOME/.claude/CLAUDE.md"; do
 		test -L "$path"
@@ -235,83 +239,82 @@ macos_install_nix() (
 	for command in git home-manager jq rg shellcheck starship zsh; do
 		command -v "$command" >/dev/null
 	done
-	test -x "$HOME/.local/share/dotfiles/npm/current/node_modules/.bin/pi"
 	home-manager generations
 )
 
 macos_test() (
 	cd "$workspace"
-	local_ci_python="$HOME/.local-ci-venv/bin/python"
-	local_ci_uv="$HOME/.local-ci-venv/bin/uv"
-	python3.11 -m venv "$HOME/.local-ci-venv"
-	"$local_ci_python" -m pip install --upgrade pip uv
 	./install --dry-run
-	"$local_ci_uv" run bin/core/link-dotfiles.py --dry-run
-	printf '%s\n' 'Skipping script help-message probe outside the GitHub runner.'
+	uv run bin/core/link-dotfiles.py --dry-run
+	printf '%s\n' 'Skipping the GitHub CLI help probe outside the GitHub runner.'
 )
 
 macos_integration() (
 	cd "$workspace"
-	bats --tap tests/integration/core/test_install.bats
-	bats --tap tests/integration/core/test_work_mode.bats
+	set -o pipefail
+	mkdir -p test-results
+	bats --tap --jobs "${BATS_JOBS:-2}" \
+		tests/integration/core/test_install.bats \
+		tests/integration/core/test_work_mode.bats | tee test-results/integration.tap
 )
 
 record_github_only_stages() {
-	local note='requires a GitHub Actions Linux runner'
+	local note='requires a Depot Linux runner'
 
-	record_skip CI 'ubuntu-latest / Python 3.11' test-linux "$note"
-	record_skip CI 'ubuntu-latest / Python 3.11' test-python "$note"
-	record_skip CI 'ubuntu-latest / Python 3.11' mutation-testing "$note"
-	record_skip CI ubuntu-latest test-integration-linux "$note"
-	record_skip CI ubuntu-latest documentation "$note"
-	record_skip 'Agent repository QA' 'ubuntu-latest / setup-uv@v6' \
+	record_skip 'CI (Linux)' 'depot-ubuntu-latest / Python 3.11' test-linux "$note"
+	record_skip 'CI (Linux)' 'depot-ubuntu-latest / Python 3.11' test-python "$note"
+	record_skip 'CI (Linux)' 'depot-ubuntu-latest / Python 3.11' mutation-testing "$note"
+	record_skip 'CI (Linux)' depot-ubuntu-latest test-integration-linux "$note"
+	record_skip 'CI (Linux)' depot-ubuntu-latest documentation "$note"
+	record_skip 'Agent repository QA' 'depot-ubuntu-latest / setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e' \
 		deterministic-qa "$note"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-prepare_workspace
+	prepare_workspace
 
-mac_validation_passed=0
-if macos_available; then
-	if run_macos_stage CI 'macos-latest / Python 3.11' validate macos_validate; then
-		mac_validation_passed=1
-	fi
-else
-	warn 'macOS jobs require native macOS, Homebrew, and python3.11.'
-	record_skip CI 'macos-latest / Python 3.11' validate \
-		'requires native macOS, Homebrew, and python3.11'
-fi
-
-if ((mac_validation_passed)); then
-	if command -v nix >/dev/null 2>&1; then
-		run_macos_stage CI macos-latest validate-nix macos_validate_nix || true
-	else
-		record_skip CI macos-latest validate-nix 'Nix is not installed'
-	fi
-	run_macos_stage CI 'macos-latest / Python 3.11' test-macos macos_test || true
-	run_macos_stage CI macos-latest test-integration-macos macos_integration || true
-	if command -v nix >/dev/null 2>&1; then
-		if ((include_destructive)); then
-			run_macos_stage CI macos-latest install-nix-macos macos_install_nix || true
-		else
-			record_skip CI macos-latest install-nix-macos \
-				'requires --include-destructive in a disposable macOS VM'
+	mac_validation_passed=0
+	if macos_available; then
+		run_macos_stage CI 'macos-latest / Python 3.11' validate macos_validate
+		if ((last_stage_passed)); then
+			mac_validation_passed=1
 		fi
 	else
-		record_skip CI macos-latest install-nix-macos 'requires validate-nix'
+		warn 'macOS jobs require native macOS, Homebrew, and python3.11.'
+		record_skip CI 'macos-latest / Python 3.11' validate \
+			'requires native macOS, Homebrew, and python3.11'
 	fi
-else
-	record_skip CI macos-latest validate-nix 'validate failed or was unavailable'
-	record_skip CI 'macos-latest / Python 3.11' test-macos 'validate was not passed'
-	record_skip CI macos-latest test-integration-macos 'validate was not passed'
-	record_skip CI macos-latest install-nix-macos 'validate was not passed'
-fi
 
-record_github_only_stages
+	if ((mac_validation_passed)); then
+		if command -v nix >/dev/null 2>&1; then
+			run_macos_stage CI macos-latest validate-nix macos_validate_nix
+		else
+			record_skip CI macos-latest validate-nix 'Nix is not installed'
+		fi
+		run_macos_stage CI 'macos-latest / Python 3.11' test-macos macos_test
+		run_macos_stage CI macos-latest test-integration-macos macos_integration
+		if command -v nix >/dev/null 2>&1; then
+			if ((include_destructive)); then
+				run_macos_stage CI macos-latest install-nix-macos macos_install_nix
+			else
+				record_skip CI macos-latest install-nix-macos \
+					'requires --include-destructive in a disposable macOS VM'
+			fi
+		else
+			record_skip CI macos-latest install-nix-macos 'requires validate-nix'
+		fi
+	else
+		record_skip CI macos-latest validate-nix 'validate failed or was unavailable'
+		record_skip CI 'macos-latest / Python 3.11' test-macos 'validate was not passed'
+		record_skip CI macos-latest test-integration-macos 'validate was not passed'
+		record_skip CI macos-latest install-nix-macos 'validate was not passed'
+	fi
 
-record_skip 'Close pull requests' ubuntu-latest close \
-	'requires GitHub Actions'
+	record_github_only_stages
 
-render_report
-((failed == 0))
+	record_skip 'Close pull requests' ubuntu-latest close \
+		'requires GitHub Actions'
+
+	render_report
+	((failed == 0))
 fi

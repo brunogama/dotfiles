@@ -43,13 +43,13 @@ When a macOS GitHub Actions workflow job changes, update `scripts/local-ci.sh` i
 
 ## Agent-infrastructure validation
 
-For changes to agent scaffolding, candidate skills, or harness content, run the deterministic repository QA checker before a fresh independent review:
+For changes to agent scaffolding or harness content, run the deterministic repository QA checker before a fresh independent review:
 
 ```bash
 uv run scripts/qa_repository.py .
 ```
 
-See [agent infrastructure governance](../governance/agent-infrastructure.md) for the skill lifecycle and review requirements.
+See [agent infrastructure governance](../governance/agent-infrastructure.md) for the review requirements.
 
 ---
 

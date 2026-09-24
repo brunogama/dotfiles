@@ -99,6 +99,40 @@ source "$local_ci"
 record_github_only_stages
 ! grep -Eq '\<(act|docker)\>' "$local_ci"
 [[ "$(awk -F '\t' '$4 == "skip" { count += 1 } END { print count }' "$results")" == 6 ]]
+grep -Fq $'CI (Linux)\tdepot-ubuntu-latest / Python 3.11\ttest-linux\tskip' "$results"
+grep -Fq $'Agent repository QA\tdepot-ubuntu-latest / setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e\tdeterministic-qa\tskip' "$results"
+EOF
+
+    assert_success
+}
+
+@test "local-ci: records an early stage failure even if later stages pass" {
+    run bash -s -- "$LOCAL_CI" "$BATS_TEST_TMPDIR/results.tsv" \
+        "$BATS_TEST_TMPDIR/should-not-run" <<'EOF'
+set -euo pipefail
+
+local_ci="$1"
+results="$2"
+marker="$3"
+set --
+source "$local_ci"
+: >"$results"
+
+failing_stage() {
+    false
+    touch "$marker"
+}
+passing_stage() {
+    true
+}
+
+run_stage CI macos failing failing_stage
+[[ "$failed" == 1 && "$last_stage_passed" == 0 ]]
+[[ ! -e "$marker" ]]
+run_stage CI macos passing passing_stage
+[[ "$failed" == 1 && "$last_stage_passed" == 1 ]]
+grep -Fq $'failing\tfail\texit 1' "$results"
+grep -Fq $'passing\tpass\t' "$results"
 EOF
 
     assert_success

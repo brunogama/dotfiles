@@ -41,10 +41,6 @@ let
       source = ../home/.config/zsh/lib/lazy-load.zsh;
     }
     {
-      target = ".config/zsh/completion/_pi";
-      source = ../home/.config/zsh/completion/_pi;
-    }
-    {
       target = ".config/zsh/completion/git-ignore-completion";
       source = ../home/.config/zsh/completion/git-ignore-completion;
     }
@@ -112,6 +108,10 @@ in
         return 0
       fi
 
+      if [[ "$(readlink "$target")" == /nix/store/* ]]; then
+        return 0
+      fi
+
       if [[ -e "$backup" || -L "$backup" ]]; then
         rm -- "$target"
       else
@@ -148,7 +148,6 @@ in
   };
 
   home.file = {
-    ".pi/agent/AGENTS.md".source = ../docs/agents/AGENTS.md;
     ".codex/AGENTS.md".source = ../docs/agents/AGENTS.md;
     ".claude/CLAUDE.md".source = ../docs/agents/AGENTS.md;
 

@@ -1,5 +1,6 @@
 ---
-# Linux CI - runs on Depot CI sandboxes. macOS jobs live in .github/workflows/ci.yml.
+# Linux CI - runs on Depot CI sandboxes.
+# macOS jobs live in .github/workflows/ci.yml.
 name: CI (Linux)
 
 "on":
@@ -9,6 +10,12 @@ name: CI (Linux)
     branches: [main, develop]
   workflow_dispatch:
 
+# Cancel superseded runs so a newer push stops the previous run instead of
+# letting paid Depot sandboxes keep burning.
+concurrency:
+  group: ci-linux-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -16,6 +23,7 @@ jobs:
   validate:
     name: Validate
     runs-on: depot-ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -90,6 +98,7 @@ jobs:
   test-linux:
     name: Test on Linux
     runs-on: depot-ubuntu-latest
+    timeout-minutes: 20
     needs: validate
 
     steps:
@@ -120,6 +129,7 @@ jobs:
   test-python:
     name: Test Python Packages
     runs-on: depot-ubuntu-latest
+    timeout-minutes: 20
     needs: test-linux
 
     steps:
@@ -165,6 +175,7 @@ jobs:
   mutation-testing:
     name: Mutation Testing
     runs-on: depot-ubuntu-latest
+    timeout-minutes: 20
     needs: test-python
 
     steps:
@@ -223,6 +234,7 @@ jobs:
   test-integration-linux:
     name: Integration Tests (Linux)
     runs-on: depot-ubuntu-latest
+    timeout-minutes: 20
     needs: mutation-testing
 
     steps:
@@ -253,6 +265,7 @@ jobs:
   documentation:
     name: Check Documentation
     runs-on: depot-ubuntu-latest
+    timeout-minutes: 20
     needs: test-integration-linux
 
     steps:
@@ -294,4 +307,3 @@ jobs:
             echo "Found TODO/FIXME comments:"
             echo "$todos"
           fi
-

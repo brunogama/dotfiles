@@ -4,11 +4,11 @@ name: Agent repository QA
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [{{ repository.default_branch }}]
 
 # Cancel superseded runs so a newer push stops the previous run.
 concurrency:
-  group: qa-${{ github.workflow }}-${{ github.ref }}
+  group: qa-{% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
   cancel-in-progress: true
 
 permissions:
