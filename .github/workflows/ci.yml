@@ -209,6 +209,8 @@ jobs:
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
 
       - name: Run a complete user installation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           ./install --nix --yes \
             --username "$USER" \

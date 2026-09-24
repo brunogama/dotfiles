@@ -215,6 +215,8 @@ macos_validate_nix() (
 
 macos_install_nix() (
 	cd "$workspace"
+	# GitHub supplies GITHUB_TOKEN for mise's Python artifact attestations.
+	# A disposable local VM can supply its own token when running this stage.
 	./install --nix --yes --username "$USER" --machine-name 'Dotfiles CI'
 	grep -Fq "username = \"$USER\";" nix/host.nix
 	grep -Fq 'configurationName = "dotfiles-ci";' nix/host.nix
