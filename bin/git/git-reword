@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+INSTALL_SCRIPT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../.." && pwd)/install"
+INSTALL_COMMAND="$(printf '%q' "$INSTALL_SCRIPT")"
 IFS=$'\n\t'
 
 # Git Reword - Interactive commit message reword with FZF
@@ -65,9 +68,9 @@ log_dim() {
 show_installation_instructions() {
     echo ""
     echo "Installation instructions:"
-    echo "  fzf:  From the dotfiles checkout: ./install  # provides fzf through Nix  (macOS)"
+    echo "  fzf:  ${INSTALL_COMMAND}  # provides fzf through Nix  (macOS)"
     echo "        apt install fzf   (Debian/Ubuntu)"
-    echo "  git:  From the dotfiles checkout: ./install  # provides git through Nix  (macOS)"
+    echo "  git:  ${INSTALL_COMMAND}  # provides git through Nix  (macOS)"
     echo "        apt install git   (Debian/Ubuntu)"
 }
 

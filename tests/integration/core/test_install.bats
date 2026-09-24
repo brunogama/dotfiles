@@ -448,6 +448,17 @@ EOF
     [ "$(sed -n '2p' "$UPDATE_CALLS")" = "nix-update --switch" ]
 }
 
+@test "linked dependency command prints the installer path from another directory" {
+    mkdir -p "$TEST_TEMP_DIR/commands"
+    ln -s "$(get_dotfiles_root)/bin/core/check-dependency" \
+        "$TEST_TEMP_DIR/commands/check-dependency"
+    cd "$HOME"
+
+    run "$TEST_TEMP_DIR/commands/check-dependency" missing-test-command-123
+    assert_failure 1
+    assert_output --partial "$(cd -P "$(get_dotfiles_root)" && pwd)/install"
+}
+
 @test "install: --verbose enables verbose output" {
     run "$DOTFILES_ROOT/install" --dry-run --yes --verbose
     assert_success

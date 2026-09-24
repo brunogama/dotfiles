@@ -2,8 +2,11 @@
 
 set -euo pipefail
 
+INSTALL_SCRIPT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../.." && pwd)/install"
+INSTALL_COMMAND="$(printf '%q' "$INSTALL_SCRIPT")"
+
 [[ $# -eq 1 ]] || { echo "Usage: check-dependency COMMAND" >&2; exit 2; }
 if ! command -v "$1" >/dev/null 2>&1; then
-    echo "$1 is missing. From the dotfiles checkout, run ./install to activate the managed Nix toolchain." >&2
+    echo "$1 is missing. Run ${INSTALL_COMMAND} to activate the managed Nix toolchain." >&2
     exit 1
 fi
