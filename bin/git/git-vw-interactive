@@ -93,13 +93,13 @@ print_dependency_help() {
     case "${dep}" in
         fzf)
             echo "install fzf:"
-            echo "  ./install  # provides fzf through Nix          # macOS"
+            echo "  From the dotfiles checkout: ./install  # provides fzf through Nix          # macOS"
             echo "  apt-get install fzf       # Debian/Ubuntu"
             echo "  https://github.com/junegunn/fzf"
             ;;
         tmux)
             echo "install tmux:"
-            echo "  ./install  # provides tmux through Nix         # macOS"
+            echo "  From the dotfiles checkout: ./install  # provides tmux through Nix         # macOS"
             echo "  apt-get install tmux      # Debian/Ubuntu"
             ;;
         git-virtual-worktree)

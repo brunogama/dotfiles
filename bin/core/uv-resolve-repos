@@ -217,7 +217,7 @@ class DependencyResolver:
         except FileNotFoundError:
             print(format_error("Error: UV not found. Please install UV first:"), file=sys.stderr)
             print("  curl -LsSf https://astral.sh/uv/install.sh | sh", file=sys.stderr)
-            print("\nOr run ./install for the managed Nix package", file=sys.stderr)
+            print("\nOr run ./install from the dotfiles checkout for the managed Nix package", file=sys.stderr)
             raise
 
         if self.verbose:

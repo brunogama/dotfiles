@@ -104,6 +104,14 @@ EOF
     [ ! -e "$MISE_CALLS" ]
 }
 
+@test "linked toolchain command finds the repository manifest" {
+    ln -s "$DOTFILES_TEST_ROOT/bin/core/mise-toolchain-sync" \
+        "$BATS_TEST_TMPDIR/bin/mise-toolchain-sync"
+    run "$BATS_TEST_TMPDIR/bin/mise-toolchain-sync" --dry-run
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"$DOTFILES_TEST_ROOT/packages/npm/package.json"* ]]
+}
+
 @test "toolchain sync keeps an exact global npm version" {
     export MISE_TEST_NODE_ROOT="$BATS_TEST_TMPDIR/node"
     export MISE_TEST_NPM_VERSION=0.1.13

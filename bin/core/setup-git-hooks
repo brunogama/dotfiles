@@ -75,7 +75,7 @@ check_dependencies() {
         echo ""
         echo "Install with:"
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            echo "  ./install  # provides jq through Nix"
+            echo "  From the dotfiles checkout: ./install  # provides jq through Nix"
         else
             echo "  apt-get install jq"
         fi

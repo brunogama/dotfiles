@@ -1,4 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec nix-update --switch "$@"
+source_path="${BASH_SOURCE[0]}"
+while [[ -L "$source_path" ]]; do
+    source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+    source_path="$(readlink "$source_path")"
+    [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+done
+repo_root="$(cd -P "$(dirname "$source_path")/../.." && pwd)"
+
+for arg in "$@"; do
+    if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+        exec "$repo_root/bin/core/nix-update" --switch "$@"
+    fi
+    if [[ "$arg" == "--dry-run" ]]; then
+        printf '+ git -C %q pull --ff-only\n' "$repo_root"
+        exec "$repo_root/bin/core/nix-update" --switch "$@"
+    fi
+done
+
+git -C "$repo_root" pull --ff-only
+exec "$repo_root/bin/core/nix-update" --switch "$@"

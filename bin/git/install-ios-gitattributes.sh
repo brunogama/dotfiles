@@ -46,7 +46,7 @@ install_gitattributes() {
 
     if ! command -v git-lfs &> /dev/null; then
         perror "Git LFS is not installed. Please install it with:"
-        pwarning "> $ ${BLUE}./install  # provides git-lfs through Nix${YELLOW}"
+        pwarning "> $ ${BLUE}From the dotfiles checkout: ./install  # provides git-lfs through Nix${YELLOW}"
         exit 1
     fi
 

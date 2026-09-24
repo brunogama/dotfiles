@@ -425,6 +425,29 @@ teardown() {
     assert_output --partial "--system requires --switch"
 }
 
+@test "update-dotfiles pulls the linked checkout before updating Nix" {
+    mkdir -p "$DOTFILES_ROOT/bin/core" "$TEST_TEMP_DIR/mock-bin"
+    cp "$(get_dotfiles_root)/bin/core/update-dotfiles" "$DOTFILES_ROOT/bin/core/update-dotfiles"
+    cat > "$DOTFILES_ROOT/bin/core/nix-update" <<'EOF'
+#!/usr/bin/env bash
+printf 'nix-update %s\n' "$*" >> "$UPDATE_CALLS"
+EOF
+    cat > "$TEST_TEMP_DIR/mock-bin/git" <<'EOF'
+#!/usr/bin/env bash
+printf 'git %s\n' "$*" >> "$UPDATE_CALLS"
+EOF
+    chmod +x "$DOTFILES_ROOT/bin/core/update-dotfiles" \
+        "$DOTFILES_ROOT/bin/core/nix-update" "$TEST_TEMP_DIR/mock-bin/git"
+    ln -s "$DOTFILES_ROOT/bin/core/update-dotfiles" "$TEST_TEMP_DIR/mock-bin/update-dotfiles"
+    export UPDATE_CALLS="$TEST_TEMP_DIR/update-calls"
+
+    run env PATH="$TEST_TEMP_DIR/mock-bin:$PATH" \
+        "$TEST_TEMP_DIR/mock-bin/update-dotfiles"
+    assert_success
+    [ "$(sed -n '1p' "$UPDATE_CALLS")" = "git -C $(cd -P "$DOTFILES_ROOT" && pwd) pull --ff-only" ]
+    [ "$(sed -n '2p' "$UPDATE_CALLS")" = "nix-update --switch" ]
+}
+
 @test "install: --verbose enables verbose output" {
     run "$DOTFILES_ROOT/install" --dry-run --yes --verbose
     assert_success
@@ -445,6 +468,24 @@ teardown() {
     run "$DOTFILES_ROOT/install" --dry-run --yes --skip-links
     assert_success
     assert_output --partial "Skipping symlink creation"
+}
+
+@test "install: --skip-links uses the checkout mise config with an empty home" {
+    mkdir -p "$DOTFILES_ROOT/home/.config/mise" "$HOME/.zprezto" "$TEST_TEMP_DIR/mock-bin"
+    cp "$(get_dotfiles_root)/home/.config/mise/config.toml" \
+        "$DOTFILES_ROOT/home/.config/mise/config.toml"
+    cat > "$TEST_TEMP_DIR/mock-bin/mise" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "${MISE_GLOBAL_CONFIG_FILE:-}" > "$MISE_CONFIG_SEEN"
+[[ "$*" == "install --yes" ]]
+EOF
+    chmod +x "$TEST_TEMP_DIR/mock-bin/mise"
+    export MISE_CONFIG_SEEN="$TEST_TEMP_DIR/mise-config-seen"
+    run env PATH="$TEST_TEMP_DIR/mock-bin:$PATH" SHELL=/bin/bash \
+        "$DOTFILES_ROOT/install" --yes --skip-packages --skip-links
+    assert_success
+    assert_output --partial "Skipping symlink creation"
+    [ "$(cat "$MISE_CONFIG_SEEN")" = "$DOTFILES_ROOT/home/.config/mise/config.toml" ]
 }
 
 @test "install: --yes enables non-interactive mode" {

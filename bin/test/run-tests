@@ -70,7 +70,7 @@ done
 # Check for bats
 if ! command -v bats &> /dev/null; then
     echo -e "${RED}Error: bats-core is not installed${NC}"
-    echo "Install with: ./install  # provides bats through Nix"
+    echo "Install from the dotfiles checkout: ./install  # provides bats through Nix"
     exit 1
 fi
 

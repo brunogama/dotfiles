@@ -65,9 +65,9 @@ log_dim() {
 show_installation_instructions() {
     echo ""
     echo "Installation instructions:"
-    echo "  fzf:  ./install  # provides fzf through Nix  (macOS)"
+    echo "  fzf:  From the dotfiles checkout: ./install  # provides fzf through Nix  (macOS)"
     echo "        apt install fzf   (Debian/Ubuntu)"
-    echo "  git:  ./install  # provides git through Nix  (macOS)"
+    echo "  git:  From the dotfiles checkout: ./install  # provides git through Nix  (macOS)"
     echo "        apt install git   (Debian/Ubuntu)"
 }
 

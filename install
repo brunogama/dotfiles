@@ -380,10 +380,18 @@ phase_dependencies() {
 phase_mise() {
     log_phase "Mise Runtime Setup"
 
+    local mise_config="$HOME/.config/mise/config.toml"
+    if [[ ! -f "$mise_config" ]]; then
+        mise_config="$DOTFILES_ROOT/home/.config/mise/config.toml"
+    fi
     if ! command_exists mise; then
         if [[ "$DRY_RUN" == "true" ]]; then
             log_info "Would install mise"
         else
+            [[ -f "$mise_config" ]] || {
+                log_error "Managed mise config is missing"
+                exit 2
+            }
             confirm "Install mise for Node, Python, and Ruby?" || {
                 log_error "Mise is required for managed runtimes"
                 exit 3
@@ -399,11 +407,11 @@ phase_mise() {
     fi
 
     command_exists mise || { log_error "mise installer did not provide mise"; exit 2; }
-    [[ -f "$HOME/.config/mise/config.toml" ]] || {
+    [[ -f "$mise_config" ]] || {
         log_error "Managed mise config is missing"
         exit 2
     }
-    mise install --yes
+    MISE_GLOBAL_CONFIG_FILE="$mise_config" mise install --yes
 }
 
 # Prezto and Starship setup
