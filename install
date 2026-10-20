@@ -485,6 +485,14 @@ run_linker() {
     local link_args=()
 
     [[ -f "$linker" ]] || return 2
+    if [[ ! -x "$linker" ]]; then
+        log_error "link-dotfiles.py is not executable: $linker"
+        return 1
+    fi
+    if ! command -v uv >/dev/null 2>&1; then
+        log_error "uv is required to run link-dotfiles.py"
+        return 1
+    fi
     [[ "$commands_only" == "true" ]] && link_args+=("--commands-only")
     if [[ "$DRY_RUN" == "true" ]]; then
         link_args+=("--dry-run")

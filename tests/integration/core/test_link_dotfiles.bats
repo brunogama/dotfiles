@@ -579,6 +579,20 @@ assert_link_points_to() {
     assert_link_points_to "$update_repo/bin/core/example-command" "$HOME/.local/bin/example-command"
 }
 
+@test "update-dotfiles-scripts reports when the linker runtime is unavailable" {
+    local updater update_repo
+    updater="$(get_dotfiles_root)/bin/core/update-dotfiles-scripts"
+    update_repo="$TEST_TEMP_DIR/update-repo"
+    mkdir -p "$update_repo/bin/core"
+    cp "$LINK_SCRIPT" "$update_repo/bin/core/link-dotfiles.py"
+    chmod +x "$update_repo/bin/core/link-dotfiles.py"
+
+    run env PATH="/usr/bin:/bin:/usr/sbin:/sbin" "HOME=$HOME" "DOTFILES_REPO=$update_repo" "$updater"
+
+    assert_failure
+    assert_output --partial "uv is required to run link-dotfiles.py"
+}
+
 @test "link-dotfiles: source symlinks are not managed" {
     create_home_file ".real"
     ln -s "$TEST_DOTFILES/home/.real" "$TEST_DOTFILES/home/.source-link"

@@ -818,6 +818,13 @@ EOF
     assert_output --partial "link-dotfiles.py script not found"
 }
 
+@test "install: reports when the linker runtime is unavailable" {
+    run env PATH="/usr/bin:/bin:/usr/sbin:/sbin" "$DOTFILES_ROOT/install" --scripts-only --dry-run --yes
+
+    assert_failure
+    assert_output --partial "uv is required to run link-dotfiles.py"
+}
+
 # Shell Configuration Tests
 
 @test "install: reports current shell" {
