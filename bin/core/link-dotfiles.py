@@ -32,6 +32,7 @@ from pathlib import Path
 
 VERSION = "3.0.0"
 EXCLUDED_PUBLIC_COMMANDS = frozenset({"claude", "codex", "pi"})
+RETIRED_DOTFILES_COMMANDS = frozenset({"claude", "codex"})
 
 # Home Manager declarations in nix/home.nix own these targets. Directory entries
 # protect every descendant because Home Manager manages them recursively.
@@ -121,6 +122,7 @@ class LinkManager:
         self.count_pruned = 0
         self.count_backed_up = 0
         self.applied_links: list[tuple[Path, Path]] = []
+        self.retired_targets: set[Path] = set()
 
         # Detect platform
         self.platform = sys.platform
@@ -303,7 +305,11 @@ class LinkManager:
                 if previous.get("repository_id") == self.repository_id():
                     for link in previous.get("links", []):
                         target = link.get("target")
-                        if isinstance(target, str) and target not in links:
+                        if (
+                            isinstance(target, str)
+                            and target not in links
+                            and Path(target) not in self.retired_targets
+                        ):
                             links[target] = link
             except (FileNotFoundError, json.JSONDecodeError, AttributeError):
                 pass
@@ -506,6 +512,39 @@ class LinkManager:
         """Return the XDG state location used for linker ownership and backups."""
         return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
 
+    def remove_retired_dotfiles_command_links(self) -> None:
+        """Remove only the old wrapper links that point into this checkout."""
+        command_dir = Path.home() / ".local/bin"
+        for name in RETIRED_DOTFILES_COMMANDS:
+            target = command_dir / name
+            source = self.dotfiles_root / "bin/core" / name
+            try:
+                owned_by_current_checkout = (
+                    target.is_symlink() and target.resolve() == source.resolve()
+                )
+            except (OSError, RuntimeError):
+                continue
+            if not owned_by_current_checkout:
+                continue
+            if self.dry_run:
+                self.log_info(f"Would remove retired dotfiles link: {target}")
+            else:
+                try:
+                    target.unlink()
+                except OSError as error:
+                    self.log_error(f"Failed to remove retired dotfiles link {target}: {error}")
+                    self.count_errors += 1
+                    continue
+                self.retired_targets.add(target)
+                try:
+                    self.write_state(preserve_existing=True)
+                except OSError as error:
+                    self.log_error(f"Failed to update ownership ledger: {error}")
+                    self.count_errors += 1
+                    return
+                self.log_success(f"Removed retired dotfiles link: {target}")
+            self.count_pruned += 1
+
     def write_legacy_backup_state(self, backup: Path, legacy: Path) -> None:
         """Record a moved unmanaged legacy entry for safe migration auditability."""
         state_file = self.xdg_state_home() / "dotfiles/legacy-bin-backups.json"
@@ -696,6 +735,10 @@ class LinkManager:
                     self.count_errors += 1
                     return
                 parent = parent.parent
+
+        self.remove_retired_dotfiles_command_links()
+        if self.count_errors > 0:
+            return
 
         for target, (source, provenance) in sorted(plan.items()):
             self.log_verbose(f"Processing: {target} -> {source} ({provenance})")

@@ -154,6 +154,68 @@ assert_link_points_to() {
     assert_link_points_to "$independent_bin/pi" "$HOME/.local/bin/pi"
 }
 
+@test "link-dotfiles: removes retired dotfiles agent wrapper links" {
+    local repository_id
+    local ledger="$XDG_STATE_HOME/dotfiles/links.json"
+    local codex_target="$HOME/.local/bin/codex"
+    local claude_target="$HOME/.local/bin/claude"
+
+    create_command core codexm
+    create_command core claudem
+    mkdir -p "$HOME/.local/bin" "$XDG_STATE_HOME/dotfiles"
+    ln -s "$TEST_DOTFILES/bin/core/codex" "$codex_target"
+    ln -s "$TEST_DOTFILES/bin/core/claude" "$claude_target"
+    repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
+    printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}, {"source": "%s", "target": "%s"}]}\n' "$repository_id" "$TEST_DOTFILES/bin/core/codex" "$codex_target" "$TEST_DOTFILES/bin/core/claude" "$claude_target" > "$ledger"
+
+    run python3 "$LINK_SCRIPT" --apply --yes
+
+    assert_success
+    refute test -L "$codex_target"
+    refute test -L "$claude_target"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/codexm" "$HOME/.local/bin/codexm"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/claudem" "$HOME/.local/bin/claudem"
+    run python3 -c 'import json, sys; targets = {link["target"] for link in json.load(open(sys.argv[1]))["links"]}; assert sys.argv[2] not in targets; assert sys.argv[3] not in targets' "$ledger" "$codex_target" "$claude_target"
+    assert_success
+}
+
+@test "link-dotfiles: persists retired wrapper cleanup before a later link failure" {
+    local repository_id
+    local ledger="$XDG_STATE_HOME/dotfiles/links.json"
+    local codex_target="$HOME/.local/bin/codex"
+    local claude_target="$HOME/.local/bin/claude"
+
+    create_command core codexm
+    create_command core claudem
+    mkdir -p "$HOME/.local/bin" "$XDG_STATE_HOME/dotfiles"
+    ln -s "$TEST_DOTFILES/bin/core/codex" "$codex_target"
+    ln -s "$TEST_DOTFILES/bin/core/claude" "$claude_target"
+    repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
+    printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}, {"source": "%s", "target": "%s"}]}\n' "$repository_id" "$TEST_DOTFILES/bin/core/codex" "$codex_target" "$TEST_DOTFILES/bin/core/claude" "$claude_target" > "$ledger"
+
+    run python3 "$LINK_SCRIPT" --apply --yes --self-test-fail-after 0
+
+    assert_failure
+    refute test -L "$codex_target"
+    refute test -L "$claude_target"
+    run python3 -c 'import json, sys; targets = {link["target"] for link in json.load(open(sys.argv[1]))["links"]}; assert sys.argv[2] not in targets; assert sys.argv[3] not in targets' "$ledger" "$codex_target" "$claude_target"
+    assert_success
+}
+
+@test "link-dotfiles: preserves cyclic third-party agent command links" {
+    create_command core codexm
+    create_command core claudem
+    mkdir -p "$HOME/.local/bin"
+    ln -s claude "$HOME/.local/bin/codex"
+    ln -s codex "$HOME/.local/bin/claude"
+
+    run python3 "$LINK_SCRIPT" --apply --yes
+
+    assert_success
+    assert_symlink_exists "$HOME/.local/bin/codex"
+    assert_symlink_exists "$HOME/.local/bin/claude"
+}
+
 @test "link-dotfiles: commands-only skips home-tree sources" {
     create_home_file ".not-linked"
     create_command core public-command
