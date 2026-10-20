@@ -93,7 +93,7 @@ alias ....="cd ../../.."
 alias .....="cd ../../../.."
 
 # Claude CLI
-alias ccy='claude --dangerously-skip-permissions'
+alias ccy='claudem --dangerously-skip-permissions'
 
 # ============================================================================
 # 6. FUNCTIONS (Fast utility functions)
@@ -172,7 +172,7 @@ set-default-shell() {
 primary() {
   echo "Waking up the Primary Agent..."
   # "$@" automatically passes ALL arguments (text) you type to the agent
-  claude --agent primary-agent "$@"
+  claudem --agent primary-agent "$@"
 }
 
 

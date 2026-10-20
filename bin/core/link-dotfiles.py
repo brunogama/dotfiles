@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 VERSION = "3.0.0"
+EXCLUDED_PUBLIC_COMMANDS = frozenset({"claude", "codex", "pi"})
 
 # Home Manager declarations in nix/home.nix own these targets. Directory entries
 # protect every descendant because Home Manager manages them recursively.
@@ -493,6 +494,8 @@ class LinkManager:
                 except OSError:
                     continue
                 if not is_public:
+                    continue
+                if source.name in EXCLUDED_PUBLIC_COMMANDS:
                     continue
                 if source.name in commands:
                     raise ValueError(f"Duplicate command name: {source.name}")

@@ -19,9 +19,9 @@ resolve_script_dir() {
 
 SCRIPT_DIR="$(resolve_script_dir)"
 readonly SCRIPT_DIR
-# shellcheck disable=SC1091
+# shellcheck source=bin/core/lib/agent-credential-loader.sh
 source "$SCRIPT_DIR/lib/agent-credential-loader.sh"
-# shellcheck disable=SC1091
+# shellcheck source=bin/core/lib/agent-session.sh
 source "$SCRIPT_DIR/lib/agent-session.sh"
 
 find_codex_bin() {
@@ -45,9 +45,9 @@ if [[ -z "$CODEX_BIN" ]]; then
     CODEX_BIN="$(find_codex_bin || true)"
 fi
 [[ -n "$CODEX_BIN" && -x "$CODEX_BIN" ]] || {
-    echo "codex: executable not found; install Codex or set DOTFILES_CODEX_BIN" >&2
+    echo "codexm: executable not found; install Codex or set DOTFILES_CODEX_BIN" >&2
     exit 127
 }
 readonly CODEX_BIN
 
-run_agent codex "$CODEX_BIN" "$@"
+run_agent "$CODEX_BIN" "$@"

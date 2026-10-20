@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
-# Regression coverage for agent identity injection and per-run evidence
-# recording in the coding-agent CLI wrappers (codex, claude).
+# Regression coverage for agent identity injection and token handling in the
+# coding-agent CLI wrappers (codexm, claudem, pim).
 
 load '../../helpers/test-helpers'
 load '../../helpers/setup-teardown'
@@ -15,7 +15,6 @@ setup() {
     export PATH="$TEST_BIN:$PATH"
     export WRAPPER_ARGS_OUTPUT="$TEST_TEMP_DIR/wrapper-args"
     export WRAPPER_ENV_OUTPUT="$TEST_TEMP_DIR/wrapper-env"
-    export EVIDENCE_DIR="$TEST_TEMP_DIR/.agents/evidence"
     mkdir -p "$TEST_BIN"
     create_fake_credentials
     cd "$TEST_TEMP_DIR"
@@ -88,21 +87,24 @@ write_agent_config() {
 
 link_agent_wrapper() {
     local agent="$1"
-    ln -s "$CORE_DIR/$agent" "$TEST_BIN/$agent"
+    local wrapper="${agent}m"
+    ln -s "$CORE_DIR/$wrapper" "$TEST_BIN/$wrapper"
 }
 
-latest_evidence_file() {
-    find "$EVIDENCE_DIR" -maxdepth 1 -name 'run-*.json' -print | sort | tail -n 1
-}
-
+# Inherited git identity would leak into the child env and make the "untouched"
+# assertions depend on the shell the suite was started from.
 run_wrapper() {
     local agent="$1" upstream="$2" config="$3" agent_upper
     link_agent_wrapper "$agent"
     agent_upper="$(printf '%s' "$agent" | tr '[:lower:]' '[:upper:]')"
     run env \
+        -u GIT_AUTHOR_NAME \
+        -u GIT_AUTHOR_EMAIL \
+        -u GIT_COMMITTER_NAME \
+        -u GIT_COMMITTER_EMAIL \
         "DOTFILES_AGENT_CONFIG=$config" \
         "DOTFILES_${agent_upper}_BIN=$upstream" \
-        "$TEST_BIN/$agent" --model test-model 'test prompt'
+        "$TEST_BIN/${agent}m" --model test-model 'test prompt'
 }
 
 create_fake_credfile() {
@@ -155,6 +157,19 @@ EOF
     assert_success
 }
 
+@test "pim wrapper injects configured identity into git env" {
+    local upstream config
+    upstream="$(create_fake_upstream pi)"
+    config="$(write_agent_config 'agent-account' 'agent@example.com')"
+    run_wrapper pi "$upstream" "$config"
+
+    assert_success
+    run grep -Fx 'GIT_AUTHOR_NAME=agent-account' "$WRAPPER_ENV_OUTPUT"
+    assert_success
+    run grep -Fx 'GIT_AUTHOR_EMAIL=agent@example.com' "$WRAPPER_ENV_OUTPUT"
+    assert_success
+}
+
 @test "wrapper leaves identity untouched when no config is present" {
     local upstream
     upstream="$(create_fake_upstream codex)"
@@ -163,9 +178,13 @@ EOF
     run env \
         -u DOTFILES_AGENT_CONFIG \
         -u XDG_CONFIG_HOME \
+        -u GIT_AUTHOR_NAME \
+        -u GIT_AUTHOR_EMAIL \
+        -u GIT_COMMITTER_NAME \
+        -u GIT_COMMITTER_EMAIL \
         "HOME=$TEST_TEMP_DIR/empty-home" \
         "DOTFILES_CODEX_BIN=$upstream" \
-        "$TEST_BIN/codex" --model test-model 'test prompt'
+        "$TEST_BIN/codexm" --model test-model 'test prompt'
 
     assert_success
     run grep -E '^GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL)=' "$WRAPPER_ENV_OUTPUT"
@@ -183,63 +202,22 @@ EOF
     assert_failure
 }
 
-@test "wrapper records a passing evidence record with exit code 0" {
-    local upstream config evidence
-    upstream="$(create_fake_upstream codex)"
-    config="$(write_agent_config 'agent-account' 'agent@example.com')"
-    run_wrapper codex "$upstream" "$config"
-
-    assert_success
-    evidence="$(latest_evidence_file)"
-    [[ -n "$evidence" ]] || fail 'no evidence record written'
-    run python3 -m json.tool "$evidence"
-    assert_success
-    assert_file_contains "$evidence" '"agent": "codex"'
-    assert_file_contains "$evidence" '"files_changed":'
-    assert_file_contains "$evidence" '"exit_code": 0'
-    assert_file_contains "$evidence" '"identity": {"name": "agent-account", "email": "agent@example.com"}'
-}
-
-@test "wrapper records files committed by the upstream agent" {
-    local upstream config evidence
-    git init -q
-    git config user.name 'Test User'
-    git config user.email 'test@example.com'
-    printf 'initial\n' > initial.txt
-    git add initial.txt
-    git commit -qm initial
-    upstream="$TEST_BIN/upstream-commit"
-    cat > "$upstream" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-printf 'agent change\n' > committed.txt
-printf 'second change\n' > $'line\nbreak.txt'
-git add committed.txt $'line\nbreak.txt'
-git commit -qm 'add committed file'
-EOF
-    chmod +x "$upstream"
-    config="$(write_agent_config 'agent-account' 'agent@example.com')"
-
-    run_wrapper codex "$upstream" "$config"
-
-    assert_success
-    evidence="$(latest_evidence_file)"
-    assert_file_contains "$evidence" '"committed.txt"'
-    run python3 -c 'import json, sys; assert "line\nbreak.txt" in json.load(open(sys.argv[1]))["files_changed"]' "$evidence"
-    assert_success
-}
-
-@test "wrapper records a failing evidence record and propagates the exit code" {
-    local upstream config evidence
+@test "wrapper propagates a failing upstream exit code" {
+    local upstream config
     upstream="$(create_failing_upstream)"
     config="$(write_agent_config 'agent-account' 'agent@example.com')"
     run_wrapper codex "$upstream" "$config"
 
     assert_failure 3
-    evidence="$(latest_evidence_file)"
-    [[ -n "$evidence" ]] || fail 'no evidence record written'
-    assert_file_contains "$evidence" '"files_changed":'
-    assert_file_contains "$evidence" '"exit_code": 3'
+}
+
+@test "pim wrapper propagates a failing upstream exit code" {
+    local upstream config
+    upstream="$(create_failing_upstream)"
+    config="$(write_agent_config 'agent-account' 'agent@example.com')"
+    run_wrapper pi "$upstream" "$config"
+
+    assert_failure 3
 }
 
 @test "wrapper exports the provided GitHub token" {
@@ -251,7 +229,7 @@ EOF
         GH_ENTERPRISE_TOKEN=inherited-enterprise-gh-token \
         GITHUB_ENTERPRISE_TOKEN=inherited-enterprise-github-token \
         "DOTFILES_CLAUDE_BIN=$upstream" \
-        "$TEST_BIN/claude" --model test-model 'test prompt'
+        "$TEST_BIN/claudem" --model test-model 'test prompt'
 
     assert_success
     run grep -Fx 'GH_TOKEN=tok-123' "$WRAPPER_ENV_OUTPUT"
@@ -274,7 +252,7 @@ EOF
         GITHUB_ENTERPRISE_TOKEN=inherited-enterprise-github-token \
         "DOTFILES_AGENT_CONFIG=$config" \
         "DOTFILES_CODEX_BIN=$upstream" \
-        "$TEST_BIN/codex" --model test-model 'test prompt'
+        "$TEST_BIN/codexm" --model test-model 'test prompt'
 
     assert_success
     run grep -E '^(GH_TOKEN|GITHUB_TOKEN|GH_ENTERPRISE_TOKEN|GITHUB_ENTERPRISE_TOKEN)=' "$WRAPPER_ENV_OUTPUT"
@@ -310,4 +288,15 @@ EOF
     assert_failure
     run grep -E '^GITHUB_TOKEN=' "$WRAPPER_ENV_OUTPUT"
     assert_failure
+}
+
+# Guards against the per-run evidence recording being reintroduced.
+@test "wrapper writes no evidence records" {
+    local upstream config
+    upstream="$(create_fake_upstream codex)"
+    config="$(write_agent_config 'agent-account' 'agent@example.com')"
+    run_wrapper codex "$upstream" "$config"
+
+    assert_success
+    [ ! -e "$TEST_TEMP_DIR/.agents" ] || fail "wrapper created .agents/evidence"
 }

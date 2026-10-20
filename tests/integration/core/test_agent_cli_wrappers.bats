@@ -68,8 +68,9 @@ EOF
 
 link_agent_wrapper() {
     local agent="$1"
+    local wrapper="${agent}m"
 
-    ln -s "$CORE_DIR/$agent" "$TEST_BIN/$agent"
+    ln -s "$CORE_DIR/$wrapper" "$TEST_BIN/$wrapper"
 }
 
 assert_forwarded_arguments() {
@@ -90,7 +91,7 @@ run_agent_wrapper() {
         "DOTFILES_CREDENTIALS_BIN=$CREDENTIALS_BIN" \
         "$override_name=$upstream" \
         "$@" \
-        "$TEST_BIN/$agent" --model test-model 'test prompt'
+        "$TEST_BIN/${agent}m" --model test-model 'test prompt'
 
     assert_success
     assert_forwarded_arguments
@@ -106,6 +107,9 @@ run_agent_wrapper_default() {
         codex|claude)
             default_bin="$TEST_HOME/.local/bin/$agent"
             ;;
+        pi)
+            default_bin="$TEST_BIN/pi"
+            ;;
     esac
     mkdir -p "$(dirname "$default_bin")"
     cp "$upstream" "$default_bin"
@@ -115,11 +119,12 @@ run_agent_wrapper_default() {
         -u ANTHROPIC_API_KEY \
         -u DOTFILES_CLAUDE_BIN \
         -u DOTFILES_CODEX_BIN \
+        -u DOTFILES_PI_BIN \
         -u DOTFILES_NPM_BIN \
         "HOME=$TEST_HOME" \
         "XDG_DATA_HOME=$TEST_HOME/.local/share" \
         "DOTFILES_CREDENTIALS_BIN=$CREDENTIALS_BIN" \
-        "$TEST_BIN/$agent" --model test-model 'test prompt'
+        "$TEST_BIN/${agent}m" --model test-model 'test prompt'
 
     assert_success
     assert_forwarded_arguments
@@ -158,14 +163,21 @@ assert_key_not_exported() {
     assert_failure
 }
 
-@test "codex wrapper loads only the OpenAI key and forwards arguments" {
+@test "codexm wrapper loads only the OpenAI key and forwards arguments" {
     run_agent_wrapper codex DOTFILES_CODEX_BIN
     assert_only_loaded_key OPENAI_API_KEY
 }
 
-@test "claude wrapper loads only the Anthropic key and forwards arguments" {
+@test "claudem wrapper loads only the Anthropic key and forwards arguments" {
     run_agent_wrapper claude DOTFILES_CLAUDE_BIN
     assert_only_loaded_key ANTHROPIC_API_KEY
+}
+
+@test "pim wrapper forwards arguments without loading provider keys" {
+    run_agent_wrapper pi DOTFILES_PI_BIN PI_PROVIDER_TOKEN=inherited-provider-token
+    refute test -e "$API_KEY_LOOKUP_LOG"
+    run grep -Fx 'PI_PROVIDER_TOKEN=inherited-provider-token' "$WRAPPER_ENV_OUTPUT"
+    assert_success
 }
 
 @test "unavailable optional credentials do not prevent agent launches" {
@@ -185,4 +197,22 @@ assert_key_not_exported() {
 @test "agent wrappers exercise their default executable paths" {
     run_agent_wrapper_default codex
     run_agent_wrapper_default claude
+}
+
+@test "pim wrapper resolves pi from PATH" {
+    run_agent_wrapper_default pi
+}
+
+@test "pim wrapper reports a missing upstream executable" {
+    bats_require_minimum_version 1.5.0
+    link_agent_wrapper pi
+
+    run -127 env \
+        -u DOTFILES_PI_BIN \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin" \
+        "$TEST_BIN/pim"
+
+    assert_failure 127
+    assert_output 'pim: executable not found; install Pi or set DOTFILES_PI_BIN'
 }

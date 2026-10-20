@@ -116,6 +116,39 @@ assert_link_points_to() {
     refute test -e "$HOME/local/bin/example-command"
 }
 
+@test "link-dotfiles: excludes agent CLIs and preserves independent installs with force" {
+    local independent_bin="$TEST_TEMP_DIR/independent-bin"
+
+    create_command core codex
+    create_command core claude
+    create_command core pi
+
+    run python3 "$LINK_SCRIPT" --commands-only --apply --yes
+
+    assert_success
+    refute test -e "$HOME/.local/bin/codex"
+    refute test -e "$HOME/.local/bin/claude"
+    refute test -e "$HOME/.local/bin/pi"
+
+    mkdir -p "$independent_bin" "$HOME/.local/bin"
+    independent_bin="$(cd "$independent_bin" && pwd -P)"
+    printf '#!/usr/bin/env bash\n' > "$independent_bin/codex"
+    printf '#!/usr/bin/env bash\n' > "$independent_bin/claude"
+    printf '#!/usr/bin/env bash\n' > "$independent_bin/pi"
+    chmod +x "$independent_bin/codex" "$independent_bin/claude" \
+        "$independent_bin/pi"
+    ln -s "$independent_bin/codex" "$HOME/.local/bin/codex"
+    ln -s "$independent_bin/claude" "$HOME/.local/bin/claude"
+    ln -s "$independent_bin/pi" "$HOME/.local/bin/pi"
+
+    run python3 "$LINK_SCRIPT" --commands-only --apply --force --yes
+
+    assert_success
+    assert_link_points_to "$independent_bin/codex" "$HOME/.local/bin/codex"
+    assert_link_points_to "$independent_bin/claude" "$HOME/.local/bin/claude"
+    assert_link_points_to "$independent_bin/pi" "$HOME/.local/bin/pi"
+}
+
 @test "link-dotfiles: commands-only skips home-tree sources" {
     create_home_file ".not-linked"
     create_command core public-command
@@ -471,7 +504,6 @@ assert_link_points_to() {
     assert_symlink_exists "$HOME/.real"
     refute test -e "$HOME/.source-link"
 }
-
 @test "link-dotfiles: CI installs uv in every job that runs the uv script" {
     run grep -Fc 'python -m pip install --upgrade pip uv' "$(get_dotfiles_root)/.github/workflows/ci.yml"
     assert_output "3"
