@@ -89,7 +89,7 @@ teardown() {
 }
 
 @test "install: --dry-run sets dry run mode" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes --skip-links
+    run "$DOTFILES_ROOT/install" --dry-run --yes
     assert_success
     assert_output --partial "DRY RUN MODE"
     assert_output --partial "no changes were made"
