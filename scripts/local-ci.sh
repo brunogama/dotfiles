@@ -256,6 +256,7 @@ macos_test() (
 
 macos_integration() (
 	cd "$workspace"
+	command -v uv >/dev/null
 	set -o pipefail
 	mkdir -p test-results
 	bats --tap --jobs "${BATS_JOBS:-2}" \
