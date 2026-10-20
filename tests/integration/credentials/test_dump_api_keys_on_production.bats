@@ -16,7 +16,7 @@ setup() {
 set -euo pipefail
 [[ "$1" == production ]] || exit 64
 shift
-HOME="$REMOTE_HOME" exec bash -c "$*"
+HOME="$REMOTE_HOME" exec /bin/sh -c "$*"
 SH
     cat > "$BATS_TEST_TMPDIR/bin/dump-api-keys" <<'SH'
 #!/bin/bash
@@ -89,6 +89,23 @@ SH
     [[ ! -e "$SSH_CALLED" ]]
     [[ ! -e "$HOME/.envrc" ]]
     [[ "$(cat "$REMOTE_HOME/.envrc")" == 'export OLD_KEY=keep-me' ]]
+}
+
+@test "a failed remote write preserves the envrc and removes staging files" {
+    printf '%s\n' 'export OLD_KEY=keep-me' > "$REMOTE_HOME/.envrc"
+    cat > "$BATS_TEST_TMPDIR/bin/cat" <<'SH'
+#!/bin/bash
+IFS= read -r line || true
+printf '%s\n' "$line"
+exit 74
+SH
+    chmod +x "$BATS_TEST_TMPDIR/bin/cat"
+
+    run bash "$SCRIPT"
+    [[ "$status" -eq 74 ]]
+    [[ -z "$output" ]]
+    [[ "$(/bin/cat "$REMOTE_HOME/.envrc")" == 'export OLD_KEY=keep-me' ]]
+    [[ -z "$(find "$REMOTE_HOME" -name '.envrc.*')" ]]
 }
 
 @test "install scripts-only links the production key command and is idempotent" {
