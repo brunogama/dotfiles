@@ -86,6 +86,23 @@ class SerialPipelineTest(unittest.TestCase):
         self.assertIn("if: github.event_name != 'pull_request'", install_body)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", install_body)
 
+    def test_jobs_invoking_linker_install_uv_first(self) -> None:
+        workflow = self._workflow(".github/workflows/ci.yml")
+        linker_jobs: list[str] = []
+        uv_install = "python -m pip install --upgrade pip uv"
+        linker_command = "bin/core/link-dotfiles.py"
+
+        for job in SERIAL_CHAINS[".github/workflows/ci.yml"]:
+            body = _job_body(workflow, job) or ""
+            if linker_command not in body:
+                continue
+            linker_jobs.append(job)
+            with self.subTest(job=job):
+                self.assertIn(uv_install, body)
+                self.assertLess(body.index(uv_install), body.index(linker_command))
+
+        self.assertTrue(linker_jobs, "no macOS CI job invokes link-dotfiles.py")
+
 
 if __name__ == "__main__":
     unittest.main()

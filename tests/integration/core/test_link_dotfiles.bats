@@ -504,7 +504,3 @@ assert_link_points_to() {
     assert_symlink_exists "$HOME/.real"
     refute test -e "$HOME/.source-link"
 }
-@test "link-dotfiles: CI installs uv in every job that runs the uv script" {
-    run grep -Fc 'python -m pip install --upgrade pip uv' "$(get_dotfiles_root)/.github/workflows/ci.yml"
-    assert_output "3"
-}
