@@ -260,7 +260,10 @@ macos_integration() (
 	mkdir -p test-results
 	bats --tap --jobs "${BATS_JOBS:-2}" \
 		tests/integration/core/test_install.bats \
-		tests/integration/core/test_work_mode.bats | tee test-results/integration.tap
+		tests/integration/core/test_work_mode.bats \
+		tests/integration/core/test_agent_cli_wrappers.bats \
+		tests/integration/core/test_agent_identity.bats \
+		tests/integration/core/test_link_dotfiles.bats | tee test-results/integration.tap
 )
 
 record_github_only_stages() {

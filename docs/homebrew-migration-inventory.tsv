@@ -275,7 +275,7 @@ formula	xxhash	0.8.4	false	dependency	-	-
 formula	xz	5.8.4	false	dependency	-	-
 formula	yarn	1.22.22	true	not selected	-	-
 formula	yq	4.53.6	true	migrate	yq-go	4.53.2
-formula	yt-dlp	2026.8.19_1	true	not selected	-	-
+formula	yt-dlp	2026.8.19_1	true	migrate	yt-dlp	2026.08.19
 formula	z3	5.1.0	false	dependency	-	-
 formula	zip	3.0_1	true	not selected	-	-
 formula	zoxide	0.10.0	true	migrate	zoxide	0.9.9

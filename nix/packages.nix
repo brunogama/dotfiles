@@ -12,6 +12,7 @@ with pkgs;
   eza
   fd
   ffmpeg
+  fabric-ai
   fzf
   gdu
   gh

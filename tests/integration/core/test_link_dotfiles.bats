@@ -116,19 +116,24 @@ assert_link_points_to() {
     refute test -e "$HOME/local/bin/example-command"
 }
 
-@test "link-dotfiles: excludes agent CLIs and preserves independent installs with force" {
+@test "link-dotfiles: excludes upstream agent CLIs, links wrappers, and preserves independent installs with force" {
     local independent_bin="$TEST_TEMP_DIR/independent-bin"
 
     create_command core codex
     create_command core claude
     create_command core pi
-
+    create_command core codexm
+    create_command core claudem
+    create_command core pim
     run python3 "$LINK_SCRIPT" --commands-only --apply --yes
 
     assert_success
     refute test -e "$HOME/.local/bin/codex"
     refute test -e "$HOME/.local/bin/claude"
     refute test -e "$HOME/.local/bin/pi"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/codexm" "$HOME/.local/bin/codexm"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/claudem" "$HOME/.local/bin/claudem"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/pim" "$HOME/.local/bin/pim"
 
     mkdir -p "$independent_bin" "$HOME/.local/bin"
     independent_bin="$(cd "$independent_bin" && pwd -P)"

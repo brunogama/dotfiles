@@ -168,6 +168,10 @@ EOF
     assert_success
     run grep -Fx 'GIT_AUTHOR_EMAIL=agent@example.com' "$WRAPPER_ENV_OUTPUT"
     assert_success
+    run grep -Fx 'GIT_COMMITTER_NAME=agent-account' "$WRAPPER_ENV_OUTPUT"
+    assert_success
+    run grep -Fx 'GIT_COMMITTER_EMAIL=agent@example.com' "$WRAPPER_ENV_OUTPUT"
+    assert_success
 }
 
 @test "wrapper leaves identity untouched when no config is present" {
