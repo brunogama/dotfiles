@@ -226,15 +226,17 @@ fi
 run_command_linker() {
     local linker="$DOTFILES_ROOT/bin/core/link-dotfiles.py"
     local linker_args=(--commands-only)
+    local linker_command=(nix --extra-experimental-features "nix-command flakes" \
+        develop "$DOTFILES_ROOT" --command "$linker")
 
     [[ -f "$linker" ]] || { echo "nix-bootstrap: command linker not found: $linker" >&2; exit 2; }
     [[ "$YES" == "true" ]] && linker_args+=(--yes)
     if [[ "$DRY_RUN" == "true" ]]; then
         linker_args+=(--dry-run)
-        print_command python3 "$linker" "${linker_args[@]}"
+        print_command "${linker_command[@]}" "${linker_args[@]}"
     else
         linker_args+=(--apply)
-        python3 "$linker" "${linker_args[@]}"
+        "${linker_command[@]}" "${linker_args[@]}"
     fi
 }
 

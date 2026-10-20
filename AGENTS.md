@@ -91,6 +91,12 @@ git/                 # Additional Git configuration
 
 ## Agent infrastructure
 
+### Autonomous execution
+
+- Do not block on a human when a direct inspection, reproduction, or local experiment can resolve the uncertainty. Make the reversible change, verify its observable result, and report the evidence.
+- When a task is ambiguous or spans several steps without a narrower playbook, use `pstack:figure-it-out`: define a falsifiable completion condition, investigate the riskiest unknown first, split the work into independently verifiable units, and keep a decision trail when the scope warrants one.
+- Ask for direction only for product decisions, irreversible actions, external coordination, or an ambiguity that no direct experiment can resolve.
+
 ### Required startup
 
 For agent-infrastructure changes, read `CLAUDE.md`, `docs/domain.md`,

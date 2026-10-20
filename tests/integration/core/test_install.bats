@@ -396,16 +396,21 @@ teardown() {
 @test "install: system mode preserves independently installed agent CLIs" {
     skip_on_linux "macOS-specific Nix bootstrap"
 
-    local real_dotfiles_root install_root independent_bin
+    local real_dotfiles_root install_root independent_bin nix_log uv_bin
     real_dotfiles_root="$(cd "$(get_dotfiles_root)" && pwd)"
     install_root="$BATS_TEST_TMPDIR/system-install-repo"
     independent_bin="$BATS_TEST_TMPDIR/independent-bin"
+    nix_log="$BATS_TEST_TMPDIR/nix-arguments"
     export XDG_STATE_HOME="$BATS_TEST_TMPDIR/state"
 
     mkdir -p "$install_root" "$independent_bin" "$HOME/.local/bin" \
         "$HOME/.local/state/nix/profiles/home-manager" "$HOME/.config/zsh"
     install_root="$(cd "$install_root" && pwd -P)"
     independent_bin="$(cd "$independent_bin" && pwd -P)"
+    uv_bin="$(command -v uv)" || {
+        echo "uv is required for this integration test" >&2
+        return 1
+    }
     cp -R "$real_dotfiles_root/bin" "$install_root/bin"
     cp -R "$real_dotfiles_root/home" "$install_root/home"
     cp "$real_dotfiles_root/install" "$install_root/install"
@@ -414,7 +419,22 @@ teardown() {
     printf '#!/usr/bin/env bash\n' > "$independent_bin/codex"
     printf '#!/usr/bin/env bash\n' > "$independent_bin/claude"
     printf '#!/usr/bin/env bash\n' > "$independent_bin/pi"
-    printf '#!/usr/bin/env bash\nexit 0\n' > "$independent_bin/nix"
+    ln -s "$uv_bin" "$independent_bin/uv"
+    cat > "$independent_bin/nix" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$@" > "${NIX_LOG:?}"
+
+[[ "$#" -eq 9 ]] || exit 2
+[[ "$1" == "--extra-experimental-features" ]] || exit 2
+[[ "$2" == "nix-command flakes" ]] || exit 2
+[[ "$3" == "develop" ]] || exit 2
+[[ "$5" == "--command" ]] || exit 2
+[[ "$6" == */bin/core/link-dotfiles.py ]] || exit 2
+
+exec "$6" "${@:7}"
+EOF
     chmod +x "$independent_bin/codex" "$independent_bin/claude" \
         "$independent_bin/pi" "$independent_bin/nix"
     ln -s "$independent_bin/codex" "$HOME/.local/bin/codex"
@@ -430,9 +450,21 @@ printf '\n'
 EOF
     chmod +x "$install_root/bin/core/nix-rebuild"
 
-    run env PATH="$independent_bin:$PATH" "$install_root/install" --system --yes
+    run env NIX_LOG="$nix_log" PATH="$independent_bin:$PATH" \
+        "$install_root/install" --system --yes
 
     assert_success
+    assert_file_exists "$nix_log"
+    assert_equal "$(cat "$nix_log")" "$(printf '%s\n' \
+        '--extra-experimental-features' \
+        'nix-command flakes' \
+        develop \
+        "$install_root" \
+        --command \
+        "$install_root/bin/core/link-dotfiles.py" \
+        --commands-only \
+        --yes \
+        --apply)"
     assert_output --partial "Stub nix-rebuild: --configuration default"
     refute_output --partial "Collision at $HOME/.local/bin/codex"
     refute_output --partial "Collision at $HOME/.local/bin/claude"
@@ -753,6 +785,29 @@ EOF
     assert_output --partial "Mock link-dotfiles --commands-only --dry-run --yes"
     refute_output --partial "Mock nix-bootstrap"
     refute_output --partial "~/local/bin"
+}
+
+@test "install: scripts-only uses the linker's declared Python runtime" {
+    cat > "$DOTFILES_ROOT/bin/core/link-dotfiles.py" <<'EOF'
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# ///
+import sys
+
+
+def optional_value(value: str | None) -> str:
+    return value or "default"
+
+
+print("Mock PEP 723 linker", *sys.argv[1:])
+EOF
+    chmod +x "$DOTFILES_ROOT/bin/core/link-dotfiles.py"
+
+    run "$DOTFILES_ROOT/install" --scripts-only --dry-run --yes
+
+    assert_success
+    assert_output --partial "Mock PEP 723 linker --commands-only --dry-run --yes"
 }
 
 @test "install: fails if link-dotfiles missing" {

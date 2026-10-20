@@ -494,7 +494,7 @@ run_linker() {
     [[ "$YES" == "true" ]] && link_args+=("--yes")
     [[ "$VERBOSE" == "true" ]] && link_args+=("--verbose")
 
-    python3 "$linker" "${link_args[@]}"
+    "$linker" "${link_args[@]}"
 }
 
 # Symlink creation
