@@ -224,9 +224,11 @@ if [[ -o interactive ]] && (( $+commands[starship] )); then
             [[ -o ignore_eof ]] || exit 0
         done
 
+        local starship_path
+        starship_path="$(whence -p starship)" || return
         local transient_prompt
         transient_prompt="$(
-            "$commands[starship]" prompt \
+            "$starship_path" prompt \
                 --profile transient \
                 --terminal-width="${COLUMNS:-80}" \
                 --keymap="${KEYMAP:-viins}" \
