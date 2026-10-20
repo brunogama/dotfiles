@@ -45,6 +45,7 @@ with pkgs;
   uv
   wget
   yq-go
+  yt-dlp
   zoxide
   zsh-prezto
 ]

@@ -95,6 +95,32 @@ alias .....="cd ../../../.."
 # Claude CLI
 alias ccy='claudem --dangerously-skip-permissions'
 
+ytwisdom() (
+  set -e
+
+  local url="${1:-$(pbpaste)}"
+  local title slug output
+
+  [[ -n "$url" ]] || {
+    print -u2 'Usage: ytwisdom [youtube-url]'
+    return 1
+  }
+
+  title="$(yt-dlp --no-playlist --skip-download --get-title "$url")"
+
+  slug="$(printf '%s' "$title" | python3 -c '
+import re, sys, unicodedata
+title = unicodedata.normalize("NFKD", sys.stdin.read())
+title = title.encode("ascii", "ignore").decode()
+print(re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:160] or "youtube-video")
+')"
+
+  output="/tmp/${slug}-$(date '+%Y-%m-%dT%H-%M-%S%z').md"
+
+  fabric -y "$url" --pattern extract_wisdom >| "$output"
+  printf 'Saved to: %s\n' "$output"
+)
+
 # ============================================================================
 # 6. FUNCTIONS (Fast utility functions)
 # ============================================================================
