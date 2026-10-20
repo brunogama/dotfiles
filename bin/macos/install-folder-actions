@@ -20,10 +20,10 @@ DOTFILES_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 readonly DOTFILES_ROOT
 export DOTFILES_ROOT
 
-# Validate python3 is available
-if ! command -v python3 >/dev/null 2>&1; then
-	echo "Error: python3 is required but not found in PATH" >&2
+# Validate uv is available for the linker's PEP 723 runtime.
+if ! command -v uv >/dev/null 2>&1; then
+	echo "Error: uv is required but not found in PATH" >&2
 	exit 1
 fi
 
-exec python3 "$DOTFILES_ROOT/bin/core/link-dotfiles.py" --folder-actions "$@"
+exec "$DOTFILES_ROOT/bin/core/link-dotfiles.py" --folder-actions "$@"

@@ -22,7 +22,12 @@ repos:
         language: script
         types: [text]
         require_serial: true
-        exclude: ^(\.git/|\.claude/)
+        exclude: >-
+          (?x)^(
+            \.git/|
+            \.claude/|
+            docs/assets/architecture/diagrams/.*\.svg$
+          )
 
       - id: shellcheck
         name: ShellCheck (system)

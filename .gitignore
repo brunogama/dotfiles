@@ -255,9 +255,6 @@ zsh/.zcompdump
 
 ########### AGENTS
 
-# Agent per-run evidence records (transient, generated at runtime)
-.agents/evidence/
-
 # === Global Ignore: Coding Agents and Context Frameworks ===
 
 # Cursor IDE

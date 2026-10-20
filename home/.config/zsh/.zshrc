@@ -92,8 +92,43 @@ alias ...="cd ../.."
 alias ....="cd ../../.."
 alias .....="cd ../../../.."
 
-# Claude CLI
-alias ccy='claude --dangerously-skip-permissions'
+alias ccy='claudem --dangerously-skip-permissions'
+
+ytwisdom() (
+  set -e
+
+  local url title slug output
+  if (( $# > 0 )); then
+    url="$1"
+  elif (( $+commands[pbpaste] )); then
+    url="$(pbpaste)"
+  elif (( $+commands[wl-paste] )); then
+    url="$(wl-paste)"
+  elif (( $+commands[xclip] )); then
+    url="$(xclip -selection clipboard -o)"
+  else
+    print -u2 'Usage: ytwisdom [http(s)-url]'
+    return 1
+  fi
+
+  [[ "$url" == http://* || "$url" == https://* ]] || {
+    print -u2 'Usage: ytwisdom [http(s)-url]'
+    return 1
+  }
+
+  title="$(yt-dlp --no-playlist --skip-download --get-title -- "$url")"
+
+  slug="$(printf '%s' "$title" | python3 -c '
+import re, sys, unicodedata
+title = unicodedata.normalize("NFKD", sys.stdin.read())
+title = title.encode("ascii", "ignore").decode()
+print(re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:160] or "youtube-video")
+')"
+
+  output="$(mktemp "${TMPDIR:-/tmp}/ytwisdom-${slug}-XXXXXX")"
+  fabric -y "$url" --pattern extract_wisdom >| "$output"
+  printf 'Saved to: %s\n' "$output"
+)
 
 # ============================================================================
 # 6. FUNCTIONS (Fast utility functions)
@@ -172,7 +207,7 @@ set-default-shell() {
 primary() {
   echo "Waking up the Primary Agent..."
   # "$@" automatically passes ALL arguments (text) you type to the agent
-  claude --agent primary-agent "$@"
+  claudem --agent primary-agent "$@"
 }
 
 
@@ -198,9 +233,11 @@ if [[ -o interactive ]] && (( $+commands[starship] )); then
             [[ -o ignore_eof ]] || exit 0
         done
 
+        local starship_path
+        starship_path="$(whence -p starship)" || return
         local transient_prompt
         transient_prompt="$(
-            "$commands[starship]" prompt \
+            "$starship_path" prompt \
                 --profile transient \
                 --terminal-width="${COLUMNS:-80}" \
                 --keymap="${KEYMAP:-viins}" \

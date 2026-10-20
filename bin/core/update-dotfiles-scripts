@@ -42,12 +42,16 @@ if [[ ! -x "$LINKER" ]]; then
     echo -e "${RED}Error: link-dotfiles.py not found or not executable: $LINKER${NC}" >&2
     exit 1
 fi
+if ! command -v uv >/dev/null 2>&1; then
+    echo -e "${RED}Error: uv is required to run link-dotfiles.py${NC}" >&2
+    exit 1
+fi
 
 echo "Linking public commands to ~/.local/bin..."
 echo ""
 
 # Apply command links using the convention linker
-DOTFILES_ROOT="$DOTFILES_REPO" python3 "$LINKER" --commands-only --apply --yes
+DOTFILES_ROOT="$DOTFILES_REPO" "$LINKER" --commands-only --apply --yes
 
 echo ""
 echo -e "${GREEN}Scripts updated successfully!${NC}"
