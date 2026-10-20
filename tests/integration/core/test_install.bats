@@ -89,7 +89,7 @@ teardown() {
 }
 
 @test "install: --dry-run sets dry run mode" {
-    run "$DOTFILES_ROOT/install" --dry-run --yes
+    run "$DOTFILES_ROOT/install" --dry-run --yes --skip-links
     assert_success
     assert_output --partial "DRY RUN MODE"
     assert_output --partial "no changes were made"
@@ -665,7 +665,7 @@ EOF
     # Temporarily hide jq command
     export PATH="/usr/bin:/bin"
 
-    run "$DOTFILES_ROOT/install" --dry-run --yes
+    run "$DOTFILES_ROOT/install" --dry-run --yes --skip-links
     assert_success
     assert_output --regexp "(Would install jq|jq is already installed)"
 }
