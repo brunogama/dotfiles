@@ -92,7 +92,6 @@ alias ...="cd ../.."
 alias ....="cd ../../.."
 alias .....="cd ../../../.."
 
-# Claude CLI
 alias ccy='claudem --dangerously-skip-permissions'
 
 ytwisdom() (
