@@ -238,6 +238,9 @@ mcp-servers.json
 .factory/commands/personal/
 .factory/local/
 
+## pi-runline plugin state
+**/.runline/
+
 # === Environment & Secrets ===
 .env
 .env.local

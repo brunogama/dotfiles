@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Agent session: identity injection, authenticated token minting, and per-run
-# evidence recording for the coding-agent CLI wrappers.
+# Agent session: identity injection and authenticated token minting for the
+# coding-agent CLI wrappers.
 #
 # Harness-agnostic by design: identity and GitHub settings come from one
 # global config file (home/.config/dotfiles/agent.conf), never from this file.
@@ -9,7 +9,6 @@ set -euo pipefail
 IFS=$'\n\t'
 
 readonly AGENT_CONFIG="${DOTFILES_AGENT_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/agent.conf}"
-readonly AGENT_EVIDENCE_ROOT="${DOTFILES_AGENT_EVIDENCE_ROOT:-.agents/evidence}"
 
 AGENT_NAME=""
 AGENT_EMAIL=""
@@ -106,128 +105,20 @@ mint_agent_github_token() {
 	fi
 }
 
-# Escape a string for safe embedding in a JSON string value. Handles the short
-# escapes plus every remaining control character via \u00XX.
-agent_json_escape() {
-	local s="$1" c code out=""
-	local i
-
-	for ((i = 0; i < ${#s}; i++)); do
-		c="${s:i:1}"
-		case "$c" in
-		'"') out+='\"' ;;
-		\\) out+="\\\\" ;;
-		$'\n') out+='\n' ;;
-		$'\r') out+='\r' ;;
-		$'\t') out+='\t' ;;
-		$'\b') out+='\b' ;;
-		$'\f') out+='\f' ;;
-		*)
-			printf -v code '%d' "'$c"
-			if ((code < 0x20)); then
-				printf -v out '%s\\u%04x' "$out" "$code"
-			else
-				out+="$c"
-			fi
-			;;
-		esac
-	done
-	printf '%s' "$out"
-}
-
-# List committed and working-tree paths, sorted and unique. Keep NUL
-# delimiters so names containing spaces, newlines, or rename records survive.
-agent_changed_files() {
-	local field path base_rev="${1:-}"
-
-	{
-		if [[ -n "$base_rev" ]]; then
-			while IFS= read -r -d '' path; do
-				printf '%s\0' "$path"
-			done < <(git diff --name-only -z "$base_rev" HEAD 2>/dev/null)
-		fi
-		while IFS= read -r -d '' field; do
-			[[ -n "$field" ]] || continue
-			path="${field:3}"
-			printf '%s\0' "$path"
-			if [[ "$field" == R* || "$field" == C* ]]; then
-				# Rename/copy records emit the old path as the next NUL field.
-				IFS= read -r -d '' _ || true
-			fi
-		done < <(git status --porcelain=v1 -z 2>/dev/null)
-	} | sort -zu
-}
-
-# Write the per-run evidence record as JSON under AGENT_EVIDENCE_ROOT. The
-# record attests what ran and what changed; correctness is CI's to decide.
-# Returns non-zero when the record cannot be written.
-emit_agent_run_record() {
-	local agent="$1" status="$2" started_at="$3" ended_at="$4" base_rev="${5:-}"
-	local outdir="$AGENT_EVIDENCE_ROOT" outfile files_json file run_id
-	local first=1
-
-	files_json="["
-	while IFS= read -r -d '' file; do
-		[[ -n "$file" ]] || continue
-		if ((first)); then
-			first=0
-		else
-			files_json+=","
-		fi
-		files_json+="\"$(agent_json_escape "$file")\""
-	done < <(agent_changed_files "$base_rev")
-	files_json+="]"
-
-	if ! mkdir -p "$outdir" 2>/dev/null; then
-		printf 'agent: unable to create evidence directory %s\n' "$outdir" >&2
-		return 1
-	fi
-	run_id="$(date -u +%Y%m%dT%H%M%S)-$$"
-	outfile="$outdir/run-$run_id.json"
-
-	if ! {
-		printf '{\n'
-		printf '  "agent": "%s",\n' "$(agent_json_escape "$agent")"
-		printf '  "run_id": "%s",\n' "$(agent_json_escape "$run_id")"
-		printf '  "identity": {"name": "%s", "email": "%s"},\n' \
-			"$(agent_json_escape "${GIT_AUTHOR_NAME:-}")" \
-			"$(agent_json_escape "${GIT_AUTHOR_EMAIL:-}")"
-		printf '  "started_at": "%s",\n' "$(agent_json_escape "$started_at")"
-		printf '  "ended_at": "%s",\n' "$(agent_json_escape "$ended_at")"
-		printf '  "exit_code": %s,\n' "$status"
-		printf '  "files_changed": %s\n' "$files_json"
-		printf '}\n'
-	} >"$outfile" 2>/dev/null; then
-		printf 'agent: unable to write evidence record %s\n' "$outfile" >&2
-		return 1
-	fi
-}
-
-# Run the harness binary, then record evidence and exit with its status.
+# Run the harness binary and exit with its status.
 run_agent() {
-	local agent="$1" binary="$2"
-	shift 2
-	local status=0 started_at ended_at base_rev
+	local binary="$1"
+	shift
+	local status=0
 
 	load_agent_config
 	apply_agent_identity
 	mint_agent_github_token
-
-	base_rev="$(git rev-parse HEAD 2>/dev/null || true)"
-	started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 	set +e
 	"$binary" "$@"
 	status=$?
 	set -e
 
-	ended_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-	if ! emit_agent_run_record "$agent" "$status" "$started_at" "$ended_at" "$base_rev"; then
-		# Preserve a nonzero harness status; only fail when the harness
-		# succeeded but could not produce its required evidence record.
-		if ((status == 0)); then
-			status=1
-		fi
-	fi
 	exit "$status"
 }

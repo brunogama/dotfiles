@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    local source_dir
+
+    while [[ -L "$source_path" ]]; do
+        source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+        source_path="$(readlink "$source_path")"
+        [[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+    done
+
+    cd -P "$(dirname "$source_path")" && pwd
+}
+
+find_pi_bin() {
+    local candidate
+
+    candidate="$(command -v pi 2>/dev/null || true)"
+    [[ -n "$candidate" && -x "$candidate" && ! "$candidate" -ef "${BASH_SOURCE[0]}" ]] || return 1
+    printf '%s\n' "$candidate"
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
+# shellcheck source=bin/core/lib/agent-session.sh
+source "$SCRIPT_DIR/lib/agent-session.sh"
+
+PI_BIN="${DOTFILES_PI_BIN:-}"
+if [[ -z "$PI_BIN" ]]; then
+    PI_BIN="$(find_pi_bin || true)"
+fi
+[[ -n "$PI_BIN" && -x "$PI_BIN" ]] || {
+    echo "pim: executable not found; install Pi or set DOTFILES_PI_BIN" >&2
+    exit 127
+}
+readonly PI_BIN
+
+run_agent "$PI_BIN" "$@"

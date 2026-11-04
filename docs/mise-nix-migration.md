@@ -14,4 +14,15 @@ For an existing installation, Home Manager adds the pinned mise config in `conf.
 
 Home Manager leaves `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md` under personal control. Existing installations may already have both files and `.pre-nix` backups, which would otherwise block activation. Project instructions remain in this repository's `AGENTS.md` and `CLAUDE.md`.
 
+The agent wrappers use separately installed applications and share the agent-session configuration.
+
+| Wrapper | Application command |
+| --- | --- |
+| `codexm` | `codex` |
+| `claudem` | `claude` |
+| `pim` | `pi` |
+
+`codexm` and `claudem` retain their optional API-key lookup. `pim` uses Pi's own provider authentication and finds `pi` on `PATH`, or uses `DOTFILES_PI_BIN` when set. The command linker excludes `codex`, `claude`, and `pi`, even with `--force`, so installation cannot replace the original commands with dotfiles wrappers. These applications are not installed by the Nix or npm package lists.
+
+Existing dotfiles-owned `~/.local/bin/codex` and `~/.local/bin/claude` links are removed during the next linker run. Links to independently installed upstream commands are preserved.
 Some previously installed Swift tools have no suitable package in the pinned Nixpkgs revision. Carthage, Periphery, SourceKitten, Sourcery, xcinfo, xcode-build-server, and xcv remain visible as `not selected` in the inventory. The optional `dead-code` and Sourcery hook commands report a missing dependency if those tools are absent. They are not silently fetched from Homebrew.

@@ -12,6 +12,7 @@ with pkgs;
   eza
   fd
   ffmpeg
+  fabric-ai
   fzf
   gdu
   gh
@@ -45,6 +46,7 @@ with pkgs;
   uv
   wget
   yq-go
+  yt-dlp
   zoxide
   zsh-prezto
 ]

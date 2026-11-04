@@ -153,7 +153,7 @@ teardown() {
 }
 
 @test "check-no-emojis: rejects regional indicator flags" {
-    create_test_file "flag.txt" $'Flag \U0001F1FA\U0001F1F8'
+    create_test_file "flag.txt" $'Flag \xF0\x9F\x87\xBA\xF0\x9F\x87\xB8'
     git add flag.txt
 
     run "$HOOKS_DIR/check-no-emojis"

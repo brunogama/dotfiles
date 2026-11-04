@@ -5,11 +5,26 @@ repos:
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^(\.git/|\.claude/)
+        exclude: >-
+          (?x)^(
+            \.git/|
+            \.claude/|
+            docs/assets/architecture/diagrams/.*\.svg$
+          )
 
       - id: end-of-file-fixer
-        exclude: ^(\.git/|\.claude/)
+        exclude: >-
+          (?x)^(
+            \.git/|
+            \.claude/|
+            docs/assets/architecture/diagrams/.*\.svg$
+          )
 
       - id: mixed-line-ending
         args: ["--fix=lf"]
-        exclude: ^(\.git/|\.claude/)
+        exclude: >-
+          (?x)^(
+            \.git/|
+            \.claude/|
+            docs/assets/architecture/diagrams/.*\.svg$
+          )

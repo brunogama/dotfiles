@@ -45,9 +45,9 @@ find_claude_bin() {
 
 SCRIPT_DIR="$(resolve_script_dir)"
 readonly SCRIPT_DIR
-# shellcheck disable=SC1091
+# shellcheck source=bin/core/lib/agent-credential-loader.sh
 source "$SCRIPT_DIR/lib/agent-credential-loader.sh"
-# shellcheck disable=SC1091
+# shellcheck source=bin/core/lib/agent-session.sh
 source "$SCRIPT_DIR/lib/agent-session.sh"
 
 load_agent_api_key ANTHROPIC_API_KEY
@@ -57,9 +57,9 @@ if [[ -z "$CLAUDE_BIN" ]]; then
     CLAUDE_BIN="$(find_claude_bin || true)"
 fi
 [[ -n "$CLAUDE_BIN" && -x "$CLAUDE_BIN" ]] || {
-    echo "claude: executable not found; install Claude Code or set DOTFILES_CLAUDE_BIN" >&2
+    echo "claudem: executable not found; install Claude Code or set DOTFILES_CLAUDE_BIN" >&2
     exit 127
 }
 readonly CLAUDE_BIN
 
-run_agent claude "$CLAUDE_BIN" "$@"
+run_agent "$CLAUDE_BIN" "$@"

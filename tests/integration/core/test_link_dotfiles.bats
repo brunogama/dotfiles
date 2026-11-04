@@ -47,7 +47,7 @@ assert_link_points_to() {
 }
 
 @test "link-dotfiles: help describes convention-based linking" {
-    run python3 "$LINK_SCRIPT" --help
+    run "$LINK_SCRIPT" --help
     assert_success
     assert_output --partial "Convention-based"
 }
@@ -55,21 +55,21 @@ assert_link_points_to() {
 @test "link-dotfiles: ignores a malformed historical manifest" {
     create_home_file ".example"
     printf 'not json' > "$TEST_DOTFILES/LinkingManifest.json"
-    run python3 "$LINK_SCRIPT" --dry-run
+    run "$LINK_SCRIPT" --dry-run
     assert_success
     assert_output --partial ".example"
 }
 
 @test "link-dotfiles: maps common files recursively below HOME" {
     create_home_file ".linker-test/example/config"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     assert_link_points_to "$TEST_DOTFILES/home/.linker-test/example/config" "$HOME/.linker-test/example/config"
 }
 
 @test "link-dotfiles: dry-run creates neither links nor parent directories" {
     create_home_file ".linker-test/example/config"
-    run python3 "$LINK_SCRIPT" --dry-run
+    run "$LINK_SCRIPT" --dry-run
     assert_success
     refute test -e "$HOME/.linker-test"
     refute test -L "$HOME/.linker-test/example/config"
@@ -78,7 +78,7 @@ assert_link_points_to() {
 @test "link-dotfiles: platform overlay wins over common source" {
     create_home_file ".linker-test/example/config" common
     create_overlay_file "home-$(uname | tr '[:upper:]' '[:lower:]')" ".linker-test/example/config" platform
-    run python3 "$LINK_SCRIPT" --apply --yes --verbose
+    run "$LINK_SCRIPT" --apply --yes --verbose
     assert_success
     assert_link_points_to "$TEST_DOTFILES/home-$(uname | tr '[:upper:]' '[:lower:]')/.linker-test/example/config" "$HOME/.linker-test/example/config"
     assert_output --partial "home-$(uname | tr '[:upper:]' '[:lower:]')"
@@ -89,7 +89,7 @@ assert_link_points_to() {
     platform="$(uname | tr '[:upper:]' '[:lower:]')"
     create_overlay_file "home-$platform" ".example" platform
     create_overlay_file "home-host-test-host" ".example" host
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     assert_link_points_to "$TEST_DOTFILES/home-host-test-host/.example" "$HOME/.example"
 }
@@ -97,7 +97,7 @@ assert_link_points_to() {
 @test "link-dotfiles: only current platform overlay is discovered" {
     create_overlay_file "home-linux" ".linux-only"
     create_overlay_file "home-darwin" ".darwin-only"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     if [[ "$(uname)" == Darwin ]]; then
         assert_symlink_exists "$HOME/.darwin-only"
@@ -110,16 +110,116 @@ assert_link_points_to() {
 
 @test "link-dotfiles: discovers executable public commands" {
     create_command core example-command
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     assert_link_points_to "$TEST_DOTFILES/bin/core/example-command" "$HOME/.local/bin/example-command"
     refute test -e "$HOME/local/bin/example-command"
 }
 
+@test "link-dotfiles: excludes upstream agent CLIs, links wrappers, and preserves independent installs with force" {
+    local independent_bin="$TEST_TEMP_DIR/independent-bin"
+
+    create_command core codex
+    create_command core claude
+    create_command core pi
+    create_command core codexm
+    create_command core claudem
+    create_command core pim
+    run "$LINK_SCRIPT" --commands-only --apply --yes
+
+    assert_success
+    refute test -e "$HOME/.local/bin/codex"
+    refute test -e "$HOME/.local/bin/claude"
+    refute test -e "$HOME/.local/bin/pi"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/codexm" "$HOME/.local/bin/codexm"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/claudem" "$HOME/.local/bin/claudem"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/pim" "$HOME/.local/bin/pim"
+
+    mkdir -p "$independent_bin" "$HOME/.local/bin"
+    independent_bin="$(cd "$independent_bin" && pwd -P)"
+    printf '#!/usr/bin/env bash\n' > "$independent_bin/codex"
+    printf '#!/usr/bin/env bash\n' > "$independent_bin/claude"
+    printf '#!/usr/bin/env bash\n' > "$independent_bin/pi"
+    chmod +x "$independent_bin/codex" "$independent_bin/claude" \
+        "$independent_bin/pi"
+    ln -s "$independent_bin/codex" "$HOME/.local/bin/codex"
+    ln -s "$independent_bin/claude" "$HOME/.local/bin/claude"
+    ln -s "$independent_bin/pi" "$HOME/.local/bin/pi"
+
+    run "$LINK_SCRIPT" --commands-only --apply --force --yes
+
+    assert_success
+    assert_link_points_to "$independent_bin/codex" "$HOME/.local/bin/codex"
+    assert_link_points_to "$independent_bin/claude" "$HOME/.local/bin/claude"
+    assert_link_points_to "$independent_bin/pi" "$HOME/.local/bin/pi"
+}
+
+@test "link-dotfiles: removes retired dotfiles agent wrapper links" {
+    local repository_id
+    local ledger="$XDG_STATE_HOME/dotfiles/links.json"
+    local codex_target="$HOME/.local/bin/codex"
+    local claude_target="$HOME/.local/bin/claude"
+
+    create_command core codexm
+    create_command core claudem
+    mkdir -p "$HOME/.local/bin" "$XDG_STATE_HOME/dotfiles"
+    ln -s "$TEST_DOTFILES/bin/core/codex" "$codex_target"
+    ln -s "$TEST_DOTFILES/bin/core/claude" "$claude_target"
+    repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
+    printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}, {"source": "%s", "target": "%s"}]}\n' "$repository_id" "$TEST_DOTFILES/bin/core/codex" "$codex_target" "$TEST_DOTFILES/bin/core/claude" "$claude_target" > "$ledger"
+
+    run "$LINK_SCRIPT" --apply --yes
+
+    assert_success
+    refute test -L "$codex_target"
+    refute test -L "$claude_target"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/codexm" "$HOME/.local/bin/codexm"
+    assert_link_points_to "$TEST_DOTFILES/bin/core/claudem" "$HOME/.local/bin/claudem"
+    run python3 -c 'import json, sys; targets = {link["target"] for link in json.load(open(sys.argv[1]))["links"]}; assert sys.argv[2] not in targets; assert sys.argv[3] not in targets' "$ledger" "$codex_target" "$claude_target"
+    assert_success
+}
+
+@test "link-dotfiles: persists retired wrapper cleanup before a later link failure" {
+    local repository_id
+    local ledger="$XDG_STATE_HOME/dotfiles/links.json"
+    local codex_target="$HOME/.local/bin/codex"
+    local claude_target="$HOME/.local/bin/claude"
+
+    create_command core codexm
+    create_command core claudem
+    mkdir -p "$HOME/.local/bin" "$XDG_STATE_HOME/dotfiles"
+    ln -s "$TEST_DOTFILES/bin/core/codex" "$codex_target"
+    ln -s "$TEST_DOTFILES/bin/core/claude" "$claude_target"
+    repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
+    printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}, {"source": "%s", "target": "%s"}]}\n' "$repository_id" "$TEST_DOTFILES/bin/core/codex" "$codex_target" "$TEST_DOTFILES/bin/core/claude" "$claude_target" > "$ledger"
+
+    run "$LINK_SCRIPT" --apply --yes --self-test-fail-after 0
+
+    assert_failure
+    refute test -L "$codex_target"
+    refute test -L "$claude_target"
+    run python3 -c 'import json, sys; targets = {link["target"] for link in json.load(open(sys.argv[1]))["links"]}; assert sys.argv[2] not in targets; assert sys.argv[3] not in targets' "$ledger" "$codex_target" "$claude_target"
+    assert_success
+}
+
+@test "link-dotfiles: preserves cyclic third-party agent command links" {
+    create_command core codexm
+    create_command core claudem
+    mkdir -p "$HOME/.local/bin"
+    ln -s claude "$HOME/.local/bin/codex"
+    ln -s codex "$HOME/.local/bin/claude"
+
+    run "$LINK_SCRIPT" --apply --yes
+
+    assert_success
+    assert_symlink_exists "$HOME/.local/bin/codex"
+    assert_symlink_exists "$HOME/.local/bin/claude"
+}
+
 @test "link-dotfiles: commands-only skips home-tree sources" {
     create_home_file ".not-linked"
     create_command core public-command
-    run python3 "$LINK_SCRIPT" --commands-only --apply --yes
+    run "$LINK_SCRIPT" --commands-only --apply --yes
     assert_success
     refute test -e "$HOME/.not-linked"
     assert_link_points_to "$TEST_DOTFILES/bin/core/public-command" "$HOME/.local/bin/public-command"
@@ -127,13 +227,13 @@ assert_link_points_to() {
 
 @test "link-dotfiles: commands-only preserves prior ownership state" {
     create_home_file ".tracked"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     create_command core public-command
-    run python3 "$LINK_SCRIPT" --commands-only --apply --yes
+    run "$LINK_SCRIPT" --commands-only --apply --yes
     assert_success
     rm "$TEST_DOTFILES/home/.tracked"
-    run python3 "$LINK_SCRIPT" --prune --apply
+    run "$LINK_SCRIPT" --prune --apply
     assert_success
     refute test -e "$HOME/.tracked"
 }
@@ -142,7 +242,7 @@ assert_link_points_to() {
     create_command core public-command
     mkdir -p "$TEST_DOTFILES/bin/core/nested"
     touch "$TEST_DOTFILES/bin/core/nested/hidden" "$TEST_DOTFILES/bin/core/not-public"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     assert_symlink_exists "$HOME/.local/bin/public-command"
     refute test -e "$HOME/.local/bin/hidden"
@@ -153,7 +253,7 @@ assert_link_points_to() {
     create_home_file ".valid"
     create_command core duplicate
     create_command git duplicate
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_failure
     assert_output --partial "Duplicate command name"
     refute test -e "$HOME/.valid"
@@ -163,7 +263,7 @@ assert_link_points_to() {
     create_home_file ".valid"
     create_home_file ".collision"
     printf 'existing\n' > "$HOME/.collision"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_failure
     assert_output --partial "Collision"
     refute test -e "$HOME/.valid"
@@ -172,7 +272,7 @@ assert_link_points_to() {
 @test "link-dotfiles: force and yes explicitly replace collisions" {
     create_home_file ".collision"
     printf 'existing\n' > "$HOME/.collision"
-    run python3 "$LINK_SCRIPT" --apply --force --yes
+    run "$LINK_SCRIPT" --apply --force --yes
     assert_success
     assert_link_points_to "$TEST_DOTFILES/home/.collision" "$HOME/.collision"
 }
@@ -186,7 +286,7 @@ assert_link_points_to() {
     rm -f "$HOME/.gitconfig"
     ln -s "$nix_source" "$HOME/.gitconfig"
 
-    run python3 "$LINK_SCRIPT" --apply --force --yes
+    run "$LINK_SCRIPT" --apply --force --yes
 
     assert_success
     assert_output --partial "Skipped (Nix-managed): $HOME/.gitconfig"
@@ -199,14 +299,14 @@ assert_link_points_to() {
 @test "link-dotfiles: correct existing links are idempotent" {
     create_home_file ".example"
     ln -s "$TEST_DOTFILES/home/.example" "$HOME/.example"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     assert_output --partial "already linked"
 }
 
 @test "link-dotfiles: records a versioned ownership ledger" {
     create_home_file ".example"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     local ledger="$XDG_STATE_HOME/dotfiles/links.json"
     assert_file_exists "$ledger"
@@ -218,7 +318,7 @@ assert_link_points_to() {
     create_home_file ".first"
     create_home_file ".second"
 
-    run python3 "$LINK_SCRIPT" --apply --yes --self-test-fail-after 1
+    run "$LINK_SCRIPT" --apply --yes --self-test-fail-after 1
     assert_failure
     assert_output --partial "injected filesystem failure"
 
@@ -228,7 +328,7 @@ assert_link_points_to() {
     assert_link_points_to "$TEST_DOTFILES/home/.first" "$HOME/.first"
     refute test -e "$HOME/.second"
 
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     assert_link_points_to "$TEST_DOTFILES/home/.second" "$HOME/.second"
     run python3 -c 'import json, pathlib, sys; state = json.load(open(sys.argv[1])); assert state["links"] == [{"source": str(pathlib.Path(sys.argv[2]).resolve()), "target": sys.argv[3]}, {"source": str(pathlib.Path(sys.argv[4]).resolve()), "target": sys.argv[5]}]' "$ledger" "$TEST_DOTFILES/home/.first" "$HOME/.first" "$TEST_DOTFILES/home/.second" "$HOME/.second"
@@ -237,30 +337,30 @@ assert_link_points_to() {
 
 @test "link-dotfiles: prune removes a stale tracked symlink" {
     create_home_file ".stale"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     rm "$TEST_DOTFILES/home/.stale"
-    run python3 "$LINK_SCRIPT" --prune --apply
+    run "$LINK_SCRIPT" --prune --apply
     assert_success
     refute test -L "$HOME/.stale"
 }
 
 @test "link-dotfiles: prune preserves desired command links" {
     create_command core retained-command
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
-    run python3 "$LINK_SCRIPT" --prune --apply
+    run "$LINK_SCRIPT" --prune --apply
     assert_success
     assert_link_points_to "$TEST_DOTFILES/bin/core/retained-command" "$HOME/.local/bin/retained-command"
 }
 
 @test "link-dotfiles: prune rejects home and command target collisions" {
     create_home_file ".local/bin/colliding-command"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     create_command core colliding-command
 
-    run python3 "$LINK_SCRIPT" --prune --apply
+    run "$LINK_SCRIPT" --prune --apply
 
     assert_failure
     assert_output --partial "Target collision: $HOME/.local/bin/colliding-command"
@@ -275,7 +375,7 @@ assert_link_points_to() {
     mkdir -p "$HOME/.config/zsh"
     ln -s "$nix_source" "$HOME/.config/zsh/work-config.zsh"
 
-    run python3 "$LINK_SCRIPT" --apply --force --yes
+    run "$LINK_SCRIPT" --apply --force --yes
 
     assert_success
     assert_output --partial "Skipped (Nix-managed): $HOME/.config/zsh/work-config.zsh"
@@ -285,7 +385,7 @@ assert_link_points_to() {
 @test "link-dotfiles: prune rejects a foreign ownership ledger" {
     mkdir -p "$XDG_STATE_HOME/dotfiles"
     printf '{"version": 1, "repository_id": "foreign", "links": []}\n' > "$XDG_STATE_HOME/dotfiles/links.json"
-    run python3 "$LINK_SCRIPT" --prune --apply
+    run "$LINK_SCRIPT" --prune --apply
     assert_failure
     assert_output --partial "Invalid or missing ownership ledger"
 }
@@ -299,7 +399,7 @@ assert_link_points_to() {
     local repository_id
     repository_id="$(python3 -c 'import hashlib, pathlib, sys; print(hashlib.sha256(str(pathlib.Path(sys.argv[1]).resolve()).encode()).hexdigest())' "$TEST_DOTFILES")"
     printf '{"version": 1, "repository_id": "%s", "links": [{"source": "%s", "target": "%s"}]}\n' "$repository_id" "$prior_root/home/.moved" "$HOME/.moved" > "$XDG_STATE_HOME/dotfiles/links.json"
-    run python3 "$LINK_SCRIPT" --prune --apply
+    run "$LINK_SCRIPT" --prune --apply
     assert_success
     refute test -L "$HOME/.moved"
 }
@@ -312,7 +412,7 @@ assert_link_points_to() {
     ln -s /tmp/untracked "$HOME/.untracked"
     printf 'regular\n' > "$HOME/.regular"
     mkdir "$HOME/.directory"
-    run python3 "$LINK_SCRIPT" --prune --apply
+    run "$LINK_SCRIPT" --prune --apply
     assert_success
     assert_symlink_exists "$HOME/.untracked"
     assert_file_exists "$HOME/.regular"
@@ -321,10 +421,10 @@ assert_link_points_to() {
 
 @test "link-dotfiles: prune dry-run leaves a stale tracked symlink" {
     create_home_file ".stale"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     rm "$TEST_DOTFILES/home/.stale"
-    run python3 "$LINK_SCRIPT" --prune --dry-run
+    run "$LINK_SCRIPT" --prune --dry-run
     assert_success
     assert_symlink_exists "$HOME/.stale"
     assert_output --partial "Would prune"
@@ -334,7 +434,7 @@ assert_link_points_to() {
     create_command core legacy-command
     mkdir -p "$HOME/local/bin"
     ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
-    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    run "$LINK_SCRIPT" --migrate-legacy-bin --apply
     assert_success
     refute test -L "$HOME/local/bin/legacy-command"
     assert_link_points_to "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/.local/bin/legacy-command"
@@ -345,7 +445,7 @@ assert_link_points_to() {
     mkdir -p "$HOME/local/bin"
     printf 'custom\n' > "$HOME/local/bin/custom-command"
     ln -s /tmp/unmanaged "$HOME/local/bin/managed-command"
-    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    run "$LINK_SCRIPT" --migrate-legacy-bin --apply
     assert_success
     assert_file_exists "$HOME/local/bin/custom-command"
     assert_symlink_exists "$HOME/local/bin/managed-command"
@@ -358,7 +458,7 @@ assert_link_points_to() {
     mkdir -p "$HOME/local/bin/unproven-directory"
     printf 'custom\n' > "$HOME/local/bin/unproven-file"
     ln -s /tmp/unproven "$HOME/local/bin/managed-command"
-    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force
+    run "$LINK_SCRIPT" --migrate-legacy-bin --apply --force
     assert_success
     assert_file_exists "$HOME/local/bin/unproven-file"
     assert_dir_exists "$HOME/local/bin/unproven-directory"
@@ -373,7 +473,7 @@ assert_link_points_to() {
     printf 'custom\n' > "$HOME/local/bin/unproven-file"
     printf 'nested\n' > "$HOME/local/bin/unproven-directory/file"
     ln -s /tmp/unproven "$HOME/local/bin/managed-command"
-    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
+    run "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
     assert_success
     refute test -e "$HOME/local/bin/unproven-file"
     refute test -e "$HOME/local/bin/unproven-directory"
@@ -384,7 +484,7 @@ assert_link_points_to() {
     assert_file_exists "$backup_root/unproven-directory/file"
     assert_symlink_exists "$backup_root/managed-command"
     assert_output --partial "Backed up unproven legacy entry"
-    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
+    run "$LINK_SCRIPT" --migrate-legacy-bin --apply --force --yes
     assert_success
     assert_equal "$(find "$XDG_STATE_HOME/dotfiles/legacy-bin-backups" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" "1"
 }
@@ -393,7 +493,7 @@ assert_link_points_to() {
     create_command core legacy-command
     mkdir -p "$HOME/local/bin"
     ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
-    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --dry-run
+    run "$LINK_SCRIPT" --migrate-legacy-bin --dry-run
     assert_success
     assert_symlink_exists "$HOME/local/bin/legacy-command"
     refute test -e "$HOME/.local/bin/legacy-command"
@@ -405,7 +505,7 @@ assert_link_points_to() {
     mkdir -p "$HOME/local/bin" "$HOME/.local/bin"
     ln -s "$TEST_DOTFILES/bin/core/legacy-command" "$HOME/local/bin/legacy-command"
     printf 'conflict\n' > "$HOME/.local/bin/legacy-command"
-    run python3 "$LINK_SCRIPT" --migrate-legacy-bin --apply
+    run "$LINK_SCRIPT" --migrate-legacy-bin --apply
     assert_failure
     assert_symlink_exists "$HOME/local/bin/legacy-command"
     assert_file_exists "$HOME/.local/bin/legacy-command"
@@ -418,7 +518,7 @@ assert_link_points_to() {
     fi
     mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts"
     printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
-    run python3 "$LINK_SCRIPT" --folder-actions --apply --yes
+    run "$LINK_SCRIPT" --folder-actions --apply --yes
     assert_success
     assert_link_points_to "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt" "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
     refute test -e "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scptn"
@@ -430,7 +530,7 @@ assert_link_points_to() {
     fi
     mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts"
     printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
-    run python3 "$LINK_SCRIPT" --folder-actions --dry-run
+    run "$LINK_SCRIPT" --folder-actions --dry-run
     assert_success
     refute test -e "$HOME/Library"
     assert_output --partial "Would create"
@@ -443,7 +543,7 @@ assert_link_points_to() {
     mkdir -p "$TEST_DOTFILES/bin/folder-action-scripts" "$HOME/Library/Scripts/Folder Action Scripts"
     printf 'compiled script\n' > "$TEST_DOTFILES/bin/folder-action-scripts/compress-video-automation.scpt"
     printf 'existing\n' > "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
-    run python3 "$LINK_SCRIPT" --folder-actions --apply --yes
+    run "$LINK_SCRIPT" --folder-actions --apply --yes
     assert_failure
     assert_file_exists "$HOME/Library/Scripts/Folder Action Scripts/compress-video-automation.scpt"
     assert_output --partial "Collision"
@@ -463,16 +563,41 @@ assert_link_points_to() {
     fi
 }
 
+@test "update-dotfiles-scripts uses the linker's declared Python runtime" {
+    local updater update_repo
+    updater="$(get_dotfiles_root)/bin/core/update-dotfiles-scripts"
+    update_repo="$TEST_TEMP_DIR/update-repo"
+    mkdir -p "$update_repo/bin/core"
+    cp "$LINK_SCRIPT" "$update_repo/bin/core/link-dotfiles.py"
+    chmod +x "$update_repo/bin/core/link-dotfiles.py"
+    printf '#!/usr/bin/env bash\n' > "$update_repo/bin/core/example-command"
+    chmod +x "$update_repo/bin/core/example-command"
+
+    run env "HOME=$HOME" "DOTFILES_REPO=$update_repo" "$updater"
+
+    assert_success
+    assert_link_points_to "$update_repo/bin/core/example-command" "$HOME/.local/bin/example-command"
+}
+
+@test "update-dotfiles-scripts reports when the linker runtime is unavailable" {
+    local updater update_repo
+    updater="$(get_dotfiles_root)/bin/core/update-dotfiles-scripts"
+    update_repo="$TEST_TEMP_DIR/update-repo"
+    mkdir -p "$update_repo/bin/core"
+    cp "$LINK_SCRIPT" "$update_repo/bin/core/link-dotfiles.py"
+    chmod +x "$update_repo/bin/core/link-dotfiles.py"
+
+    run env PATH="/usr/bin:/bin:/usr/sbin:/sbin" "HOME=$HOME" "DOTFILES_REPO=$update_repo" "$updater"
+
+    assert_failure
+    assert_output --partial "uv is required to run link-dotfiles.py"
+}
+
 @test "link-dotfiles: source symlinks are not managed" {
     create_home_file ".real"
     ln -s "$TEST_DOTFILES/home/.real" "$TEST_DOTFILES/home/.source-link"
-    run python3 "$LINK_SCRIPT" --apply --yes
+    run "$LINK_SCRIPT" --apply --yes
     assert_success
     assert_symlink_exists "$HOME/.real"
     refute test -e "$HOME/.source-link"
-}
-
-@test "link-dotfiles: CI installs uv in every job that runs the uv script" {
-    run grep -Fc 'python -m pip install --upgrade pip uv' "$(get_dotfiles_root)/.github/workflows/ci.yml"
-    assert_output "3"
 }

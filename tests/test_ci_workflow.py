@@ -86,6 +86,42 @@ class SerialPipelineTest(unittest.TestCase):
         self.assertIn("if: github.event_name != 'pull_request'", install_body)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", install_body)
 
+    def test_jobs_invoking_linker_install_uv_first(self) -> None:
+        uv_install = "python -m pip install --upgrade pip uv"
+        linker_command = "bin/core/link-dotfiles.py"
+        linker_jobs: list[str] = []
+
+        for workflow_name, chain in SERIAL_CHAINS.items():
+            workflow = self._workflow(workflow_name)
+            for job in chain:
+                body = _job_body(workflow, job) or ""
+                if linker_command not in body:
+                    continue
+                linker_jobs.append(f"{workflow_name}:{job}")
+                with self.subTest(workflow=workflow_name, job=job):
+                    self.assertIn(uv_install, body)
+                    self.assertLess(body.index(uv_install), body.index(linker_command))
+
+        self.assertTrue(linker_jobs, "no CI job invokes link-dotfiles.py")
+
+    def test_integration_jobs_run_agent_wrapper_regressions(self) -> None:
+        test_paths = (
+            "tests/integration/core/test_agent_cli_wrappers.bats",
+            "tests/integration/core/test_agent_identity.bats",
+            "tests/integration/core/test_link_dotfiles.bats",
+        )
+
+        for workflow_name in SERIAL_CHAINS:
+            workflow = self._workflow(workflow_name)
+            integration_job = (
+                "test-integration-macos"
+                if "github" in workflow_name
+                else "test-integration-linux"
+            )
+            body = _job_body(workflow, integration_job) or ""
+            with self.subTest(workflow=workflow_name):
+                for test_path in test_paths:
+                    self.assertIn(test_path, body)
 
 if __name__ == "__main__":
     unittest.main()
